@@ -1,0 +1,552 @@
+# Casero — Especificación
+
+Negocio y validación: docs/BUSINESS.md. Historias: docs/BACKLOG.md.
+
+## Visión y problema
+
+Casero (nombre provisional) es una app web para el pequeño arrendador peruano: le dice quién le debe, le ayuda a cobrar sin incomodarse y le deja listo, por cada inquilino, el formulario mensual que debe pagar a SUNAT y su fecha límite. En Perú al arrendador se le dice "casero" o "casera", y ese es el usuario.
+
+**El problema.** Miles de familias complementan su ingreso alquilando un cuarto, un piso de su casa o un minidepartamento. Lo manejan en un cuaderno o en el chat de WhatsApp, y eso les cuesta en tres frentes:
+
+- **Cobros:** no saben con certeza quién está atrasado ni cuánto, y cobrar cara a cara es incómodo.
+- **Constancias:** el inquilino pide prueba de lo que pagó y no hay un registro ordenado.
+- **Impuesto:** desde 2026 el impuesto por alquiler se paga sobre lo efectivamente cobrado, con un Formulario 1683 por cada inquilino y mes de cobro. Con 4 inquilinos son 4 formularios al mes, y cada uno que se omite puede costar una multa de hasta S/ 2,750.
+
+**La propuesta en una frase.** "Registra tus alquileres una vez; Casero te avisa quién debe, te arma el mensaje de cobro para WhatsApp y te deja listo cada formulario de SUNAT con su fecha."
+
+**Qué no es.** No cobra el alquiler por el arrendador, no presenta declaraciones ni paga en su nombre, nunca pide su Clave SOL y no envía datos a SUNAT. No reemplaza a un contador ni a un abogado.
+
+**Usuarios.**
+
+- **Arrendador** (cliente que paga): persona natural con 1 a 10 contratos de alquiler (cuartos, minidepartamentos, locales pequeños, cocheras), a menudo mayor de 45 años, que usa sobre todo el celular y WhatsApp. El segmento principal es el arrendador con RUC o que quiere formalizarse; el informal puede usar los cobros en el plan gratis.
+- **Inquilino** (usuario invitado, gratis): ve su saldo y su historial con un enlace, y puede subir la foto de su voucher de Yape o transferencia.
+
+**Por qué este proyecto para empezar a emprender.** Decide una sola persona, el valor se ve en el primer mes (deudas visibles y formularios listos), el costo de operación es bajo y el stack es el que ya dominas: Python, FastAPI, PostgreSQL y React. No encontramos una app peruana que combine cobros y formularios 1683 por inquilino; los sustitutos reales son el cuaderno, las plantillas de Excel, las calculadoras gratuitas y el contador.
+
+## Marco legal y tributario
+
+Casero calcula e informa; la decisión y el pago ante SUNAT son siempre del arrendador. Esta sección resume las reglas en las que se basa el producto y debe revisarla un contador antes de la beta.
+
+**Impuesto a la renta de primera categoría (alquiler de inmuebles por personas naturales domiciliadas), reglas vigentes desde el 1 de enero de 2026**
+
+| Regla | Qué dice | Cómo la usa Casero |
+| --- | --- | --- |
+| Base: lo percibido | El pago a cuenta se genera en el mes en que el arrendador cobra, no cuando vence el alquiler (Ley N.° 32430, Ley N.° 32541 y D.S. N.° 012-2026-EF) | El impuesto sale de los pagos registrados con fecha de cobro en ese mes |
+| Una declaración por inquilino | Se presenta un Formulario Virtual N.° 1683 por cada inquilino y por cada tipo de bien; varios meses cobrados juntos van en una sola declaración del mes de cobro | Casero arma una declaración por documento del inquilino y mes de cobro, sumando todos sus contratos (en el MVP todo es tipo de bien "predio") |
+| Tasa y redondeo | 6.25 % sobre la renta neta (80 % de la bruta): en la práctica, 5 % de lo cobrado. En los ejemplos de SUNAT la base y el tributo se redondean a soles enteros, mitad hacia arriba | Base = redondeo de lo cobrado; tributo = redondeo de la base × 5 %, por declaración |
+| Datos del formulario | RUC del arrendador, período (mes de cobro), tipo y número de documento del inquilino, tipo de bien y monto | La guía muestra esos datos listos para copiar en cada declaración |
+| Forma de pago | En SUNAT Operaciones en Línea con RUC y Clave SOL (cuenta, tarjeta o Yape), o en bancos y agentes | Casero guía el paso a paso; nunca pide la Clave SOL |
+| Vencimiento | Según el cronograma mensual de SUNAT por último dígito del RUC (grupos 0, 1, 2-3, 4-5, 6-7, 8-9 y buenos contribuyentes) | Tabla del cronograma por año; recordatorio 5 días y 1 día antes |
+| Multa por no declarar | Hasta 50 % de la UIT por cada declaración omitida (S/ 2,750 con la UIT 2026 de S/ 5,500); con gradualidad, la rebaja puede llegar al 90–100 % si se subsana antes de que SUNAT notifique | Se usa en la ayuda y la comunicación como "hasta S/ 2,750"; Casero no calcula multas ni intereses |
+| Declaración anual | Solo es obligatoria con saldo por pagar, pagos en exceso, mejoras no reembolsables, alquiler menor al 6 % del autovalúo o cesión gratuita | Fuera del MVP; la ayuda explica cuándo aplica |
+| Renta mínima | El alquiler anual no puede ser menor al 6 % del autovalúo del predio, proporcional a la parte alquilada y a los meses alquilados; si lo es, se tributa sobre ese mínimo en la declaración anual | Si el arrendador registró el autovalúo y la parte que alquila, y el alquiler anualizado queda por debajo, Casero muestra un aviso; no calcula el monto |
+| Inquilino empresa | No hay retención: el arrendador paga el mismo 1683 con el RUC del inquilino, y la empresa lo necesita pagado para deducir el gasto | Soportado, con un aviso para pagarlo a tiempo |
+| Bancarización | Las obligaciones desde S/ 2,000 o US$ 500 deben pagarse por medios bancarios; el umbral se mide por el monto de la obligación, no de cada pago | Aviso al registrar un pago en efectivo en un contrato de S/ 2,000 o más al mes |
+| Deudas de 2025 o antes | Las rentas hasta diciembre de 2025 se imputaron por lo devengado; cobrarlas después no genera un nuevo pago a cuenta | El saldo anterior se registra en dos importes (hasta 2025 y desde 2026); la parte de un pago aplicada al de 2025 o antes no entra a la base y se marca para revisar con el contador |
+| Cambios después de declarar | Si el monto de un mes ya declarado sube, se presenta una rectificatoria del mismo período con el monto total y se paga la diferencia con intereses; una rectificatoria que reduce la deuda queda sujeta a verificación de SUNAT | Casero muestra el texto exacto de qué hacer en cada caso; si el monto baja o hubo una devolución, deriva al contador |
+| Titularidad | Cualquier copropietario puede hacer el pago a cuenta del total; en la sociedad conyugal, un cónyuge declara todo si ejerce la opción con el pago de enero, y si no, cada cónyuge declara la mitad; la sucesión indivisa tiene su propio RUC | Soportados: único dueño, copropiedad, sociedad conyugal con opción y sucesión (en una cuenta propia con el RUC de la sucesión). No soportado: sociedad conyugal por mitades. Una cuenta es un declarante con un RUC |
+
+Fuentes: [preguntas y respuestas de SUNAT 2026](https://personas.sunat.gob.pe/sites/default/files/inline-files/RENTAS%20PRIMERA%20CATEG-PREGUNTAS%20Y%20RESPUESTAS-GOS.docx_.pdf), [cartilla de SUNAT](https://cultura.sunat.gob.pe/sites/default/files/2026-01/2025_Cartilla5_IR_PrimeraCategoria_Arrendamientos.pdf), [SUNAT: declaración y pago](https://personas.sunat.gob.pe/alquilo-mi-casa-o-auto/declaracion-pago-0), [SUNAT: preguntas frecuentes](https://personas.sunat.gob.pe/alquilo-mi-casa-o-auto/preguntas-frecuentes), [cronograma 2026](https://www.sunat.gob.pe/orientacion/cronogramas/2026/cObligacionMensual2026.html), [D.S. N.° 012-2026-EF](https://busquedas.elperuano.pe/dispositivo/NL/2484490-2), [UIT 2026](https://elperuano.pe/noticia/285208-mef-establece-en-s-5-500-la-unidad-impositiva-tributaria-para-2026), [charla de SUNAT con ejemplos de redondeo y multa](https://charlas.sunat.gob.pe/sites/default/files/2024-06/Renta%20de%20primera%20categoria%20%202024.pdf), [cartilla de instrucciones para personas (sociedad conyugal)](https://renta.sunat.gob.pe/sites/default/files/inline-files/Cartilla_Instrucciones_Personas.pdf), [BYB Consultores](https://bybconsultores.pe/impuesto-a-la-renta/arrendamiento-justo-pagos-cuenta-ir-2026/) y [bancarización](https://lacamara.pe/operaciones-desde-s-2000-deberan-usar-medio-de-pago/).
+
+**Casos que el MVP no calcula** (la app los marca y muestra el total cobrado, pero no arma la declaración): alquiler en dólares, subarrendamiento, alquiler de bienes muebles, arrendador no domiciliado y sociedad conyugal que declara por mitades (cada cónyuge con su RUC).
+
+**Desalojo y contratos.** La Ley N.° 30933 permite un desalojo con intervención notarial solo si el contrato consta en el Formulario Único de Arrendamiento (FUA) o en escritura pública, e incluye una cláusula de allanamiento a futuro, una de sometimiento expreso a esa ley y una cuenta bancaria para el pago de la renta. Procede por vencimiento del plazo o por falta de pago según lo pactado (si no se pactó, dos meses y quince días), y el notario solo considera los pagos depositados en esa cuenta ([El Peruano](https://busquedas.elperuano.pe/normaslegales/ley-que-regula-el-procedimiento-especial-de-desalojo-con-int-ley-n-30933-1762977-1/)). Casero no genera contratos en el MVP: registra los datos del contrato y muestra una guía informativa con enlaces oficiales.
+
+**Datos personales.** Casero trata los ingresos por alquiler del arrendador, que la Ley N.° 29733 considera datos sensibles, y datos de terceros (nombre, celular y documento del inquilino). Aplican la ley y su reglamento (D.S. N.° 016-2024-JUS, vigente desde el 30 de marzo de 2025). Lo que implica para el producto:
+
+- Solicitud de inscripción del banco de datos ante la Autoridad Nacional de Protección de Datos Personales antes de empezar a tratar datos (semana 1 de la validación), declarando cada proveedor (servidor, respaldos, correo y seguimiento de errores) y su país.
+- Al registrarse: aceptación de términos y política de privacidad, y un consentimiento separado y expreso para tratar los ingresos por alquiler; ambos versionados y guardados con fecha. Sin ese consentimiento no se puede crear la cuenta, porque todo Casero trata ingresos por alquiler. Si después se retira, la cuenta queda bloqueada salvo para exportar o eliminar sus datos.
+- Términos con cláusula de encargo: el arrendador es responsable de los datos de sus inquilinos y Casero es encargado, con la lista de subencargados (servidor, respaldos, correo y seguimiento de errores) y su país. La política de privacidad menciona que el panel interno no accede a datos de inquilinos ni a cobros.
+- Aviso visible en el portal del inquilino: quién registró sus datos, para qué y cómo ejercer sus derechos.
+- El documento del inquilino solo es obligatorio para contratos que entran al módulo de impuesto, porque lo exige el Formulario 1683.
+- Tú te designas como oficial de datos personales y lo registras en `docs/legal/`.
+- Incidentes: aviso a la Autoridad en 48 horas, a los afectados sin demora cuando afecte sus derechos y al Centro Nacional de Seguridad Digital si es un incidente digital ([Pérez-Llorca](https://www.perezllorca.com/es-pe/actualidad/articulos/se-aprueba-nuevo-reglamento-de-la-ley-de-proteccion-de-datos-personales/), [La Cámara](https://lacamara.pe/nuevo-reglamento-refuerza-la-proteccion-de-datos-personales/)).
+- Exportación de los datos en formato estructurado y eliminación de la cuenta.
+- Si un arrendador persona natural debe inscribir su propio banco de datos de inquilinos es una consulta pendiente para el abogado.
+
+**Tu formalización como emprendedor**
+
+- RUC como persona natural con negocio y régimen tributario elegido con un contador antes de la preventa. Para el primer año conviene evaluar el Nuevo RUS (cuota fija con IGV incluido, solo boletas, tope de S/ 96,000 al año), con paso a RER o Régimen MYPE si te acercas al tope o un cliente necesita factura; el contador confirma que la actividad no está excluida ([comparativo de regímenes](https://tramitesperu.com/comparadores/regimenes-tributarios/)).
+- Boletas electrónicas desde el sistema gratuito de SUNAT mientras el volumen sea bajo.
+- Libro de Reclamaciones virtual en la web, con respuesta en un máximo de 15 días hábiles ([Garrigues](https://www.garrigues.com/es_ES/noticia/peru-adecua-reglamento-libro-reclamaciones-proveedores-den-respuesta-reclamos-quejas-15-dias)).
+- Términos y condiciones que digan claramente que Casero es una herramienta de registro y cálculo, no asesoría tributaria ni legal, y que Casero no entrega información a terceros salvo ante un requerimiento legal obligatorio.
+
+> Nota: esta especificación no es asesoría legal ni tributaria. Las reglas vienen de fuentes públicas consultadas en octubre de 2026 y deben confirmarse con un contador y un abogado antes de cobrar.
+
+## Alcance del MVP y funcionalidades
+
+El MVP cubre el ciclo mensual completo de un arrendador: registrar sus alquileres, saber quién debe, cobrar por WhatsApp, registrar pagos y tener listos sus formularios de SUNAT. Se entrega en dos hitos: la beta privada con los fundadores y el lanzamiento público.
+
+| Módulo | Funcionalidad | Detalle | Hito |
+| --- | --- | --- | --- |
+| Cuenta | Registro e inicio de sesión | Por invitación durante la beta y abierto desde el lanzamiento; correo y contraseña; se puede usar la app sin verificar el correo hasta 7 días, pero solo se envían correos de verificación hasta hacerlo; recuperación de contraseña; aceptación de términos y privacidad y consentimiento obligatorio de datos sensibles | Beta |
+| Cuenta | Perfil tributario | RUC con dígito verificador, grupo del cronograma (último dígito o buen contribuyente); opcional hasta usar el impuesto | Beta |
+| Inmuebles | Inmuebles y unidades | Un inmueble tiene unidades (cuarto, minidepartamento, departamento, local, cochera u otro); titularidad, autovalúo y porcentaje alquilado opcionales | Beta |
+| Contratos | Alquiler de una unidad | Inquilino, monto mensual, día de pago, inicio, fin previsto, mes desde el que se lleva el control, saldo anterior (de 2025 o antes y de 2026 en adelante) y tratamiento tributario | Beta |
+| Contratos | Corregir y terminar | Anular o corregir un cargo con motivo; cambiar la renta desde el próximo mes; terminar con fecha y crédito opcional | Beta |
+| Cobros | Cargos mensuales | Se generan solos para cada contrato activo; estados atrasado, vence hoy, por vencer, pendiente y pagado | Beta |
+| Cobros | Registrar pagos | Monto, fecha de cobro, medio y nota; pagos parciales y adelantados; saldo a favor; anulación con motivo; aviso de bancarización | Beta |
+| Cobros | Panel | Atrasados primero con días y monto, luego vence hoy y por vencer; total por cobrar del mes | Beta |
+| Recordatorios | Mensajes de cobro | Botón "Enviar por WhatsApp" con el mensaje listo (amable, vence hoy, atraso), editable; registro de cada envío | Beta |
+| Portal del inquilino | Enlace personal | Saldo e historial en pantalla, aviso de privacidad; el arrendador lo revoca y regenera | Beta |
+| Impuesto | Formularios del mes | Una tarjeta por declaración (documento del inquilino y mes de cobro, sumando sus contratos) con los datos del 1683 listos para copiar, el tributo y el vencimiento; registro del pago con número de orden; qué hacer si el monto cambia después; recordatorio por correo y aviso en la app | Beta |
+| Adquisición | Calculadora pública | "¿Cuánto pago a SUNAT por mi alquiler?" sin registro, con una línea por inquilino, conectada a la lista de espera | Beta (desde enero) |
+| Legal | Páginas obligatorias | Términos, privacidad, Libro de Reclamaciones virtual, exportación y eliminación de la cuenta | Beta |
+| Operación | Respaldos y monitoreo | Respaldos cada 6 horas fuera del servidor, alertas y seguimiento de errores | Beta |
+| Suscripción | Planes | Gratis y Casero, prueba de 30 días, límites y funciones por plan; pago por Yape activado desde el panel interno | Lanzamiento |
+| Operación | Panel interno | Para ti: cuentas, suscripciones, cronograma de SUNAT, reclamos con su plazo | Lanzamiento |
+| Cuenta | Bienvenida guiada | Primer inmueble, unidad, inquilino y saldo anterior en 3 pasos | Lanzamiento |
+| Cobros | Constancias y garantías | Constancia en PDF del pago; garantía recibida, aplicada y devuelta | Lanzamiento |
+| Portal del inquilino | Vouchers | El inquilino sube la foto; el arrendador la confirma con el monto y la fecha reales o la rechaza | Lanzamiento |
+| Recordatorios | Resumen diario y notificaciones | Correo de las 8:00 opcional y notificación push si la app está instalada | Lanzamiento |
+
+**El ciclo de un mes para el arrendador**
+
+1. Cada contrato activo tiene su cargo del mes desde el día 1.
+2. Tres días antes del día de pago, el panel marca "por vencer" y sugiere el recordatorio amable; el día de pago marca "vence hoy".
+3. El inquilino paga por Yape o en efectivo; el arrendador registra el pago (o, tras el lanzamiento, confirma el voucher que subió el inquilino).
+4. Si pasa el día de pago sin pago completo, el cargo pasa a "atrasado" y se sugiere el aviso de atraso.
+5. Al cerrar el mes, Casero muestra una declaración por cada inquilino que pagó en ese mes (sumando sus contratos), con su tributo y su vencimiento, y la recuerda 5 días y 1 día antes. La ayuda recomienda presentar el formulario después de cerrar el mes, no apenas se cobra.
+6. El arrendador paga cada formulario en SUNAT con la guía y registra su número de orden.
+
+**Fuera del MVP** (en orden de prioridad para después del lanzamiento):
+
+- Recordatorio de vencimiento de SUNAT al arrendador por la API de WhatsApp (plantilla de utilidad aprobada, con consentimiento).
+- Prorrateo de servicios (luz y agua) entre cuartos con un solo medidor.
+- Cobro de la suscripción con tarjeta y renovación automática.
+- Resumen anual para la declaración anual, cuando haya un año completo de datos.
+- Alquileres en dólares y sociedad conyugal que declara por mitades.
+- Contratos generados con plantilla revisada por un abogado.
+- Varios usuarios por cuenta y acceso del contador (base para un plan Plus).
+- App móvil nativa y funcionamiento sin conexión.
+
+## Arquitectura y stack
+
+Un monolito modular en Python con dos procesos (API y worker), una PWA en React y un PostgreSQL, en un solo servidor detrás de Caddy. Es lo más simple que una persona puede operar y alcanza para miles de cuentas.
+
+| Componente | Tecnología | Responsabilidad |
+| --- | --- | --- |
+| `casero.api` | FastAPI, un proceso Uvicorn | API REST bajo `/api`, sesiones, validación, límites por plan, OpenAPI como contrato único |
+| `casero.worker` | Proceso Python con el mismo código y rol `casero_worker` | Asegurar cargos y cierres de contrato hasta hoy, enviar correos programados, purgar cuentas y archivos vencidos, alertar si falta el cronograma y si un reclamo se acerca a su plazo |
+| `web` | React 19, Vite, PWA instalable | `/app` para el arrendador, `/i` para el inquilino, `/admin` para ti; landing y calculadora pública en `/` |
+| PostgreSQL 17 | RLS por cuenta | Datos, libro de cobros de solo inserción, configuración tributaria por año, auditoría |
+| Almacenamiento S3 | Otro proveedor, buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días |
+| Correo | Proveedor transaccional detrás de una interfaz `Mailer` | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes vía webhook; Mailpit en local |
+| Seguimiento de errores | Sentry o GlitchTip | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
+| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, lista de IP permitidas para `/admin`, sin registrar `/i` ni consultas |
+
+**Contextos de acceso a la base**
+
+| Contexto | Quién lo usa | Cómo accede |
+| --- | --- | --- |
+| `anonymous` | Rutas `/api/public/*`: registro, inicio de sesión, recuperación, Libro de Reclamaciones, lista de espera, calculadora pública | Solo tablas sin RLS y lectura de la configuración tributaria; al registrarse crea cuenta, miembro, aceptaciones y suscripción en una transacción fijando antes `app.account_id` con el id generado |
+| `account` | Rutas `/api/app/*` | `current_account` fija `app.account_id` con `set_config(..., true)` dentro de la transacción |
+| `tenant` | Rutas `/api/tenant/*` | `app_resolve_tenant_token()` (`SECURITY DEFINER`, propiedad de `casero_owner`, `search_path` fijo) devuelve cuenta y contrato; luego contexto `account` limitado a ese contrato |
+| `system` | Worker con el rol `casero_worker` | `app_list_account_ids(purpose)` (`SECURITY DEFINER`, purpose ∈ jobs, purge) y una transacción por cuenta; tablas de sistema sin RLS (`job_runs`, `pending_object_deletions`) |
+| `admin` | Rutas `/api/admin/*` | Pool aparte con `casero_admin`, creado solo si `ADMIN_ENABLED=true`; sesiones en `staff_sessions`; cada acción queda en `staff_audit_log`; permisos por columna en SPEC |
+
+**Módulos del backend.** Cada uno con capas `domain`, `application`, `infrastructure` y `api`; el dominio no importa FastAPI ni SQLAlchemy, y un módulo solo usa a otro a través de su capa `application`.
+
+| Módulo | Contenido |
+| --- | --- |
+| `identity` | Usuarios, sesiones, verificación, recuperación, aceptaciones legales |
+| `accounts` | Cuenta, perfil tributario, plan, suscripción, exportación y eliminación |
+| `properties` | Inmuebles y unidades |
+| `leases` | Inquilinos y contratos, ciclo de vida |
+| `ledger` | Cargos, pagos, garantías, aplicación de pagos, estados, constancias |
+| `reminders` | Plantillas, enlaces de WhatsApp, correos y notificaciones push |
+| `tax` | Configuración por año, declaraciones mensuales, pagos a SUNAT, calculadora pública |
+| `tenant_portal` | Enlaces del inquilino y vouchers |
+| `admin` | Personal interno con doble factor, panel, Libro de Reclamaciones |
+
+**Sesiones.** Cookie `__Host-casero_session` httpOnly, Secure, SameSite=Lax, con identificador opaco guardado como hash; se rota al iniciar sesión y dura 30 días deslizantes. Protección CSRF con doble token, también en el formulario de inicio de sesión. El personal interno usa otra cookie (`__Host-casero_staff`, SameSite=Strict, sesión en `staff_sessions` que vence a las 8 horas o tras 30 minutos sin uso) y doble factor TOTP. Sin JWT. Los límites de intentos viven en una tabla `UNLOGGED` de PostgreSQL: bloqueo por IP y retraso progresivo por correo, para que nadie pueda bloquear la cuenta de otra persona.
+
+**Tareas programadas.** El worker revisa cada minuto qué tareas tocan según la hora de Lima. Las tareas de datos (cargos, cierre de contratos vencidos) aseguran el estado hasta hoy: crean lo que falta desde el mes de control de cada contrato, así que se recuperan solas tras una caída. Las de correo se registran en `job_runs` antes de enviarse y no se reintentan el mismo día, salvo los recordatorios de impuesto, que reintentan hasta 3 veces los errores transitorios; las que tienen hora (resumen de las 8:00) se descartan si a las 12:00 no se pudieron enviar. La purga de una cuenta tiene dos fases: primero se borran sus objetos de S3 (con sus versiones) a través de `pending_object_deletions`, y cuando esa cola está vacía se llama a `purge_account()`.
+
+**Correo.** Dominio con SPF, DKIM y DMARC, subdominio de envío propio, `List-Unsubscribe` de un clic en los correos programados y supresión automática de direcciones que rebotan o se quejan.
+
+**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo del gestor de contraseñas donde viven las claves. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
+
+## Reglas de negocio
+
+El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pagos válidos, y el tributo de cada declaración es siempre la regla del año aplicada a lo cobrado a un mismo inquilino (por su documento) en ese mes, sumando todos sus contratos. Todo lo demás se deriva de esas dos reglas y se calcula al leer.
+
+**Contratos**
+
+| Regla | Detalle |
+| --- | --- |
+| Activo | Un contrato está activo mientras `ended_at` es nulo. `end_date` es la fecha prevista: el panel avisa 15 días antes, y si pasa sin renovación el worker cierra el contrato con `ended_at = end_date` |
+| Un contrato activo por unidad | Índice único parcial sobre la unidad donde `ended_at` es nulo |
+| Mes de control | Si el inicio está en el pasado, el arrendador elige desde qué mes lleva el control (por defecto el actual). No se generan cargos anteriores; la deuda previa va como saldo anterior |
+| Saldo anterior | Hasta dos cargos `opening_balance` por contrato, únicos por `(lease_id, pre_2026)`: uno con la deuda de 2025 o antes y otro con la de 2026 anterior al mes de control. El de 2025 o antes se aplica primero |
+| Cambio de renta | Se registra en `lease_rent_changes` con el monto nuevo y el período desde el que aplica (el siguiente que no se haya generado); los cargos ya generados no cambian y se corrigen con `rent_correction` si hace falta |
+| Último mes | Se cobra completo todo período cuyo primer día sea anterior o igual al fin del contrato. Un crédito proporcional se registra a mano como ajuste |
+| Tratamiento tributario | `standard` (persona natural), `company_tenant` (inquilino empresa) o `unsupported` (casos fuera del MVP). Solo los dos primeros entran a las declaraciones |
+| Titularidad | En el inmueble: `sole` (único dueño), `co_owned` (un copropietario declara y paga el total), `conjugal_option` (un cónyuge declara todo por la sociedad conyugal, opción ejercida con el pago de enero), `conjugal_split` (cada cónyuge declara su mitad) o `estate` (sucesión indivisa). `conjugal_split` fuerza `unsupported` en sus contratos y la app explica por qué |
+| Un declarante por cuenta | Las declaraciones salen con el RUC de la cuenta, así que una cuenta es un solo declarante (`accounts.taxpayer_kind` ∈ person, estate). En una cuenta `estate` todos los inmuebles son `estate`; en una cuenta `person`, `estate` no se puede elegir y la app explica que la sucesión necesita su propia cuenta con su RUC. Al elegir `conjugal_option`, la app pide confirmar que el RUC de la cuenta es el del cónyuge que ejerció la opción |
+
+**Cargos**
+
+| Regla | Detalle |
+| --- | --- |
+| Tipos | `rent` (mensual), `rent_correction` (reemplaza un `rent` anulado del mismo período), `opening_balance` y `adjustment` (débito si es positivo, crédito si es negativo; nunca cero) |
+| Ajustes negativos | Un crédito se aplica a los cargos antes que cualquier pago, con el mismo orden de cargos. No es dinero cobrado: nunca entra a la base del impuesto |
+| Generación | Un `rent` por contrato y período, único por `(lease_id, period)`. El worker asegura cada día que existan todos los períodos desde el mes de control hasta el actual; un período con un `rent` anulado no se vuelve a generar |
+| Corrección | Anular el cargo con motivo e insertar un `rent_correction` del mismo período |
+| Vencimiento | El día de pago del contrato; si el mes no tiene ese día, el último día del mes; en el primer período, nunca antes de la fecha de inicio |
+| Estado | Con este orden de precedencia: pagado (saldo del cargo ≤ 0), atrasado (hoy > vencimiento), vence hoy, por vencer (faltan 3 días o menos) y pendiente. "Parcial" es un atributo aparte cuando hay algo pagado. Un contrato está "al día" si no tiene cargos atrasados |
+
+**Pagos**
+
+| Regla | Detalle |
+| --- | --- |
+| Aplicación | Primero se aplican los créditos y luego los pagos, ordenados por `(received_on, created_at, id)`, a los cargos válidos ordenados con el saldo anterior de 2025 o antes primero, luego el de 2026, luego por vencimiento, fecha de creación e id. Lo que sobra queda como saldo a favor y se aplica a los cargos siguientes. El cálculo es determinista: el mismo conjunto de movimientos da siempre la misma asignación |
+| Fecha de cobro | La fecha en que el arrendador recibió el dinero; no puede ser posterior a hoy en Lima ni anterior al primer día del mes de control, salvo que el contrato tenga saldo anterior: entonces puede ser desde el 1 de enero de 2026. Es la que usa el impuesto |
+| Idempotencia | El cliente genera el id del pago al abrir el formulario; reenviar no duplica |
+| Pagos adelantados | Cuentan para el impuesto del mes en que se cobraron, aunque cubran meses siguientes |
+| Anulación | Se registra con motivo; si el mes de ese pago ya tiene un pago a SUNAT registrado, Casero avisa que el tributo pagado ya no coincide |
+| Bancarización | Si la renta vigente en el período de la fecha de cobro es de S/ 2,000 o más al mes, registrar un pago en efectivo muestra: "Para alquileres desde S/ 2,000 la ley exige pagar por banco, transferencia o billetera. Sin eso tu inquilino no puede deducir el gasto y te será más difícil probar cuándo cobraste" |
+| Saldo a favor al terminar | Se muestra como "a devolver al inquilino"; la devolución se registra como un ajuste |
+
+**Garantías**
+
+| Regla | Detalle |
+| --- | --- |
+| Registro | Garantía recibida por contrato; no es renta |
+| Aplicar a alquiler | Crea un pago con medio "garantía" y `deposit_id`, en la fecha en que se aplica; desde ahí cuenta para el impuesto. Lo aplicado es la suma de esos pagos válidos |
+| Devolver | Se registra en `deposit_movements` (solo devoluciones) |
+| Anulación | Una garantía se anula en `deposit_voids` solo si no tiene pagos ni devoluciones válidos; una devolución, en `deposit_movement_voids`; un pago desde la garantía, como cualquier pago |
+| Disponible | Recibido − aplicado − devuelto, calculado al leer y verificado bajo bloqueo de la fila del contrato; no se puede aplicar ni devolver más que lo disponible |
+
+**Vouchers del inquilino.** Quedan "por confirmar" y no cuentan como pago. El arrendador los confirma indicando el monto y la fecha que realmente recibió (eso crea el pago una sola vez) o los rechaza con motivo. Máximo 3 pendientes por contrato y 10 subidas por enlace al día.
+
+**Declaraciones del impuesto**
+
+```latex
+\text{base}(d, m) = \text{redondeo}\left(\sum \text{pagos válidos gravados de los contratos del inquilino con documento } d \text{ cobrados en el mes } m\right)
+```
+
+```latex
+\text{tributo}(d, m) = \text{redondeo}\left(0.80 \times 0.0625 \times \text{base}(d, m)\right)
+```
+
+- Hay una declaración por cada documento de inquilino (`renter_doc_hmac`; si el inquilino no tiene documento, por `renter_id`, y la tarjeta queda "incompleta" sin permitir registrar el pago a SUNAT hasta completarlo) con pagos cobrados en el mes en contratos `standard` o `company_tenant`; si un mismo inquilino tiene dos contratos, se suman. El total del mes es la suma de sus tributos. Ejemplo de prueba: 450.50 + 100.50 en dos contratos del mismo inquilino dan base 551 y tributo 28.
+- El redondeo es al sol entero, mitad hacia arriba, primero en la base y luego en el tributo. Tasa, deducción, redondeo y umbral de bancarización se leen de `tax_rule_sets` del año del mes de cobro.
+- De la base se excluye la parte de un pago que la aplicación asigna al saldo anterior de 2025 o antes (ya gravado por devengado); esa parte se muestra aparte para revisar con el contador. Una prueba de propiedades con Hypothesis verifica que el tributo no depende del orden en que se registraron los movimientos.
+- Cada tarjeta muestra los datos del 1683: RUC del arrendador, período, tipo y número de documento del inquilino (descifrado solo en esa vista), tipo de bien "predio", base y tributo, con botones para copiar. Sin documento del inquilino, la tarjeta pide completarlo.
+- El vencimiento sale de `sunat_due_dates` según el año, el mes y el grupo del RUC. Si el cronograma del año no está cargado, se muestra "fecha por confirmar" y el worker te alerta por correo.
+- Sin RUC registrado, Casero muestra el tributo pero no el vencimiento, y explica cómo obtener el RUC.
+- El pago a SUNAT se registra por declaración (documento del inquilino y período), con fecha, monto y número de orden. Lo pendiente de una declaración es su tributo menos los pagos registrados.
+- Si la declaración cambia después de registrar el pago, Casero lo señala sin bloquear, con estos textos:
+  - Sube (pago nuevo en ese mes): "Cobraste S/ {diferencia} más en {periodo} después de declarar. Presenta una declaración rectificatoria del 1683 con la nueva base y paga la diferencia de S/ {tributo_diferencia} con intereses. Consúltalo con tu contador."
+  - Baja (pago anulado): "La base de {periodo} bajó después de declarar. Una rectificatoria que reduce el tributo la revisa SUNAT antes de surtir efecto; consulta con tu contador si conviene presentarla o pedir la devolución."
+  - Documento del inquilino cambiado después de pagar: "Esta declaración se pagó con otro documento del inquilino. Ese dato no se corrige con una rectificatoria sino con el Formulario 1693 (solicitud de modificación de datos del pago). Revísalo con tu contador."
+  - Vencida sin pago registrado (por ejemplo, un cobro registrado con fecha pasada): "Esta declaración venció el {vencimiento}. Si la presentas y pagas antes de que SUNAT te notifique, la multa tiene una rebaja importante por gradualidad, y se pagan intereses. Consúltalo con tu contador."
+- Si el arrendador registró el autovalúo y el porcentaje alquilado (`rented_share_pct`, 100 por defecto) de un inmueble, y el alquiler de sus unidades en los meses alquilados queda por debajo del 6 % del autovalúo × porcentaje alquilado × meses alquilados / 12, se muestra el aviso de renta mínima.
+
+**Mensajes de cobro.** Tres plantillas editables por cuenta, con variables `{inquilino}`, `{monto}`, `{periodo}`, `{fecha}` y `{enlace}`:
+
+- Recordatorio amable: "Hola {inquilino}, te recuerdo que el {fecha} vence el alquiler de {periodo} por {monto}. Puedes ver tu detalle aquí: {enlace}. ¡Gracias!"
+- Vence hoy: "Hola {inquilino}, hoy vence el alquiler de {periodo} por {monto}. Tu detalle está aquí: {enlace}."
+- Atraso: "Hola {inquilino}, el alquiler de {periodo} por {monto} está pendiente desde el {fecha}. ¿Me confirmas cuándo podrías pagarlo? Tu detalle: {enlace}."
+
+`{enlace}` siempre es el mismo enlace vigente del contrato, así que los mensajes ya enviados siguen funcionando. La ayuda recomienda enviar entre las 8:00 y las 20:00. Cada envío queda registrado para mostrar "recordado hace N días".
+
+**Recordatorios de impuesto.** Por correo 5 días y 1 día antes del vencimiento, con aviso fijo en la app los últimos 5 días; tras el lanzamiento, también por notificación push si la app está instalada. Estos recordatorios no dependen del resumen diario y reintentan hasta 3 veces los errores transitorios del proveedor de correo.
+
+**Planes, funciones y límites**
+
+| Clave de función | Gratis | Casero |
+| --- | --- | --- |
+| Contratos activos | 1 | 10 |
+| `whatsapp_links` | Sí | Sí |
+| `tenant_portal` | Sí | Sí |
+| `tax_module` (declaraciones y registro de pagos a SUNAT) | No | Sí |
+| `tax_reminders` | No | Sí |
+| `receipts_pdf` | No | Sí |
+| `accountant_export` (CSV de pagos y declaraciones) | No | Sí |
+| `data_export` (portabilidad legal) | Sí | Sí |
+
+| Regla | Detalle |
+| --- | --- |
+| Estado de la suscripción | Se calcula desde fechas: en prueba, activa, en gracia (7 días tras vencer) o gratis |
+| Al superar el límite | No se pueden crear contratos nuevos. El límite se verifica bloqueando la fila de la cuenta para evitar altas simultáneas |
+| Al bajar de plan | El arrendador elige qué contratos conservan WhatsApp y portal hasta el límite (por defecto, los más antiguos). Los demás siguen generando cargos y aceptando pagos, pero sin esas funciones hasta que se termine otro contrato o se vuelva a pagar |
+| Meses pagados | Los meses de la prueba gratis no cuentan como pagados; al terminar la prueba se envía un único correo y un aviso en la app con los vencimientos de SUNAT pendientes. Las declaraciones de meses de cobro dentro de un período pagado conservan su tarjeta y sus recordatorios aunque la suscripción venza después |
+| Datos | Nunca se borran por bajar de plan; la exportación legal siempre está disponible |
+
+## Esquema de base de datos
+
+PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configuración global, sistema, y datos de cada arrendador con RLS por `account_id`. Las claves primarias son `uuid` v7 generados en la aplicación (o en el cliente para el libro). Cada tabla de cuenta tiene `UNIQUE (account_id, id)` y las foráneas entre ellas son compuestas `(account_id, x_id)`, para que ninguna fila apunte a otra cuenta. Los planes, la configuración tributaria de 2026 y los feriados de 2026 y 2027 se cargan en migraciones de datos (CS-03 y CS-20), no a mano.
+
+**Tablas sin RLS (lista cerrada; el test de CS-03 falla si aparece otra):** `users`, `sessions`, `email_tokens`, `registration_invites`, `account_members`, `legal_documents`, `staff_users`, `staff_sessions`, `staff_audit_log`, `plans`, `tax_rule_sets`, `sunat_due_dates`, `holidays`, `complaints`, `complaint_counters`, `waitlist_entries`, `email_suppressions`, `rate_limit_buckets`, `job_runs`, `pending_object_deletions` y la tabla de versiones de Alembic. Todas las demás del esquema `public` tienen RLS con `FORCE`.
+
+**Roles.** Esta tabla es exhaustiva: un permiso que no aparece aquí no existe, y un test de catálogo lo compara con `information_schema`.
+
+| Rol | Uso | Permisos |
+| --- | --- | --- |
+| `casero_owner` | Migraciones, `make create-staff` y dueño de los objetos y de las funciones `SECURITY DEFINER` | Todo, con `BYPASSRLS` (necesario porque `FORCE` también somete al dueño a las políticas). Las funciones `SECURITY DEFINER` fijan `search_path` y validan sus argumentos; `purge_account` además fija `app.account_id` al inicio |
+| `casero_backup` | Solo `pg_dump` | `LOGIN`, `BYPASSRLS`, SELECT en todo; sin escritura |
+| `casero_app` | API (contextos `anonymous`, `account` y `tenant`) | Sin `BYPASSRLS`. Tablas de cuenta: SELECT e INSERT; UPDATE solo en las tablas con estado editable (`accounts`, `properties`, `units`, `renters`, `leases(end_date, ended_at, due_day, tools_enabled, tax_treatment)`, `voucher_submissions(status, reject_reason, payment_id, reviewed_by, reviewed_at)`, `tenant_links(revoked_at, last_used_at)`, `message_templates`, `push_subscriptions(revoked_at)`, `subscriptions(ends_at, ended_at)`); nada de UPDATE ni DELETE en las de solo inserción, por eso los bloqueos se hacen sobre la fila del contrato (`SELECT ... FROM leases ... FOR UPDATE`) o de la cuenta, nunca sobre una tabla de solo inserción. Sin RLS: CRUD en `users`, `sessions`, `email_tokens`, `account_members`, `rate_limit_buckets`; SELECT y UPDATE(`used_at`) en `registration_invites`; SELECT en `plans`, `tax_rule_sets`, `sunat_due_dates`, `holidays`, `legal_documents`; INSERT en `complaints`; INSERT, SELECT(`email`) y DELETE en `waitlist_entries` (DELETE al registrarse); SELECT, INSERT y UPDATE en `complaint_counters`; SELECT e INSERT en `email_suppressions` (webhook de rebotes y baja de un clic). EXECUTE en `app_resolve_tenant_token`. No tiene EXECUTE en `app_list_account_ids` ni en `purge_account`: un test verifica que recibe "permission denied" |
+| `casero_worker` | Worker (contexto `system`) | Sin `BYPASSRLS`. Lo mismo que `casero_app` sobre tablas de cuenta (actúa una cuenta a la vez con `app.account_id`), más UPDATE(`purged_at`) en `files`; SELECT en `users(id, email, email_verified_at, deleted_at)`, `account_members`, `plans`, `tax_rule_sets`, `sunat_due_dates`, `complaints`, `holidays`, `waitlist_entries`; DELETE en `waitlist_entries` (vencidas); CRUD en `job_runs`, `pending_object_deletions`, `email_suppressions`; EXECUTE en `app_list_account_ids` y `purge_account` |
+| `casero_admin` | Panel interno y comandos `make` de personal | `BYPASSRLS`. SELECT en `accounts(id, display_name, created_at, deletion_requested_at, purged_at)`, `subscriptions`, `subscription_payments`, `account_members`, `users(id, email, created_at, email_verified_at)`, `complaints`, `job_runs`, `waitlist_entries`, `registration_invites`, `plans`, `tax_rule_sets`, `sunat_due_dates`, `holidays`; INSERT en `subscriptions`, `subscription_payments`, `tax_rule_sets`, `sunat_due_dates`, `holidays`, `registration_invites`, `staff_sessions`, `staff_audit_log`; UPDATE en `complaints(response, responded_at)`, `subscriptions(ends_at, ended_at)`, `sunat_due_dates(due_date, source_url)`, `staff_sessions(revoked_at, last_seen_at)`, `staff_users(recovery_codes_hash)`; SELECT en `staff_users` y `staff_sessions`. Nada sobre inquilinos, contratos, cobros, garantías ni archivos |
+
+### Identidad, legal y personal interno (sin RLS)
+
+| Tabla | Columnas principales | Restricciones clave |
+| --- | --- | --- |
+| `users` | id, email, password\_hash, email\_verified\_at, created\_at, deleted\_at | `email` único sin distinguir mayúsculas; al pedir la eliminación se anonimiza como `deleted+<id>@invalid`; hash Argon2id |
+| `sessions` | id, user\_id, token\_hash, created\_at, last\_seen\_at, expires\_at, revoked\_at | `token_hash` único |
+| `email_tokens` | id, user\_id, purpose, token\_hash, expires\_at, used\_at | purpose ∈ verify\_email, reset\_password, cancel\_deletion; un solo uso. Los enlaces de baja no usan esta tabla: son tokens firmados con HMAC (usuario, tipo de correo), reutilizables y sin guardar, para que los filtros de correo que abren enlaces no los consuman |
+| `registration_invites` | id, email, token\_hash, created\_by\_staff\_id, expires\_at, used\_at | Se crean con `make invite` (con `created_by_staff_id` nulo si se crean antes de que exista personal); un solo uso; solo se exigen si `REGISTRATION_MODE=invite` (con `closed` el registro devuelve 403, con `open` no se piden) |
+| `account_members` | account\_id, user\_id, role | PK `(account_id, user_id)`; un usuario por cuenta en el MVP, role = owner |
+| `legal_documents` | id, kind, version, published\_at, url | kind ∈ terms, privacy, sensitive\_consent |
+| `staff_users` | id, email, password\_hash, totp\_secret\_enc, recovery\_codes\_hash `text[]`, created\_at, disabled\_at | Se crean solo con `make create-staff` (corre como `casero_owner`), nunca por HTTP; cada código de recuperación se usa una sola vez (se quita del arreglo) |
+| `staff_sessions` | id, staff\_user\_id, token\_hash, created\_at, last\_seen\_at, expires\_at, revoked\_at | Cookie `__Host-casero_staff`; vence a las 8 horas o 30 minutos sin uso |
+| `staff_audit_log` | id, staff\_user\_id, actor, action, entity, entity\_id, at | Solo inserción; `staff_user_id` nulo con `actor = 'cli'` para comandos ejecutados antes de que exista personal; columna actor; registra cada acción del panel y de los comandos `make` de personal |
+
+### Configuración y sistema (sin RLS)
+
+| Tabla | Columnas principales | Restricciones clave |
+| --- | --- | --- |
+| `plans` | code, name, price\_month\_cents, price\_year\_cents, max\_active\_leases, features `jsonb` | code ∈ free, casero; features con las claves de la tabla de funciones; se cargan en migración |
+| `tax_rule_sets` | year, rate\_bp, deduction\_bp, rounding, cash\_threshold\_cents, min\_rent\_bp, source\_url | PK `year`; 2026: rate\_bp = 625, deduction\_bp = 2000, rounding = half\_up\_sol, cash\_threshold\_cents = 200000, min\_rent\_bp = 600 |
+| `sunat_due_dates` | year, period, ruc\_group, due\_date, source\_url | PK `(year, period, ruc_group)`; `year` es el año del período declarado (diciembre de 2026 está en 2026 aunque venza en enero de 2027); ruc\_group ∈ 0, 1, 2-3, 4-5, 6-7, 8-9, bc |
+| `holidays` | date, name | Feriados nacionales; se usan para los 15 días hábiles del Libro de Reclamaciones |
+| `complaints` | id, number, created\_at, full\_name, document, email, phone, kind, detail, request, response, responded\_at, due\_at | Libro de Reclamaciones; number = `AAAA-NNNNNN` tomado de `complaint_counters` en la misma transacción; due\_at = 15 días hábiles; se responde con `make complaint-respond` |
+| `complaint_counters` | year, last\_number | PK `year`; se incrementa con `UPDATE ... RETURNING` |
+| `waitlist_entries` | id, email, source, consented\_at, created\_at | Se borra al registrarse o a los 12 meses |
+| `email_suppressions` | email\_hash, reason, created\_at | reason ∈ bounce, complaint, unsubscribe |
+| `rate_limit_buckets` | key\_hash, window\_start, count | Tabla `UNLOGGED`; IP guardada como hash con sal rotada |
+| `job_runs` | job, run\_key, account\_id, status, attempts, started\_at, finished\_at, error\_code | Único `(job, run_key, account_id)` con `NULLS NOT DISTINCT`; status ∈ running, done, failed |
+| `pending_object_deletions` | storage\_key, account\_id, requested\_at, attempts, done\_at | Cola para borrar objetos de S3 (con todas sus versiones) antes de purgar filas |
+
+### Datos de cada arrendador (RLS)
+
+| Tabla | Columnas principales | Restricciones clave |
+| --- | --- | --- |
+| `accounts` | id, display\_name, taxpayer\_kind, ruc, ruc\_group, daily\_digest, deletion\_requested\_at, deletion\_scheduled\_for, deletion\_contact\_enc, purged\_at, created\_at | Política RLS sobre `id`; taxpayer\_kind ∈ person, estate (person por defecto); RUC de 11 dígitos con dígito verificador; `deletion_contact_enc` guarda cifrado el correo original solo para avisar o cancelar la eliminación y se borra en la purga; tras la purga solo quedan id, fechas y `purged_at` |
+| `legal_acceptances` | id, account\_id, user\_id, document\_id, accepted\_at, ip\_hash | Solo inserción; la app exige aceptar la versión vigente de términos, privacidad y consentimiento de datos sensibles antes de usar `/app` |
+| `legal_withdrawals` | id, account\_id, user\_id, document\_id, withdrawn\_at | Solo inserción; retirar el consentimiento de datos sensibles bloquea la cuenta (solo exportar o eliminar) |
+| `subscriptions` | id, account\_id, plan\_code, starts\_at, trial\_ends\_at, ends\_at, ended\_at, founder | Único `(account_id)` donde `ended_at` es nulo; el estado se calcula desde las fechas; `founder` lo marca `make grant-founder` |
+| `subscription_payments` | id, account\_id, amount\_cents, paid\_on, method, boleta\_number, months | Se conservan con la cuenta anonimizada aunque la cuenta se elimine |
+| `push_subscriptions` | id, account\_id, user\_id, endpoint, keys `jsonb`, created\_at, revoked\_at | Notificaciones de la PWA |
+| `properties` | id, account\_id, name, address\_line, district, ownership, autovaluo\_cents, rented\_share\_pct, archived\_at | ownership ∈ sole, co\_owned, conjugal\_option, conjugal\_split, estate; estate si y solo si la cuenta es estate (validado en la aplicación); rented\_share\_pct entre 1 y 100, 100 por defecto |
+| `units` | id, account\_id, property\_id, name, kind, archived\_at | kind ∈ room, mini\_apartment, apartment, shop, parking, other; no se archiva con contrato activo |
+| `renters` | id, account\_id, full\_name, phone\_e164, email, doc\_type, doc\_enc, doc\_key\_id, doc\_hmac, doc\_last4 | doc\_type ∈ dni, ce, passport, ruc; documento cifrado, HMAC con clave propia para duplicados y para agrupar declaraciones |
+| `leases` | id, account\_id, unit\_id, renter\_id, due\_day, start\_date, control\_from\_period, end\_date, ended\_at, tax\_treatment, tools\_enabled, created\_at | due\_day 1 a 31; CHECK `end_date >= start_date`; único parcial por `unit_id` donde `ended_at` es nulo; tax\_treatment ∈ standard, company\_tenant, unsupported (forzado si la propiedad es conjugal\_split); `tools_enabled` (WhatsApp y portal) lo decide el arrendador al exceder el plan |
+| `lease_rent_changes` | id, account\_id, lease\_id, monthly\_rent\_cents, effective\_period, created\_by, created\_at | Solo inserción, sin unicidad por período; la renta de un período es la del cambio con mayor `(effective_period, created_at)` tal que `effective_period` ≤ período, así que corregir un error es insertar otra fila del mismo período; al crear el contrato se inserta el primero |
+| `charges` | id, account\_id, lease\_id, kind, period, amount\_cents, due\_date, corrects\_charge\_id, pre\_2026, created\_by, created\_at | kind ∈ rent, rent\_correction, opening\_balance, adjustment; único `(lease_id, period)` si kind = rent; único `(lease_id, pre_2026)` si kind = opening\_balance; único `corrects_charge_id`; amount > 0 salvo adjustment (≠ 0); solo inserción |
+| `charge_voids` | charge\_id, account\_id, reason, voided\_by, voided\_at | PK `charge_id`; solo inserción |
+| `payments` | id, account\_id, lease\_id, amount\_cents, received\_on, method, deposit\_id, note, source, created\_by, created\_at | id generado por el cliente; amount > 0; method ∈ cash, yape, plin, transfer, bank\_deposit, guarantee; `deposit_id` obligatorio si y solo si method = guarantee; source ∈ landlord, tenant\_voucher; índice `(account_id, received_on)`; solo inserción |
+| `payment_voids` | payment\_id, account\_id, reason, voided\_by, voided\_at | PK `payment_id`; solo inserción |
+| `deposits` | id, account\_id, lease\_id, amount\_cents, received\_on, note, created\_at | Solo inserción |
+| `deposit_voids` | deposit\_id, account\_id, reason, voided\_by, voided\_at | PK `deposit_id`; solo inserción; solo sin pagos ni devoluciones válidos |
+| `deposit_movements` | id, account\_id, deposit\_id, amount\_cents, on\_date, created\_by, created\_at | Solo devoluciones al inquilino; amount > 0; solo inserción |
+| `deposit_movement_voids` | deposit\_movement\_id, account\_id, reason, voided\_by, voided\_at | PK `deposit_movement_id`; solo inserción |
+| `voucher_submissions` | id, account\_id, lease\_id, file\_id, declared\_cents, declared\_on, status, reject\_reason, payment\_id, reviewed\_by, reviewed\_at | status ∈ pending, confirmed, rejected; único `payment_id`; se confirma con `UPDATE ... WHERE status = 'pending'` |
+| `tenant_links` | id, account\_id, lease\_id, nonce, key\_id, token\_hash, created\_at, revoked\_at, last\_used\_at | `token_hash` único; uno vigente por contrato; `key_id` identifica la clave HMAC para rotarla; vence 90 días después de `leases.ended_at`, calculado al resolver el token (no se guarda) |
+| `files` | id, account\_id, purpose, storage\_key, mime, size\_bytes, sha256, created\_at, purged\_at | purpose = voucher; único `(account_id, sha256)`: si el mismo archivo se sube otra vez se reutiliza la fila; la purga de vouchers rechazados a los 90 días borra el objeto (vía `pending_object_deletions`) solo si ninguna otra solicitud no rechazada usa ese archivo, conserva las filas y marca `purged_at`; storage\_key = `{account_id}/{file_id}` |
+| `message_templates` | account\_id, kind, body | PK `(account_id, kind)`; kind ∈ friendly, due\_today, overdue |
+| `reminder_logs` | id, account\_id, kind, charge\_id, period, renter\_doc\_hmac, channel, created\_at | kind ∈ rent, tax\_due; `charge_id` obligatorio si kind = rent y nulo si kind = tax\_due (que lleva period y renter\_doc\_hmac); channel ∈ whatsapp\_link, email, push; solo inserción |
+| `tax_payments` | id, account\_id, period, renter\_doc\_hmac, renter\_id, amount\_cents, paid\_on, order\_number, created\_by, created\_at | `renter_doc_hmac` NOT NULL; la declaración se identifica por `(renter_doc_hmac, period)`; `renter_id` es el inquilino que se mostró al registrar; se permiten varios por declaración; solo inserción |
+| `tax_payment_voids` | tax\_payment\_id, account\_id, reason, voided\_by, voided\_at | PK `tax_payment_id`; solo inserción |
+| `audit_log` | id, account\_id, actor\_user\_id, action, entity, entity\_id, changed\_fields `text[]`, at | Solo inserción; nombres de campos, nunca valores personales |
+
+**Cómo se relacionan.** Una cuenta tiene inmuebles; un inmueble tiene unidades; una unidad tiene a lo más un contrato activo con un inquilino. Cada contrato acumula cambios de renta, cargos, pagos y garantías. La aplicación de créditos y pagos a cargos, los estados de los cargos y de la suscripción, lo disponible de cada garantía y las declaraciones del impuesto (agrupadas por documento de inquilino y mes) se calculan al leer, no se guardan, así que anular algo nunca deja datos inconsistentes.
+
+**Eliminación de una cuenta.** Al pedirla se guarda cifrado el correo en `deletion_contact_enc`, se anonimiza el correo del usuario, se bloquea el acceso y se programa la purga a 30 días (cancelable con el enlace enviado a ese correo). Antes, la app ofrece descargar la exportación y advierte que SUNAT puede revisar hasta 4 años. La purga tiene dos fases en el worker: primero encola en `pending_object_deletions` todos los objetos de la cuenta y los borra con todas sus versiones; cuando no queda ninguno pendiente, llama a `purge_account(p_account_id, p_today)` (`SECURITY DEFINER`), que verifica que la fecha programada ya pasó y elimina las filas en orden de dependencias. Solo quedan la fila de `accounts` anonimizada (sin nombre, RUC ni contacto, marcada como purgada) y sus `subscription_payments`, que Casero debe conservar como contribuyente; los reclamos viven aparte en `complaints`. `purge_account` borra también al usuario de la cuenta con sus `sessions` y `email_tokens`. Un test verifica que no queda ninguna otra fila con ese `account_id` ni el usuario. Los respaldos con esos datos se borran solos a los 30 días, y la política de privacidad lo dice.
+
+## Plan de sprints y lanzamiento
+
+Tres semanas de validación sin código y quince sprints de dos semanas planificados a 7 puntos (carga entre 5 y 8): beta privada con los fundadores el 26 de abril de 2027 y lanzamiento público el 21 de junio de 2027, antes del pico de mudanzas de julio y agosto. Casero se construye a tiempo parcial, así que se planifica con una velocidad conservadora y se ajusta con la velocidad medida. Los sprints de fin de año y de Semana Santa llevan menos carga.
+
+| Fase | Fechas | Objetivo | Historias, en orden | Pts |
+| --- | --- | --- | --- | --- |
+| Validación | 2 nov – 22 nov 2026 | Formalización, privacidad, 20 entrevistas, prototipo y 5 preventas | — | — |
+| Sprint 0 | 23 nov – 6 dic | ADR y monorepo con CI y arquitectura verificable | CS-01, 02 | 5 |
+| Sprint 1 | 7 dic – 20 dic | Base segura y publicada con correo y buckets configurados | CS-03, 04 | 8 |
+| Sprint 2 | 21 dic – 3 ene 2027 | Cuentas seguras por invitación (sprint corto por las fiestas) | CS-05 | 5 |
+| Sprint 3 | 4 ene – 17 ene | Aislamiento probado, perfil tributario, inmuebles y reglas tributarias como datos | CS-07, 06, 08, 20 | 7 |
+| Sprint 4 | 18 ene – 31 ene | Calculadora pública (captación desde fines de enero) e inquilinos y contratos | CS-32, 09 | 7 |
+| Sprint 5 | 1 feb – 14 feb | Cargos automáticos y operación segura | CS-11, 26 | 8 |
+| Sprint 6 | 15 feb – 28 feb | Pagos con saldos correctos y panel de cobros | CS-12, 13 | 8 |
+| Sprint 7 | 1 mar – 14 mar | Correcciones de cargos y portal del inquilino | CS-31, 18 | 6 |
+| Sprint 8 | 15 mar – 28 mar | Formularios de SUNAT (Semana Santa: 25 y 26 de marzo) | CS-21 | 5 |
+| Sprint 9 | 29 mar – 11 abr | Cobro por WhatsApp y registro y recordatorio de pagos a SUNAT | CS-16, 34 | 6 |
+| Sprint 10 | 12 abr – 25 abr | Cumplimiento legal: listo para datos reales | CS-25 | 5 |
+| Beta privada | desde 26 abr | Fundadores con sus alquileres reales (registro por invitación, `make grant-founder`); el año de fundador cuenta desde aquí; 15 minutos a la semana con cada uno | — | — |
+| Sprint 11 | 26 abr – 9 may | Planes y panel interno | CS-23, 24 | 6 |
+| Sprint 12 | 10 may – 23 may | Bienvenida, constancias y garantías | CS-10, 14, 15 | 6 |
+| Sprint 13 | 24 may – 6 jun | Vouchers, resumen diario y notificaciones push | CS-19, 17, 33 | 7 |
+| Sprint 14 | 7 jun – 20 jun | Pruebas de punta a punta y `REGISTRATION_MODE=open` | CS-27 | 2 |
+| Lanzamiento | 21 jun 2027 | Apertura pública con "cobra sin incomodarte y no te olvides ningún formulario a SUNAT" | — | — |
+
+**Puertas de decisión**
+
+- **Fin de la validación (22 nov):** se empieza el sprint 0 solo si hay 5 preventas (al menos 3 de personas sin relación previa), RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas. Si las preventas vienen solo de arrendadores sin RUC, Casero se reposiciona como herramienta de cobros y el impuesto queda como complemento.
+- **Fin del sprint 1 (20 dic):** con la velocidad medida de S0 y S1. Si es de 10 puntos o más, el plan se comprime (beta a fines de marzo, lanzamiento a mediados de mayo). Si es menor de 5, se recorta el alcance de la beta antes de seguir.
+- **Fin del sprint 10 (25 abr):** la beta empieza solo si el aislamiento entre cuentas, las páginas legales, la inscripción del banco de datos, los respaldos con restauración probada y la prueba de punta a punta de CS-21 están en verde, y si un contador validó los casos del impuesto. Si no, se devuelve la preventa a quien la pida (la promesa es beta antes del 31 de mayo de 2027).
+- **Un mes después del lanzamiento (21 jul):** si la activación es menor al 40 %, se prioriza la bienvenida y el panel antes que funciones nuevas.
+
+**Si el ritmo es menor.** Antes de mover la beta, se recorta en este orden: CS-31 se reduce a anular y corregir cargos (sin crédito proporcional) y el saldo anterior de CS-09 queda como un ajuste simple. Antes de mover el lanzamiento: CS-17 (resumen diario), CS-33 (push), CS-19 (vouchers; el inquilino envía la foto por WhatsApp), CS-15 (la garantía se anota como nota del contrato) y CS-10 (la bienvenida se reemplaza por los formularios normales). Nunca se recortan el aislamiento entre cuentas, las páginas legales, los respaldos ni la exactitud del impuesto.
+
+## Requisitos no funcionales, seguridad y privacidad
+
+Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un saldo mal calculado destruye la confianza de un negocio pequeño. Por eso la corrección del dinero, el aislamiento entre cuentas y la privacidad pesan más que cualquier función.
+
+| Categoría | Requisito | Cómo se verifica |
+| --- | --- | --- |
+| Corrección del dinero | Saldo = cargos válidos − créditos − pagos válidos para cualquier secuencia; tributo por documento de inquilino y mes según la regla del año, independiente del orden de registro | Propiedades con Hypothesis y casos validados por un contador |
+| Idempotencia | Reenviar un pago, una confirmación de voucher o una tarea del worker no duplica nada | Tests de reenvío y de reejecución |
+| Aislamiento | Ningún dato cruza cuentas por la API ni por SQL directo; ninguna tabla nueva queda sin RLS por olvido; ningún rol tiene permisos fuera de la tabla de roles | Tests con dos cuentas por endpoint y test del catálogo de tablas y permisos |
+| Autenticación | Argon2id; sesiones revocables y rotadas; CSRF; bloqueo por IP y retraso por correo; doble factor obligatorio en `/admin` con sesiones propias y auditoría; registro cerrado salvo invitación hasta el lanzamiento | Tests de sesión, CSRF, 429, TOTP y `REGISTRATION_MODE` |
+| Datos personales | Documento cifrado con AES-GCM y clave rotable; consentimiento obligatorio de datos sensibles y retiro que bloquea la cuenta; logs y errores sin datos personales; exportación y eliminación en dos fases | Test de que el documento no aparece en claro en la base, los logs ni el seguimiento de errores |
+| Archivos | Bucket privado con versionado y expiración de versiones antiguas a 30 días, claves `{account_id}/{file_id}`, validación por contenido, imágenes sin metadatos, 5 MB, cupos por enlace, URLs de 5 minutos, PDF como descarga | Tests con archivos falsos, sobredimensionados y con EXIF; `make check-bucket-policy` |
+| Seguridad web | CSP estricta, HSTS, `Referrer-Policy: no-referrer`, cookies `__Host-`, validación con Pydantic, escaneo de dependencias en CI | Test de cabeceras |
+| Disponibilidad | 99 % mensual; worker que se recupera solo | Monitor externo |
+| Pérdida de datos aceptable | Hasta 6 horas de registros en el peor caso; restauración en menos de 4 horas | Prueba mensual de restauración desde cero |
+| Rendimiento | Panel de cobros en menos de 1 s (p95) con 10 contratos; primera carga móvil en menos de 3 s en 4G | Prueba de carga simple y Lighthouse |
+| Accesibilidad y uso | WCAG 2.1 AA; letra mínima de 16 px; botones de 44 px; usable con una mano en 360 px | axe y revisión con 3 usuarios mayores de 45 años |
+| Tiempo | `Clock` inyectado con `today_lima()`; fin de mes, febrero y año bisiesto probados | Tests con reloj falso |
+| Costo | Infraestructura bajo US$ 30 al mes hasta 200 cuentas | Revisión mensual |
+| Incidentes | Plan escrito para notificar a la Autoridad en 48 horas, a los afectados y al Centro Nacional de Seguridad Digital | `docs/ops/incident-response.md` revisado antes de la beta |
+
+**Retención de datos**
+
+| Dato | Se conserva | Al eliminar la cuenta |
+| --- | --- | --- |
+| Inmuebles, contratos, inquilinos, cobros y declaraciones | Mientras la cuenta exista | Se purgan a los 30 días |
+| Vouchers rechazados | 90 días | Se purgan con la cuenta |
+| Versiones antiguas de archivos en S3 | 30 días | Se borran con todas sus versiones antes de purgar las filas |
+| Correo de contacto para la eliminación (`deletion_contact_enc`) | Solo durante los 30 días de espera | Se borra en la purga |
+| Pagos de la suscripción y boletas | El plazo que indique el contador | Se conservan con la cuenta anonimizada |
+| Reclamos | El plazo legal del Libro de Reclamaciones | Se conservan en `complaints` |
+| Lista de espera | Hasta registrarse o 12 meses | — |
+| Respaldos | 30 días | Los datos purgados desaparecen de los respaldos a los 30 días |
+
+**Límites declarados** (van en los términos y en la ayuda):
+
+- Casero no presenta declaraciones ni paga impuestos por el arrendador, y su cálculo no reemplaza la revisión de un contador.
+- La constancia de Casero no es un comprobante de pago SUNAT; el recibo oficial es el Formulario 1683.
+- Casero no verifica que un voucher sea real; el arrendador confirma el dinero que recibió.
+- Si el arrendador registra mal un pago, el tributo calculado también estará mal.
+- Casero no entrega información a terceros salvo ante un requerimiento legal obligatorio.
+
+## Repositorio, convenciones y operación
+
+Un monorepo privado mientras el negocio esté en marcha; si quieres mostrarlo en tu portafolio, se publica un resumen técnico sin código de negocio ni datos.
+
+```text
+casero/
+├── backend/
+│   ├── src/casero/
+│   │   ├── identity/          # domain, application, infrastructure, api
+│   │   ├── accounts/
+│   │   ├── properties/
+│   │   ├── leases/
+│   │   ├── ledger/
+│   │   ├── reminders/
+│   │   ├── tax/
+│   │   ├── tenant_portal/
+│   │   ├── admin/
+│   │   ├── shared/            # Clock, Money, ids, contextos de base, Mailer, Storage, crypto
+│   │   ├── api.py             # app FastAPI
+│   │   └── worker.py          # tareas programadas
+│   ├── migrations/            # Alembic
+│   ├── tests/
+│   │   ├── unit/
+│   │   ├── integration/       # Testcontainers
+│   │   └── architecture/      # reglas AR y test del catálogo
+│   └── pyproject.toml
+├── web/
+│   ├── src/app/               # arrendador
+│   ├── src/tenant/            # portal del inquilino
+│   ├── src/admin/             # panel interno
+│   ├── src/landing/           # landing y calculadora pública
+│   ├── src/api/               # tipos generados con openapi-typescript
+│   └── e2e/                   # Playwright
+├── infra/
+│   ├── postgres/init/         # roles casero_owner, casero_backup, casero_app, casero_worker, casero_admin
+│   ├── seed/tax/              # 2026.yaml, 2027.yaml con su fuente
+│   ├── caddy/Caddyfile
+│   └── deploy/                # despliegue y respaldos
+├── docs/
+│   ├── SPEC.md
+│   ├── BACKLOG.md
+│   ├── BUSINESS.md            # no se importa en CLAUDE.md
+│   ├── ARCHITECTURE_RULES.md
+│   ├── adr/                   # en inglés
+│   ├── legal/                 # términos, privacidad, consentimiento, oficial de datos
+│   └── ops/                   # respaldos, claves, incidentes, carga anual del cronograma
+├── docker-compose.yml
+├── Makefile                   # up, down, test, lint, migrate, seed, load-tax-config, create-staff, invite, grant-founder, complaint-respond, check-bucket-policy
+├── CLAUDE.md
+└── README.md
+```
+
+| Artefacto | Propósito | Cuándo se actualiza |
+| --- | --- | --- |
+| `docs/SPEC.md` | Producto, marco legal, reglas, esquema, plan y requisitos | Al cambiar alcance o reglas |
+| `docs/BACKLOG.md` | Historias con criterios y dependencias | Al cerrar o cambiar una historia |
+| `docs/BUSINESS.md` | Validación, precios, costos, métricas y adquisición | Tras cada aprendizaje con clientes |
+| `docs/ARCHITECTURE_RULES.md` | Reglas AR con su test | Cuando cambia la arquitectura |
+| `docs/adr/` | Decisiones técnicas en inglés | Cada decisión no trivial |
+| `docs/legal/` | Términos, privacidad y consentimiento con versión y fecha | Antes de cualquier cambio que afecte datos o precios |
+| `docs/ops/` | Respaldos, restauración, claves, incidentes y carga del cronograma | Cada vez que se ejecuta uno |
+| `infra/seed/tax/` | Reglas y cronograma de SUNAT por año, con fuente | Cada diciembre, validado con el contador |
+| Contrato OpenAPI | Generado por la API; CI falla si los tipos del frontend no están al día | Cada cambio de endpoint |
+
+**Idioma.** Interfaz, especificación y textos legales en español de Perú. Código, nombres de tablas, ADR y README en inglés.
+
+**Convenciones.** Ramas `feat/CS-NN-descripcion`; Conventional Commits; un PR por historia con la checklist de la definición de hecho; tablas y columnas en `snake_case`.
+
+**Operación recurrente**
+
+| Cada | Tarea |
+| --- | --- |
+| Día | Revisar alertas del monitor, respaldos, tareas fallidas y errores; responder soporte por el WhatsApp Business del negocio |
+| Semana | Revisar reclamos (respuesta en máximo 15 días hábiles), métricas de activación y conversión, y conversar con 2 clientes |
+| Mes | Probar una restauración desde cero; revisar costos; registrar ingresos para tus propios impuestos |
+| Año (diciembre) | Cargar el cronograma de SUNAT, las reglas y los feriados del año siguiente, validados con el contador; revisar términos y privacidad |
+
+**Antes de CS-04.** Verificar que "Casero" esté disponible como dominio y marca; si no, elegir otro nombre antes de comprar el dominio y antes de registrar la marca en Indecopi.
+
+## Registro del debate y decisiones abiertas
+
+Esta especificación pasó por cuatro rondas de revisión con dos agentes independientes: A (negocio, marco legal y tributario peruano, producto) y B (arquitectura, esquema, seguridad, backlog y plan). Cada ronda terminó cuando el autor aplicó todos los hallazgos aceptados; el debate se cerró cuando ambos revisores declararon que no quedaban bloqueantes ni importantes.
+
+| Ronda | Versión revisada | Hallazgos de A | Hallazgos de B | Resultado |
+| --- | --- | --- | --- | --- |
+| 1 | v1 | A1–A13 | B1–B21 | Todos aceptados; v2 con decisiones por defecto |
+| 2 | v2 | A14–A20 | B22–B35 | Todos aceptados; v3 con declaración por documento de inquilino, nuevo rol de worker y 34 historias |
+| 3 | v3 | A21 (importante), A22–A24 | B36–B37 (importantes), B38–B44 | Todos aceptados; v4 con un declarante por cuenta, rol de respaldos y tabla de roles completa |
+| 4 | v4 | A25 (menor) | B45–B46 (menores) | Aplicados; ambos revisores: sin bloqueantes ni importantes |
+
+**Correcciones de mayor impacto**
+
+- El Formulario 1683 es uno por documento de inquilino y mes de cobro, sumando sus contratos, con base y tributo redondeados al sol (ejemplo de prueba: 450.50 + 100.50 → base 551, tributo 28).
+- Una cuenta es un solo declarante con un RUC; las sucesiones van en su propia cuenta.
+- Los saldos de 2025 o antes no entran a la base (se gravaron por devengado); los créditos nunca entran a la base; el cálculo no depende del orden de registro.
+- Con `FORCE` RLS el dueño también queda sujeto a las políticas: `casero_owner` y un rol `casero_backup` tienen `BYPASSRLS`; la API y el worker nunca.
+- La tabla de roles es exhaustiva y se verifica con un test de catálogo y pruebas de humo por flujo.
+- El plan pasó de 30 a 34 historias, con la beta el 26 de abril y el lanzamiento el 21 de junio de 2027.
+
+**Decisiones tomadas por defecto (Alessandro puede cambiarlas)**
+
+| Tema | Decisión |
+| --- | --- |
+| Segmento | Arrendador con RUC o que quiere formalizarse; reposicionar como herramienta de cobros si las preventas vienen solo de informales |
+| Planes | Gratis (1 contrato) y Casero (S/ 19 al mes o S/ 190 al año, 10 contratos); sin Plus en el MVP |
+| Preventa | S/ 190 por un año más 6 meses; al menos 3 de 5 sin relación previa; devolución si no hay beta antes del 31 de mayo de 2027 |
+| Historial 2026 y resumen anual | No se importa historial; el resumen anual (CS-22) es posterior al lanzamiento |
+| Recordatorio por WhatsApp | Primera historia después del lanzamiento (CS-30); se adelanta si en la beta se abren menos de la mitad de los correos |
+| Exceso de plan | El arrendador elige qué contratos conservan WhatsApp y portal |
+| Panel interno | Mismo proceso, lista de IP y TOTP |
+| Velocidad | 7 puntos por sprint, con puerta al final del sprint 1 para comprimir o recortar |
+| Respaldo | Cada 6 horas a otro proveedor; restauración en menos de 4 horas |
+
+**Preguntas que solo Alessandro puede cerrar**
+
+- Régimen tributario propio con el contador (evaluar Nuevo RUS).
+- Disponibilidad del nombre "Casero" como dominio y marca antes de CS-04.
