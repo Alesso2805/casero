@@ -1,6 +1,6 @@
 # Casero — Especificación
 
-Negocio y validación: docs/BUSINESS.md. Historias: docs/BACKLOG.md.
+Negocio y validación: en el repositorio privado `Alesso2805/casero-business`. Historias: docs/BACKLOG.md.
 
 ## Visión y problema
 
@@ -399,6 +399,8 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 | Sprint 14 | 7 jun – 20 jun | Pruebas de punta a punta y `REGISTRATION_MODE=open` | CS-27 | 2 |
 | Lanzamiento | 21 jun 2027 | Apertura pública con "cobra sin incomodarte y no te olvides ningún formulario a SUNAT" | — | — |
 
+CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fechas del plan y la puerta del 22 de noviembre no cambian; el adelanto se refleja en la velocidad medida del Sprint 0.
+
 **Puertas de decisión**
 
 - **Fin de la validación (22 nov):** se empieza el sprint 0 solo si hay 5 preventas (al menos 3 de personas sin relación previa), RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas. Si las preventas vienen solo de arrendadores sin RUC, Casero se reposiciona como herramienta de cobros y el impuesto queda como complemento.
@@ -454,7 +456,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 
 ## Repositorio, convenciones y operación
 
-Un monorepo privado mientras el negocio esté en marcha; si quieres mostrarlo en tu portafolio, se publica un resumen técnico sin código de negocio ni datos.
+Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
 
 ```text
 casero/
@@ -495,7 +497,6 @@ casero/
 ├── docs/
 │   ├── SPEC.md
 │   ├── BACKLOG.md
-│   ├── BUSINESS.md            # no se importa en CLAUDE.md
 │   ├── ARCHITECTURE_RULES.md
 │   ├── adr/                   # en inglés
 │   ├── legal/                 # términos, privacidad, consentimiento, oficial de datos
@@ -510,7 +511,7 @@ casero/
 | --- | --- | --- |
 | `docs/SPEC.md` | Producto, marco legal, reglas, esquema, plan y requisitos | Al cambiar alcance o reglas |
 | `docs/BACKLOG.md` | Historias con criterios y dependencias | Al cerrar o cambiar una historia |
-| `docs/BUSINESS.md` | Validación, precios, costos, métricas y adquisición | Tras cada aprendizaje con clientes |
+| `casero-business` (repositorio privado) | Validación, precios, costos, métricas y adquisición | Tras cada aprendizaje con clientes |
 | `docs/ARCHITECTURE_RULES.md` | Reglas AR con su test | Cuando cambia la arquitectura |
 | `docs/adr/` | Decisiones técnicas en inglés | Cada decisión no trivial |
 | `docs/legal/` | Términos, privacidad y consentimiento con versión y fecha | Antes de cualquier cambio que afecte datos o precios |

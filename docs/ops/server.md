@@ -37,7 +37,7 @@ Precios sin IVA. En Hetzner incluyen la IPv4.
 3. Configurar el acceso SSH solo con llave (la llave vive en Bitwarden), sin contraseñas y sin acceso de root por SSH.
 4. Abrir en el firewall solo los puertos 22, 80 y 443. El puerto del panel interno queda ligado a `127.0.0.1` (ADR-0008).
 5. No contratar las copias de seguridad del proveedor: la restauración parte de los respaldos en B2.
-6. Declarar el país ante la Autoridad. Actualizar la tabla de proveedores de SPEC, la política de privacidad y la tabla de costos de BUSINESS.md con el plan real.
+6. Declarar el país ante la Autoridad. Actualizar la tabla de proveedores de SPEC, la política de privacidad y la tabla de costos del repositorio privado `casero-business` con el plan real.
 
 CS-04 instala sobre este servidor la configuración definitiva.
 

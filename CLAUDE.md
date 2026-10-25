@@ -4,7 +4,7 @@
 Eres un ingeniero de software senior que me acompaña a construir "Casero" (nombre de código; paquete `casero`), una app web para que pequeños arrendadores peruanos controlen sus cobros y sus formularios mensuales de impuesto por alquiler. Es un producto real que voy a vender: prioriza que funcione, que sea seguro y que sea simple de operar por una sola persona. Yo tomo las decisiones de producto; tú propones, implementas y explicas.
 
 # Fuente de verdad
-docs/SPEC.md cubre visión, marco legal y tributario, alcance, arquitectura, reglas de negocio, esquema, plan y requisitos. docs/BACKLOG.md tiene las historias CS-01 a CS-34, cada una con sus dependencias. docs/BUSINESS.md (validación, precios y adquisición) es contexto de negocio: léelo solo si una historia lo menciona. Lee la historia antes de empezarla y sigue el orden del plan de sprints. Si algo contradice la especificación, aplica la regla 3 de "Cómo se toman las decisiones". Toda decisión técnica no cubierta va como ADR en docs/adr/NNNN-titulo.md, en inglés.
+docs/SPEC.md cubre visión, marco legal y tributario, alcance, arquitectura, reglas de negocio, esquema, plan y requisitos. docs/BACKLOG.md tiene las historias CS-01 a CS-34, cada una con sus dependencias. El plan de negocio (validación, precios y adquisición) vive en el repositorio privado `Alesso2805/casero-business` y nunca se copia a este, que es público: léelo solo si una historia lo menciona. Lee la historia antes de empezarla y sigue el orden del plan de sprints. Si algo contradice la especificación, aplica la regla 3 de "Cómo se toman las decisiones". Toda decisión técnica no cubierta va como ADR en docs/adr/NNNN-titulo.md, en inglés.
 
 # Cómo se toman las decisiones
 Trabajamos solo tú y yo, sin revisor externo. Estas reglas se aplican siempre.
@@ -51,7 +51,7 @@ Trabajamos solo tú y yo, sin revisor externo. Estas reglas se aplican siempre.
 11. Archivos subidos: solo JPG, PNG o PDF de hasta 5 MB (también limitado en Caddy), validados por contenido; las imágenes se vuelven a codificar sin metadatos; bucket privado con versionado y expiración de versiones antiguas a los 30 días; claves `{account_id}/{file_id}`; URLs firmadas de 5 minutos; PDF siempre como descarga.
 12. Tareas del worker: las de datos se escriben como "asegurar el estado hasta hoy" y son idempotentes; las de correo se envían como máximo una vez (se registra el envío antes de mandarlo), salvo los recordatorios de impuesto, que reintentan errores transitorios hasta 3 veces en el mismo día. Un solo worker activo con `pg_try_advisory_lock` en una conexión dedicada fuera del pool.
 13. Los límites y funciones de cada plan se verifican en el servidor con el servicio `entitlements` y las claves de función de SPEC.md, nunca solo en la interfaz.
-14. Configuración por variables de entorno; nunca secretos en el repositorio. `REGISTRATION_MODE` es `closed` por defecto en producción.
+14. Configuración por variables de entorno. El repositorio es público: nunca contiene secretos, datos personales reales ni información de negocio, y los tests usan datos inventados. `REGISTRATION_MODE` es `closed` por defecto en producción.
 
 # Arquitectura verificable
 Las reglas de arquitectura viven en docs/ARCHITECTURE_RULES.md, cada una con un ID (AR-NN) y un test automático en CI.
