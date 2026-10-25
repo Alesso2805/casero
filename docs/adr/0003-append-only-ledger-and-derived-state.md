@@ -62,25 +62,37 @@ The balance of a lease is Σ valid charges (adjustments are signed) − Σ valid
   1. the opening balance for 2025 or earlier;
   2. the opening balance for 2026;
   3. then by `due_date`, `created_at` and `id`.
-- **Movements:** valid payments and credits (negative adjustments) together, ordered by `(effective date, created_at, id)`.
+- **Movements:** valid payments and credits (negative adjustments) together, ordered by effective date.
   - A payment's effective date is `received_on`.
   - A credit's effective date is the Lima date of its `created_at`.
+  - On the same date, all payments come first and all credits after. Within each group the order is `(created_at, id)`.
 - **Waterfall:** each movement fills what earlier movements left unpaid, in charge order. A movement therefore affects only the allocation of later movements. Any surplus stays as credit and covers the following charges.
 
 The allocation function lives in `ledger.domain`. `tax` uses it through `ledger.application`, so balances and tax always use the same allocation.
+
+### Why the tax does not depend on insertion order
+
+Insertion order appears only in `created_at`, and `created_at` only breaks ties between movements of the same group on the same date. Those ties cannot change balances or the tax:
+
+- **Blocks depend only on their total.** The waterfall fills charges in a fixed order. When a block of consecutive movements is applied, what each charge receives, and the surplus, depend only on the block's total, not on the order inside it.
+- **Payments of one date.** They form one block, because the credits of that date come after them. How much of the block covers the opening balance of 2025 or earlier (excluded from the base) depends only on the block's total. All those payments belong to the same lease and the same month, so the base of that month is the same in any order.
+- **Credits of one date.** They form the next block. Credits never enter the base, and what they leave unpaid depends only on their total, so later movements see the same state.
+- **Movements on different dates.** They are ordered by date, which does not depend on insertion.
+
+Only the mapping of individual movements to individual charges inside a block can change with insertion order, and neither balances nor the tax depend on it.
 
 ## Consequences
 
 - Voiding never leaves inconsistent data, and every change is visible in the history.
 - Reads do more work than with stored balances. With at most 10 leases per account, this is negligible. A cache would need a new ADR.
 - Retried requests never duplicate records, and conflicting retries are visible as 409.
-- **Open point, pending decision.** When a credit and a payment share the same effective date, their order falls to `created_at`, which is insertion order. That pair can change which one covers the 2025 opening balance, and with it the tax base. Every other case is independent of insertion order. A possible fix is to order payments before credits on the same date. This must be decided before CS-12.
+- A credit registered on the same day as a payment never takes the 2025 opening balance away from that payment, because payments of a date are applied before its credits.
 
 ## Enforcement
 
 - Catalog test for grants and defaults (CS-03).
 - Hypothesis properties in CS-12 and CS-31: for any sequence of charges, corrections, credits, payments and voids:
   - the balance formula holds;
-  - each charge's balance does not depend on insertion order;
+  - each charge's balance and each declaration's tax do not change when `created_at` is permuted among the movements of each day;
   - a movement never changes the allocation of earlier movements.
 - Resubmission tests for every client-identified POST, including the 409 cases.

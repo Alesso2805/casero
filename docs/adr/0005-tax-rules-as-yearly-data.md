@@ -17,7 +17,7 @@ Since 2026, a landlord pays a monthly Formulario 1683 per tenant document and co
 - `holidays` lists national holidays, used for business days.
 - The only source is `infra/seed/tax/{year}.yaml`, with an official source for every value.
   - 2026 is loaded by a data migration.
-  - Later years are loaded by `make load-tax-config`, which runs as `casero_owner`, upserts, and is also run by the migrator at startup.
+  - Later years are loaded by `make load-tax-config`, which runs as `casero_owner`, upserts, and is also run by the migrator at startup. It is idempotent, and it fails if a YAML lacks a `source_url`.
   - The admin panel only displays the data.
 - No rate, date or SUNAT amount appears in domain code or in user-facing texts. Texts use variables such as `{umbral}` and `{multa_maxima}` (50 % of `uit_cents`).
 - Tests use fixtures, not the seeds.
@@ -59,6 +59,6 @@ The arithmetic is integer only. The public calculator (CS-32) uses the same func
 - Unit tests of the pure function with the validated cases.
 - An architecture test forbidding numeric tax literals in `tax.domain`.
 - Hypothesis properties in CS-21:
-  - the tribute does not depend on insertion order (see the open point in ADR-0003);
+  - the tribute does not change when `created_at` is permuted among the movements of each day (ADR-0003 explains why);
   - a credit never changes the base of a month before its date.
 - Cases validated by an accountant before the beta, including a credit registered after a payment that covered 2025 debt.
