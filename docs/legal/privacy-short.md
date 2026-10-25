@@ -36,13 +36,21 @@ No vendemos tus datos ni los cedemos a nadie para su propio uso. Los guardan por
 
 | Servicio | Proveedor | País donde están los datos |
 | --- | --- | --- |
-| Servidor | [PENDIENTE] | [PENDIENTE] |
-| Almacenamiento y copias de seguridad | [PENDIENTE] | [PENDIENTE] |
-| Envío de correos | [PENDIENTE] | [PENDIENTE] |
-| Registro de errores técnicos | [PENDIENTE] | [PENDIENTE] |
-| Herramientas que usamos mientras preparamos Casero | [PENDIENTE: por ejemplo, WhatsApp para el servicio para fundadores y la hoja de cálculo donde se anotan las entrevistas] | [PENDIENTE] |
+| Servidor | Hetzner Online | Alemania o Finlandia |
+| Almacenamiento y copias de seguridad | Backblaze | Estados Unidos |
+| Envío de correos | Resend | Estados Unidos |
+| Registro de errores técnicos | Sentry | Estados Unidos |
 
-Algunos de estos proveedores guardan los datos fuera del Perú. Solo los entregamos a una autoridad cuando una norma nos obliga.
+Mientras preparamos Casero también usamos estas herramientas:
+
+- [PENDIENTE: mensajería con fundadores y entrevistados (por ejemplo, WhatsApp): proveedor y país]
+- [PENDIENTE: dónde se anotan las entrevistas (hoja de cálculo o documento): proveedor y país]
+- [PENDIENTE: dónde se guarda la lista de espera mientras no exista la página web, si se recoge antes: proveedor y país]
+- [PENDIENTE: medio de cobro de la preventa (billetera o banco)]
+- [PENDIENTE: herramienta de videollamada, si alguna entrevista es por video: proveedor y país]
+- [PENDIENTE: correo que usas para coordinar con fundadores y entrevistados: proveedor y país]
+
+Todos estos proveedores guardan los datos fuera del Perú. Solo los entregamos a una autoridad cuando una norma nos obliga.
 
 ## Tus derechos
 

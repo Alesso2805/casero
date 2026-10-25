@@ -130,9 +130,9 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | `casero.worker` | Proceso Python con el mismo código y rol `casero_worker` | Asegurar cargos y cierres de contrato hasta hoy, enviar correos programados, purgar cuentas y archivos vencidos, alertar si falta el cronograma y si un reclamo se acerca a su plazo |
 | `web` | React 19, Vite, PWA instalable | `/app` para el arrendador, `/i` para el inquilino, `/admin` para ti; landing y calculadora pública en `/` |
 | PostgreSQL 17 | RLS por cuenta | Datos, libro de cobros de solo inserción, configuración tributaria por año, auditoría |
-| Almacenamiento S3 | Otro proveedor, buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días |
-| Correo | Proveedor transaccional detrás de una interfaz `Mailer` | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes vía webhook; Mailpit en local |
-| Seguimiento de errores | Sentry o GlitchTip | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
+| Almacenamiento S3 | Backblaze B2 (US-East), buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días desde la creación del bucket (`docs/ops/storage-buckets.md`) |
+| Correo | Resend (plan gratuito en la beta) detrás de una interfaz `Mailer`; Amazon SES como plan B | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes vía webhook; Mailpit en local |
+| Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
 | Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, lista de IP permitidas (la red de Tailscale) para `/admin` y `/api/admin/*`, sin registrar `/i` ni consultas |
 
 **Contextos de acceso a la base**
@@ -170,7 +170,18 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 **Correo.** Dominio con SPF, DKIM y DMARC, subdominio de envío propio, `List-Unsubscribe` de un clic en los correos programados (resumen diario y recordatorios de impuesto), que da de baja solo ese tipo de correo, y supresión automática de toda dirección que rebota o se queja. Una baja nunca suprime los correos transaccionales.
 
-**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions, publicadas en GHCR y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo de Bitwarden, donde viven las claves. Los proveedores de servidor, almacenamiento, correo y seguimiento de errores están pendientes de aprobación. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
+**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions, publicadas en GHCR y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo de Bitwarden, donde viven las claves.
+
+**Proveedores.** Precios y capacidades verificados el 25 de octubre de 2026. Todos guardan datos fuera del Perú, así que cada uno se declara ante la Autoridad como flujo transfronterizo.
+
+| Servicio | Proveedor y plan | País de los datos |
+| --- | --- | --- |
+| Servidor | Hetzner Cloud CX33 (4 vCPU, 8 GB, 80 GB), en Nuremberg o Helsinki, según disponibilidad | Alemania o Finlandia |
+| Vouchers y respaldos | Backblaze B2, región US-East, con un bucket para cada uso (`docs/ops/storage-buckets.md`) | EE. UU. |
+| Correo | Resend, plan gratuito en la beta (100 correos al día y 3,000 al mes); plan B: Amazon SES | EE. UU. |
+| Seguimiento de errores | Sentry, plan gratuito, región EE. UU. | EE. UU. |
+
+Hetzner no ofrece el CX33 en Falkenstein, y el 25 de octubre de 2026 mostraba todos sus servidores cloud como no disponibles (aviso de disponibilidad limitada desde el 26 de junio de 2026). Si sigue igual al empezar CS-04, se elige otra opción en Europa dentro del presupuesto. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
 
 ## Reglas de negocio
 
@@ -393,6 +404,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 - **Fin de la validación (22 nov):** se empieza el sprint 0 solo si hay 5 preventas (al menos 3 de personas sin relación previa), RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas. Si las preventas vienen solo de arrendadores sin RUC, Casero se reposiciona como herramienta de cobros y el impuesto queda como complemento.
 - **Fin del sprint 1 (20 dic):** con la velocidad medida de S0 y S1. Si es de 10 puntos o más, el plan se comprime (beta a fines de marzo, lanzamiento a mediados de mayo). Si es menor de 5, se recorta el alcance de la beta antes de seguir.
 - **Fin del sprint 10 (25 abr):** la beta empieza solo si el aislamiento entre cuentas, las páginas legales, la inscripción del banco de datos, los respaldos con restauración probada y la prueba de punta a punta de CS-21 están en verde, y si un contador validó los casos del impuesto. Si no, se devuelve la preventa a quien la pida (la promesa es beta antes del 31 de mayo de 2027).
+- **Antes del lanzamiento (sprint 14):** se revisa el volumen de correo de la beta y su proyección a 200 cuentas frente al plan de correo. Resend gratis permite 100 correos al día y 3,000 al mes; Resend Pro cuesta US$ 20 al mes y Amazon SES unos US$ 0.10 por cada 1,000 correos. El plan elegido debe mantener la infraestructura bajo US$ 30 al mes.
 - **Un mes después del lanzamiento (21 jul):** si la activación es menor al 40 %, se prioriza la bienvenida y el panel antes que funciones nuevas.
 
 **Si el ritmo es menor.** Antes de mover la beta, se recorta CS-31: se reduce a anular y corregir cargos (sin crédito proporcional). Antes de mover el lanzamiento: CS-17 (resumen diario), CS-33 (push), CS-19 (vouchers; el inquilino envía la foto por WhatsApp), CS-15 (la garantía se anota como nota del contrato) y CS-10 (la bienvenida se reemplaza por los formularios normales). Nunca se recortan el aislamiento entre cuentas, las páginas legales, los respaldos ni la exactitud del impuesto.
@@ -412,7 +424,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 | Seguridad web | CSP estricta, HSTS, `Referrer-Policy: no-referrer`, cookies `__Host-`, validación con Pydantic, escaneo de dependencias en CI | Test de cabeceras |
 | Disponibilidad | 99 % mensual; worker que se recupera solo | Monitor externo |
 | Pérdida de datos aceptable | Hasta 6 horas de registros en el peor caso; restauración en menos de 4 horas | Prueba mensual de restauración desde cero |
-| Rendimiento | Panel de cobros en menos de 1 s (p95) con 10 contratos; primera carga móvil en menos de 3 s en 4G | Prueba de carga simple y Lighthouse |
+| Rendimiento | Panel de cobros en menos de 1 s (p95) con 10 contratos, medido en el servidor (sin la latencia Lima–Europa); primera carga móvil en menos de 3 s en 4G, con los assets estáticos con hash servidos con caché larga | Prueba de carga simple en el servidor y Lighthouse |
 | Accesibilidad y uso | WCAG 2.1 AA; letra mínima de 16 px; botones de 44 px; usable con una mano en 360 px | axe y revisión con 3 usuarios mayores de 45 años |
 | Tiempo | `Clock` inyectado con `now()` y `today_lima()`; fin de mes, febrero y año bisiesto probados | Tests con reloj falso |
 | Costo | Infraestructura bajo US$ 30 al mes hasta 200 cuentas | Revisión mensual |
@@ -560,4 +572,3 @@ Esta especificación pasó por cuatro rondas de revisión con dos agentes indepe
 
 - Régimen tributario propio con el contador (evaluar Nuevo RUS).
 - Disponibilidad del nombre "Casero" como dominio y marca antes de CS-04.
-- Aprobación de los proveedores de servidor, almacenamiento, correo y seguimiento de errores, antes de declararlos ante la Autoridad.
