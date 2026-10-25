@@ -65,7 +65,7 @@ A separate admin service would mean another deployment to maintain, and a privat
 
 - A test that the public app does not mount `/api/admin/*`.
 - A test that the admin server is not started when `ADMIN_ENABLED` is false.
-- A check of the Compose file that the admin port is published only on `127.0.0.1`.
+- A test that the admin listener is reachable only on `127.0.0.1`: the Compose file publishes the port only there, and a request to the server's public address on that port fails.
 - A test that Caddy answers 404 for `/admin` and `/api/admin/*` on the public site.
 - Tests for the admin security headers.
 - TOTP, recovery-code and session-expiry tests with a fake clock.

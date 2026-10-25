@@ -32,7 +32,7 @@ Landlords use a PWA from their phones and the internal panel is used by one pers
 ### Rate limits
 
 - An `UNLOGGED` table, `rate_limit_buckets (key_hash, window_start, count)`, uses fixed windows incremented with an upsert. Losing its contents after a crash is acceptable.
-- IP addresses are stored only as an HMAC with a salt that rotates.
+- IP addresses are never stored. Rows keep only an HMAC of the IP with a salt that rotates every 24 hours, and the worker deletes rows older than 24 hours.
 - Per IP: blocking once a threshold is exceeded (HTTP 429).
 - Per email: a progressive delay, never a lockout, so an attacker cannot block another person's account.
 - The tenant portal and the public calculator are limited per link or per IP. Voucher uploads have their own quotas (3 pending per lease, 10 uploads per link per day).
