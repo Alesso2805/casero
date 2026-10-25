@@ -373,13 +373,13 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 | Sprint 0 | 23 nov – 6 dic | ADR y monorepo con CI y arquitectura verificable | CS-01, 02 | 5 |
 | Sprint 1 | 7 dic – 20 dic | Base segura y publicada con correo y buckets configurados | CS-03, 04 | 8 |
 | Sprint 2 | 21 dic – 3 ene 2027 | Cuentas seguras por invitación (sprint corto por las fiestas) | CS-05 | 5 |
-| Sprint 3 | 4 ene – 17 ene | Aislamiento probado, perfil tributario, inmuebles y reglas tributarias como datos | CS-07, 06, 08, 20 | 7 |
+| Sprint 3 | 4 ene – 17 ene | Aislamiento probado, funciones del plan, perfil tributario, inmuebles y reglas tributarias como datos | CS-07, 06, 08, 20 | 8 |
 | Sprint 4 | 18 ene – 31 ene | Calculadora pública (captación desde fines de enero) e inquilinos y contratos | CS-32, 09 | 7 |
 | Sprint 5 | 1 feb – 14 feb | Cargos automáticos y operación segura | CS-11, 26 | 8 |
 | Sprint 6 | 15 feb – 28 feb | Pagos con saldos correctos y panel de cobros | CS-12, 13 | 8 |
 | Sprint 7 | 1 mar – 14 mar | Correcciones de cargos y portal del inquilino | CS-31, 18 | 6 |
 | Sprint 8 | 15 mar – 28 mar | Formularios de SUNAT (Semana Santa: 25 y 26 de marzo) | CS-21 | 5 |
-| Sprint 9 | 29 mar – 11 abr | Cobro por WhatsApp y registro y recordatorio de pagos a SUNAT | CS-16, 34 | 6 |
+| Sprint 9 | 29 mar – 11 abr | Cobro por WhatsApp, registro y recordatorio de pagos a SUNAT y exportación para el contador | CS-16, 34 | 7 |
 | Sprint 10 | 12 abr – 25 abr | Cumplimiento legal: listo para datos reales | CS-25 | 5 |
 | Beta privada | desde 26 abr | Fundadores con sus alquileres reales (registro por invitación, `make grant-founder`); el año de fundador cuenta desde aquí; 15 minutos a la semana con cada uno | — | — |
 | Sprint 11 | 26 abr – 9 may | Planes y panel interno | CS-23, 24 | 6 |
@@ -395,7 +395,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 - **Fin del sprint 10 (25 abr):** la beta empieza solo si el aislamiento entre cuentas, las páginas legales, la inscripción del banco de datos, los respaldos con restauración probada y la prueba de punta a punta de CS-21 están en verde, y si un contador validó los casos del impuesto. Si no, se devuelve la preventa a quien la pida (la promesa es beta antes del 31 de mayo de 2027).
 - **Un mes después del lanzamiento (21 jul):** si la activación es menor al 40 %, se prioriza la bienvenida y el panel antes que funciones nuevas.
 
-**Si el ritmo es menor.** Antes de mover la beta, se recorta en este orden: CS-31 se reduce a anular y corregir cargos (sin crédito proporcional) y el saldo anterior de CS-09 queda como un ajuste simple. Antes de mover el lanzamiento: CS-17 (resumen diario), CS-33 (push), CS-19 (vouchers; el inquilino envía la foto por WhatsApp), CS-15 (la garantía se anota como nota del contrato) y CS-10 (la bienvenida se reemplaza por los formularios normales). Nunca se recortan el aislamiento entre cuentas, las páginas legales, los respaldos ni la exactitud del impuesto.
+**Si el ritmo es menor.** Antes de mover la beta, se recorta CS-31: se reduce a anular y corregir cargos (sin crédito proporcional). Antes de mover el lanzamiento: CS-17 (resumen diario), CS-33 (push), CS-19 (vouchers; el inquilino envía la foto por WhatsApp), CS-15 (la garantía se anota como nota del contrato) y CS-10 (la bienvenida se reemplaza por los formularios normales). Nunca se recortan el aislamiento entre cuentas, las páginas legales, los respaldos ni la exactitud del impuesto.
 
 ## Requisitos no funcionales, seguridad y privacidad
 

@@ -32,7 +32,7 @@ docs/SPEC.md cubre visión, marco legal y tributario, alcance, arquitectura, reg
 10. Enlace del inquilino: token = HMAC-SHA256(`TENANT_LINK_KEY`, id del enlace ‖ nonce) en base64url; la base guarda el nonce y el SHA-256 del token, nunca el token. Va en el fragmento (`/i#t=<token>`) y el frontend lo envía en la cabecera `X-Tenant-Token`. `Referrer-Policy: no-referrer` en todo el sitio.
 11. Archivos subidos: solo JPG, PNG o PDF de hasta 5 MB (también limitado en Caddy), validados por contenido; las imágenes se vuelven a codificar sin metadatos; bucket privado con versionado y expiración de versiones antiguas a los 30 días; claves `{account_id}/{file_id}`; URLs firmadas de 5 minutos; PDF siempre como descarga.
 12. Tareas del worker: las de datos se escriben como "asegurar el estado hasta hoy" y son idempotentes; las de correo se envían como máximo una vez (se registra el envío antes de mandarlo), salvo los recordatorios de impuesto, que reintentan errores transitorios hasta 3 veces en el mismo día. Un solo worker activo con `pg_try_advisory_lock` en una conexión dedicada fuera del pool.
-13. Los límites y funciones de cada plan se verifican en el servidor con las claves de función de SPEC.md, nunca solo en la interfaz.
+13. Los límites y funciones de cada plan se verifican en el servidor con el servicio `entitlements` y las claves de función de SPEC.md, nunca solo en la interfaz.
 14. Configuración por variables de entorno; nunca secretos en el repositorio. `REGISTRATION_MODE` es `closed` por defecto en producción.
 
 # Arquitectura verificable
