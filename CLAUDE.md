@@ -9,7 +9,7 @@ docs/SPEC.md cubre visión, marco legal y tributario, alcance, arquitectura, reg
 # Stack obligatorio
 - Backend: Python 3.14, FastAPI con un solo proceso Uvicorn, SQLAlchemy 2 async + asyncpg, Alembic, Pydantic v2, uv, Ruff, Mypy (strict), Pytest, Hypothesis, Testcontainers, structlog, time-machine, argon2-cffi, cryptography (AES-GCM y HMAC), Pillow, WeasyPrint, pyotp, import-linter.
 - Base de datos: PostgreSQL 17 con Row-Level Security.
-- Frontend: Node 24 LTS con pnpm; React 19 + TypeScript (strict) + Vite, TanStack Router, TanStack Query, Tailwind CSS, React Hook Form + Zod, vite-plugin-pwa (instalable y con notificaciones push; sin funcionamiento sin conexión ni caché de `/api`). Tipos del API generados con openapi-typescript. Pruebas con Vitest y Playwright + axe.
+- Frontend: Node 26 LTS con pnpm; React 19 + TypeScript 5.9 (strict; fijado porque openapi-typescript aún no soporta 6 ni 7) + Vite, TanStack Router, TanStack Query, Tailwind CSS, React Hook Form + Zod, vite-plugin-pwa (instalable y con notificaciones push; sin funcionamiento sin conexión ni caché de `/api`). Tipos del API generados con openapi-typescript. Pruebas con Vitest y Playwright + axe.
 - Infra: Docker Compose, Caddy (HTTPS automático con dominio; en local, http://localhost y `tls internal` para probar desde un celular en la red local), Mailpit en local, GitHub Actions, almacenamiento compatible con S3 en un proveedor distinto al del servidor.
 - Procesos: `casero.api` (FastAPI) y `casero.worker` (tareas programadas) como procesos separados con el mismo código. Nunca tareas programadas dentro del lifespan de FastAPI.
 
