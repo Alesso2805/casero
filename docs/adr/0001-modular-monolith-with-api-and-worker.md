@@ -69,9 +69,9 @@ The pattern is rule AR-03 in `docs/ARCHITECTURE_RULES.md`.
 
 - Python 3.14, which has `uuid.uuid7()` in the standard library, and PostgreSQL 17.
 - Frontend:
-  - Node 26 LTS, which is LTS from 2026-10-28, and pnpm. If a stack tool fails on Node 26 during CS-02, the frontend falls back to Node 24 LTS and this section records which tool and why.
+  - Node 26 LTS, which is LTS from 2026-10-28, and pnpm 12. During CS-02 every frontend tool ran on Node 26 (Vite 8, Vitest 5, ESLint 10, typescript-eslint 8 and openapi-typescript 7), so no fallback to Node 24 was needed.
   - TypeScript 5.9, pinned because openapi-typescript does not support TypeScript 6 or 7 yet.
-- Exact versions are pinned in CS-02. A compatibility check on 2026-10-25 found:
+- Exact versions are pinned in `backend/uv.lock` and `web/pnpm-lock.yaml`. CI pins the uv version and pins each GitHub Action by commit SHA. A compatibility check on 2026-10-25 found:
   - Every backend dependency ships wheels for CPython 3.14.
   - The base image must be pinned by tag (`python:3.14-slim-trixie`), because `python:3-slim` already points to 3.15.
   - SQLAlchemy must be installed with its `asyncio` extra.
