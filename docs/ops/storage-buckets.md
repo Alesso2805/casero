@@ -30,6 +30,7 @@ Los dos buckets son privados (`allPrivate`) y tienen activo el cifrado del lado 
 
 - **Bloqueo de objetos:**
   - Se activa al crear el bucket. Después ya no se puede desactivar.
+  - Antes de crear el bucket real se prueban el bloqueo y la restauración en un bucket de prueba con 1 día de retención (ver los pasos de creación).
   - Retención por defecto: 30 días, en modo **compliance**. En ese modo nadie, ni siquiera la cuenta dueña, puede borrar un respaldo antes de que pasen los 30 días. Así un respaldo sobrevive aunque roben una clave.
 - **Ciclo de vida:**
   - `daysFromUploadingToHiding = 30` y `daysFromHidingToDeleting = 1`.
@@ -64,12 +65,19 @@ La clave maestra de la cuenta vive solo en Bitwarden y nunca en el servidor. Si 
 
 1. Crear la cuenta de Backblaze eligiendo la región US-East.
 2. Activar el doble factor en la cuenta y guardar la clave maestra en Bitwarden.
-3. Crear `<prefijo>-backups` con bloqueo de objetos activado y retención por defecto de 30 días en compliance.
-4. Crear `<prefijo>-vouchers` sin bloqueo de objetos.
-5. Configurar en ambos el cifrado SSE-B2 y las reglas de ciclo de vida.
-6. Crear las cuatro claves de aplicación y guardarlas en Bitwarden.
-7. Ejecutar `make check-bucket-policy`.
-8. Anotar la ejecución en el registro de abajo.
+3. Probar el bloqueo y la restauración en un bucket de prueba, `<prefijo>-backups-test`:
+   1. Crearlo con bloqueo de objetos en compliance, retención por defecto de 1 día y el ciclo de vida acortado (`daysFromUploadingToHiding = 1`, `daysFromHidingToDeleting = 1`).
+   2. Subir un respaldo de prueba: un `pg_dump` cifrado de la base de desarrollo.
+   3. Comprobar que su versión no se puede borrar antes de que pase 1 día, ni siquiera con la clave maestra.
+   4. Descargarlo con una clave de solo lectura, descifrarlo y restaurarlo en una base vacía.
+   5. Pasado el día, comprobar que el bloqueo venció y que el ciclo de vida borra el respaldo.
+   6. Anotar el resultado en el registro. Cuando el bucket de prueba quede vacío, se elimina: el bloqueo no se puede quitar, pero un bucket vacío sí se puede borrar.
+4. Solo si la prueba salió bien, crear `<prefijo>-backups` con bloqueo de objetos y retención por defecto de 30 días en compliance.
+5. Crear `<prefijo>-vouchers` sin bloqueo de objetos.
+6. Configurar en ambos el cifrado SSE-B2 y las reglas de ciclo de vida.
+7. Crear las cuatro claves de aplicación y guardarlas en Bitwarden.
+8. Ejecutar `make check-bucket-policy`.
+9. Anotar la ejecución en el registro de abajo.
 
 ## Registro
 
