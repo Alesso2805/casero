@@ -1,0 +1,34 @@
+{
+	admin off
+}
+
+(app) {
+	request_body {
+		max_size 5MB
+	}
+	header Referrer-Policy no-referrer
+
+	handle /admin* {
+		respond 404
+	}
+	handle /api/admin/* {
+		respond 404
+	}
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		reverse_proxy web:5173 {
+			header_up Host localhost
+		}
+	}
+}
+
+http://localhost {
+	import app
+}
+
+https://{$CASERO_LAN_HOST:lan.localhost} {
+	tls internal
+	import app
+}

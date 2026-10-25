@@ -1,0 +1,77 @@
+name: casero
+
+x-backend: &backend
+  build: ./backend
+  image: casero-backend:dev
+
+services:
+  postgres:
+    image: postgres:17-trixie
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
+      POSTGRES_DB: casero
+      CASERO_OWNER_PASSWORD: ${CASERO_OWNER_PASSWORD:-casero_owner_dev}
+      CASERO_BACKUP_PASSWORD: ${CASERO_BACKUP_PASSWORD:-casero_backup_dev}
+      CASERO_APP_PASSWORD: ${CASERO_APP_PASSWORD:-casero_app_dev}
+      CASERO_WORKER_PASSWORD: ${CASERO_WORKER_PASSWORD:-casero_worker_dev}
+      CASERO_ADMIN_PASSWORD: ${CASERO_ADMIN_PASSWORD:-casero_admin_dev}
+    volumes:
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username postgres --dbname casero --host 127.0.0.1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      CASERO_MIGRATION_DATABASE_URL: postgresql+asyncpg://casero_owner:${CASERO_OWNER_PASSWORD:-casero_owner_dev}@postgres:5432/casero
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "casero.worker"]
+    environment:
+      CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:-casero_worker_dev}@postgres:5432/casero
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build: ./web
+
+  caddy:
+    image: caddy:2.11
+    ports:
+      - "${CASERO_HTTP_PORT:-80}:80"
+      - "${CASERO_HTTPS_PORT:-443}:443"
+    environment:
+      CASERO_LAN_HOST: ${CASERO_LAN_HOST:-lan.localhost}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - api
+      - web
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports:
+      - "127.0.0.1:8025:8025"
+
+volumes:
+  postgres-data:
+  caddy-data:
