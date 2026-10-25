@@ -145,12 +145,12 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | `system` | Worker con el rol `casero_worker` | `app_list_account_ids(purpose)` (`SECURITY DEFINER`, purpose ∈ jobs, purge) y una transacción por cuenta; tablas de sistema sin RLS (`job_runs`, `pending_object_deletions`) |
 | `admin` | Rutas `/api/admin/*` | Pool aparte con `casero_admin`, creado solo si `ADMIN_ENABLED=true`; sesiones en `staff_sessions`; cada acción queda en `staff_audit_log`; permisos por columna en SPEC |
 
-**Módulos del backend.** Cada uno con capas `domain`, `application`, `infrastructure` y `api`; el dominio no importa FastAPI ni SQLAlchemy, y un módulo solo usa a otro a través de su capa `application`.
+**Módulos del backend.** Cada uno con capas `domain`, `application`, `infrastructure` y `api`; el dominio no importa FastAPI ni SQLAlchemy. Los módulos siguen un orden acíclico, de abajo hacia arriba: `shared.kernel` → `identity` → `accounts` → `properties` → `leases` → `ledger` → `tax` → `reminders` → `tenant_portal` → `admin`. Un módulo solo importa la capa `application` de los módulos anteriores (contrato `layers` de import-linter) y nunca su `domain`, `infrastructure` ni `api` (contratos `forbidden`). `shared.kernel` (Clock, Money, ids) es puro y lo puede usar cualquier capa; `shared.infrastructure` (contextos de base, Mailer, Storage, crypto) solo se usa desde `infrastructure`, `api` y los puntos de arranque (`casero.api` y `casero.worker`). Un caso de uso que cruza módulos vive en el más alto de ellos: crear un contrato con saldo anterior vive en `ledger.application` y llama a `leases.application`, y `leases` lee las funciones del plan desde `accounts.application`. Si un módulo necesita datos de uno posterior (por ejemplo, `reminders` necesita el enlace vigente de `tenant_portal` para `{enlace}`), declara un puerto en su `application` y los puntos de arranque inyectan la implementación (ADR-0001).
 
 | Módulo | Contenido |
 | --- | --- |
 | `identity` | Usuarios, sesiones, verificación, recuperación, aceptaciones legales |
-| `accounts` | Cuenta, perfil tributario, plan, suscripción, exportación y eliminación |
+| `accounts` | Cuenta, registro, perfil tributario, plan, suscripción, `entitlements` (funciones del plan y estado de la suscripción), exportación y eliminación |
 | `properties` | Inmuebles y unidades |
 | `leases` | Inquilinos y contratos, ciclo de vida |
 | `ledger` | Cargos, pagos, garantías, aplicación de pagos, estados, constancias |
@@ -450,7 +450,9 @@ casero/
 │   │   ├── tax/
 │   │   ├── tenant_portal/
 │   │   ├── admin/
-│   │   ├── shared/            # Clock, Money, ids, contextos de base, Mailer, Storage, crypto
+│   │   ├── shared/
+│   │   │   ├── kernel/        # Clock, Money, ids (puro)
+│   │   │   └── infrastructure/ # contextos de base, Mailer, Storage, crypto
 │   │   ├── api.py             # app FastAPI
 │   │   └── worker.py          # tareas programadas
 │   ├── migrations/            # Alembic
