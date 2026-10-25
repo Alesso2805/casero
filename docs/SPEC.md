@@ -174,7 +174,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 ## Reglas de negocio
 
-El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pagos válidos, y el tributo de cada declaración es siempre la regla del año aplicada a lo cobrado a un mismo inquilino (por su documento) en ese mes, sumando todos sus contratos. Todo lo demás se deriva de esas dos reglas y se calcula al leer.
+El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo) − Σ pagos válidos, y el tributo de cada declaración es siempre la regla del año aplicada a lo cobrado a un mismo inquilino (por su documento) en ese mes, sumando todos sus contratos. Todo lo demás se deriva de esas dos reglas y se calcula al leer.
 
 **Contratos**
 
@@ -195,7 +195,7 @@ El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pago
 | Regla | Detalle |
 | --- | --- |
 | Tipos | `rent` (mensual), `rent_correction` (reemplaza un `rent` anulado del mismo período), `opening_balance` y `adjustment` (débito si es positivo, crédito si es negativo; nunca cero) |
-| Ajustes negativos | Un crédito se aplica a los cargos antes que cualquier pago, con el mismo orden de cargos. No es dinero cobrado: nunca entra a la base del impuesto |
+| Ajustes negativos | Un crédito tiene como fecha efectiva la fecha en Lima en que se registra y se aplica junto con los pagos, en orden de fecha (ver Aplicación). No es dinero cobrado: nunca entra a la base del impuesto |
 | Generación | Un `rent` por contrato y período, único por `(lease_id, period)`. El worker asegura cada día que existan todos los períodos desde el mes de control hasta el actual; un período con un `rent` anulado no se vuelve a generar |
 | Corrección | Anular el cargo con motivo e insertar un `rent_correction` del mismo período |
 | Vencimiento | El día de pago del contrato; si el mes no tiene ese día, el último día del mes; en el primer período, nunca antes de la fecha de inicio |
@@ -205,9 +205,9 @@ El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pago
 
 | Regla | Detalle |
 | --- | --- |
-| Aplicación | Primero se aplican los créditos y luego los pagos, ordenados por `(received_on, created_at, id)`, a los cargos válidos ordenados con el saldo anterior de 2025 o antes primero, luego el de 2026, luego por vencimiento, fecha de creación e id. Lo que sobra queda como saldo a favor y se aplica a los cargos siguientes. El cálculo es determinista: el mismo conjunto de movimientos da siempre la misma asignación |
+| Aplicación | Los movimientos (pagos y créditos) se aplican juntos, ordenados por `(fecha efectiva, created_at, id)`: la fecha efectiva de un pago es `received_on` y la de un crédito, la fecha en Lima de su `created_at`. Cada movimiento cubre lo que dejaron pendiente los anteriores en los cargos válidos con monto positivo, ordenados con el saldo anterior de 2025 o antes primero, luego el de 2026, luego por vencimiento, fecha de creación e id; así, un movimiento solo afecta la asignación de los posteriores. Lo que sobra queda como saldo a favor y se aplica a los cargos siguientes. El cálculo es determinista: el mismo conjunto de movimientos da siempre la misma asignación, y el saldo de cada cargo y el tributo no dependen del orden de inserción |
 | Fecha de cobro | La fecha en que el arrendador recibió el dinero; no puede ser posterior a hoy en Lima ni anterior al primer día del mes de control, salvo que el contrato tenga saldo anterior: entonces puede ser desde el 1 de enero de 2026. Es la que usa el impuesto |
-| Idempotencia | El cliente genera el id del pago al abrir el formulario; reenviar no duplica |
+| Idempotencia | El cliente genera el id (uuid v7) al abrir el formulario de lo que crea el arrendador: pagos, cargos manuales (ajuste, corrección y saldo anterior), garantías, devoluciones, cambios de renta y pagos a SUNAT. Reenviar devuelve el existente; un id que ya existe con otro contenido o en otra cuenta responde 409 sin detalle. Las anulaciones son idempotentes por su PK natural (repetirla devuelve 200 y la existente) |
 | Pagos adelantados | Cuentan para el impuesto del mes en que se cobraron, aunque cubran meses siguientes |
 | Anulación | Se registra con motivo; si el mes de ese pago ya tiene un pago a SUNAT registrado, Casero avisa que el tributo pagado ya no coincide |
 | Bancarización | Si la renta vigente en el período de la fecha de cobro es de S/ 2,000 o más al mes, registrar un pago en efectivo muestra: "Para alquileres desde S/ 2,000 la ley exige pagar por banco, transferencia o billetera. Sin eso tu inquilino no puede deducir el gasto y te será más difícil probar cuándo cobraste" |
@@ -237,7 +237,8 @@ El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pago
 
 - Hay una declaración por cada documento de inquilino (`renter_doc_hmac`; si el inquilino no tiene documento, por `renter_id`, y la tarjeta queda "incompleta" sin permitir registrar el pago a SUNAT hasta completarlo) con pagos cobrados en el mes en contratos `standard` o `company_tenant`; si un mismo inquilino tiene dos contratos, se suman. El total del mes es la suma de sus tributos. Ejemplo de prueba: 450.50 + 100.50 en dos contratos del mismo inquilino dan base 551 y tributo 28.
 - El redondeo es al sol entero, mitad hacia arriba, primero en la base y luego en el tributo. Tasa, deducción, redondeo y umbral de bancarización se leen de `tax_rule_sets` del año del mes de cobro.
-- De la base se excluye la parte de un pago que la aplicación asigna al saldo anterior de 2025 o antes (ya gravado por devengado); esa parte se muestra aparte para revisar con el contador. Una prueba de propiedades con Hypothesis verifica que el tributo no depende del orden en que se registraron los movimientos.
+- De la base se excluye la parte de un pago que la aplicación asigna al saldo anterior de 2025 o antes (ya gravado por devengado); esa parte se muestra aparte para revisar con el contador. Pruebas de propiedades con Hypothesis verifican que el tributo no depende del orden en que se insertaron los movimientos y que un crédito no cambia la base de ningún mes anterior a su fecha.
+- Caso para validar con el contador: un crédito registrado después de pagos que cubrieron deuda de 2025 o antes no cambia la asignación de esos pagos ni la base de sus meses; solo afecta a los movimientos posteriores a su fecha.
 - Cada tarjeta muestra los datos del 1683: RUC del arrendador, período, tipo y número de documento del inquilino (descifrado solo en esa vista), tipo de bien "predio", base y tributo, con botones para copiar. Sin documento del inquilino, la tarjeta pide completarlo.
 - El vencimiento sale de `sunat_due_dates` según el año, el mes y el grupo del RUC. Si el cronograma del año no está cargado, se muestra "fecha por confirmar" y el worker te alerta por correo.
 - Sin RUC registrado, Casero muestra el tributo pero no el vencimiento, y explica cómo obtener el RUC.
@@ -282,7 +283,7 @@ El saldo de un contrato es siempre la suma de sus cargos válidos menos sus pago
 
 ## Esquema de base de datos
 
-PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configuración global, sistema, y datos de cada arrendador con RLS por `account_id`. Las claves primarias son `uuid` v7 generados en la aplicación (o en el cliente para el libro). Cada tabla de cuenta tiene `UNIQUE (account_id, id)` y las foráneas entre ellas son compuestas `(account_id, x_id)`, para que ninguna fila apunte a otra cuenta. Los planes, la configuración tributaria de 2026 y los feriados de 2026 y 2027 se cargan en migraciones de datos (CS-03 y CS-20), no a mano.
+PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configuración global, sistema, y datos de cada arrendador con RLS por `account_id`. Las claves primarias son `uuid` v7 generados en la aplicación, o en el cliente para lo que crea el arrendador (ver Idempotencia en Pagos). Cada tabla de cuenta con `id` tiene `UNIQUE (account_id, id)` y las foráneas entre ellas son compuestas `(account_id, x_id)`, para que ninguna fila apunte a otra cuenta; las tablas de anulación usan como PK la clave del registro anulado y una FK compuesta `(account_id, x_id)` hacia él. La aplicación pone `created_at`; las tablas del libro no tienen `DEFAULT now()`. Los planes, la configuración tributaria de 2026 y los feriados de 2026 y 2027 se cargan en migraciones de datos (CS-03 y CS-20), no a mano.
 
 **Tablas sin RLS (lista cerrada; el test de CS-03 falla si aparece otra):** `users`, `sessions`, `email_tokens`, `registration_invites`, `account_members`, `legal_documents`, `staff_users`, `staff_sessions`, `staff_audit_log`, `plans`, `tax_rule_sets`, `sunat_due_dates`, `holidays`, `complaints`, `complaint_counters`, `waitlist_entries`, `email_suppressions`, `rate_limit_buckets`, `job_runs`, `pending_object_deletions` y la tabla de versiones de Alembic. Todas las demás del esquema `public` tienen RLS con `FORCE`.
 
@@ -402,7 +403,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 
 | Categoría | Requisito | Cómo se verifica |
 | --- | --- | --- |
-| Corrección del dinero | Saldo = cargos válidos − créditos − pagos válidos para cualquier secuencia; tributo por documento de inquilino y mes según la regla del año, independiente del orden de registro | Propiedades con Hypothesis y casos validados por un contador |
+| Corrección del dinero | Saldo = Σ cargos válidos (los ajustes llevan signo) − Σ pagos válidos para cualquier secuencia; el saldo de cada cargo y el tributo por documento de inquilino y mes, según la regla del año, no dependen del orden de inserción; un crédito no cambia la base de ningún mes anterior a su fecha | Propiedades con Hypothesis y casos validados por un contador |
 | Idempotencia | Reenviar un pago, una confirmación de voucher o una tarea del worker no duplica nada | Tests de reenvío y de reejecución |
 | Aislamiento | Ningún dato cruza cuentas por la API ni por SQL directo; ninguna tabla nueva queda sin RLS por olvido; ningún rol tiene permisos fuera de la tabla de roles | Tests con dos cuentas por endpoint y test del catálogo de tablas y permisos |
 | Autenticación | Argon2id; sesiones revocables y rotadas; CSRF; bloqueo por IP y retraso por correo; doble factor obligatorio en `/admin` con sesiones propias y auditoría; registro cerrado salvo invitación hasta el lanzamiento | Tests de sesión, CSRF, 429, TOTP y `REGISTRATION_MODE` |
