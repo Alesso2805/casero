@@ -1,24 +1,24 @@
 # Política de privacidad de Casero (versión corta)
 
 > **Borrador para revisión del abogado. No publicar todavía.**
-> Versión 0.1 · Fecha de publicación: [PENDIENTE]
+> Versión 0.1 · Fecha de publicación: [fecha de publicación]
 > Los textos entre corchetes se completan antes de publicar.
 
 Casero es un servicio para arrendadores que está en preparación. Esta política explica qué datos personales recogemos mientras lo preparamos (lista de espera, entrevistas, preventa y servicio para fundadores) y qué hacemos con ellos. Cuando abramos la aplicación publicaremos una política completa.
 
 ## Quién es responsable de tus datos
 
-Alessandro David [PENDIENTE: nombre completo como figura en el RUC], persona natural con negocio, RUC [PENDIENTE], con domicilio en [PENDIENTE]. Correo para temas de privacidad: [PENDIENTE: privacidad@dominio].
+[nombre completo según el RUC], persona natural con negocio, RUC [RUC], con domicilio en [domicilio]. Correo para temas de privacidad: [correo de privacidad].
 
 ## Qué datos recogemos y para qué
 
 | Cuándo | Qué datos | Para qué | Cuánto tiempo los guardamos |
 | --- | --- | --- | --- |
 | Te unes a la lista de espera | Tu correo, cómo nos conociste y la fecha en que aceptaste | Avisarte cuando puedas registrarte | Hasta que te registres o, como máximo, 12 meses |
-| Conversas con nosotros en una entrevista | Tu nombre, tu celular o correo y tus respuestas (por ejemplo, cuántos alquileres tienes, cómo cobras, si tienes RUC y tu edad aproximada) | Entender cómo administras tus alquileres para diseñar Casero | [PENDIENTE: plazo; propuesta: 12 meses, y luego solo notas sin nombre] |
+| Conversas con nosotros en una entrevista | Tu nombre, tu celular o correo y tus respuestas (por ejemplo, cuántos alquileres tienes, cómo cobras, si tienes RUC y tu edad aproximada) | Entender cómo administras tus alquileres para diseñar Casero | 12 meses; después se eliminan |
 | Compras la preventa | Tu nombre, tu DNI o RUC, tu celular o correo, el monto, la fecha y el medio de pago | Emitir tu boleta, darte el servicio y devolverte el dinero si corresponde | El plazo que exigen las normas tributarias |
 | Recibes el servicio para fundadores | Lo que nos reportas de tus alquileres: nombre y documento de tus inquilinos, montos que cobraste y fechas | Prepararte cada mes la lista de tus formularios 1683, con su monto y su vencimiento | Mientras dure el servicio; luego se trasladan a tu cuenta de Casero o se eliminan, como prefieras |
-| Usas la calculadora pública | No guardamos los montos que escribes. Solo guardamos, por poco tiempo y cifrada, una huella técnica de tu conexión | Evitar abusos de la calculadora | [PENDIENTE: plazo exacto] |
+| Usas la calculadora pública | No guardamos los montos que escribes ni tu dirección IP. Para limitar las consultas usamos una huella cifrada de tu conexión, hecha con una clave que cambia cada día | Evitar abusos de la calculadora | La huella se borra en 24 horas |
 
 **Tus ingresos por alquiler son datos sensibles.** Solo los tratamos si nos das tu consentimiento expreso, aparte del resto, antes de la entrevista o del servicio para fundadores.
 
@@ -36,21 +36,18 @@ No vendemos tus datos ni los cedemos a nadie para su propio uso. Los guardan por
 
 | Servicio | Proveedor | País donde están los datos |
 | --- | --- | --- |
-| Servidor | Hetzner Online | Alemania o Finlandia |
+| Servidor | [proveedor del servidor contratado: Hetzner u OVHcloud] | [país del servidor contratado: Alemania, Finlandia o Francia] |
 | Almacenamiento y copias de seguridad | Backblaze | Estados Unidos |
-| Envío de correos | Resend | Estados Unidos |
+| Envío de correos | Amazon Web Services (Amazon SES) | Estados Unidos |
 | Registro de errores técnicos | Sentry | Estados Unidos |
+| Mensajería con fundadores y entrevistados | WhatsApp (Meta) | Estados Unidos |
+| Notas de las entrevistas | Notion | Estados Unidos |
+| Lista de espera, mientras no exista la página web | Google Forms (Google) | Estados Unidos |
+| Cobro de la preventa | Yape (BCP) | Perú |
+| Videollamadas | Google Meet (Google) | Estados Unidos |
+| Correo para coordinar con fundadores y entrevistados | Gmail (Google) | Estados Unidos |
 
-Mientras preparamos Casero también usamos estas herramientas:
-
-- [PENDIENTE: mensajería con fundadores y entrevistados (por ejemplo, WhatsApp): proveedor y país]
-- [PENDIENTE: dónde se anotan las entrevistas (hoja de cálculo o documento): proveedor y país]
-- [PENDIENTE: dónde se guarda la lista de espera mientras no exista la página web, si se recoge antes: proveedor y país]
-- [PENDIENTE: medio de cobro de la preventa (billetera o banco)]
-- [PENDIENTE: herramienta de videollamada, si alguna entrevista es por video: proveedor y país]
-- [PENDIENTE: correo que usas para coordinar con fundadores y entrevistados: proveedor y país]
-
-Todos estos proveedores guardan los datos fuera del Perú. Solo los entregamos a una autoridad cuando una norma nos obliga.
+Salvo Yape, todos estos proveedores guardan los datos fuera del Perú. Solo entregamos tus datos a una autoridad cuando una norma nos obliga.
 
 ## Tus derechos
 
@@ -61,7 +58,7 @@ Puedes pedirnos en cualquier momento:
 - que los eliminemos;
 - que dejemos de usarlos para algo, o retirar tu consentimiento.
 
-Escríbenos a [PENDIENTE: privacidad@dominio] y te responderemos en los plazos de la ley. Si no estás de acuerdo con nuestra respuesta, puedes reclamar ante la Autoridad Nacional de Protección de Datos Personales del Ministerio de Justicia y Derechos Humanos.
+Escríbenos a [correo de privacidad] y te responderemos en los plazos de la ley. Si no estás de acuerdo con nuestra respuesta, puedes reclamar ante la Autoridad Nacional de Protección de Datos Personales del Ministerio de Justicia y Derechos Humanos.
 
 ## Cómo los cuidamos
 
@@ -69,7 +66,7 @@ Solo nosotros accedemos a tus datos. Usamos conexiones cifradas, contraseñas se
 
 ## Banco de datos
 
-Tus datos forman parte del banco de datos "Clientes y prospectos", cuya inscripción solicitamos ante la Autoridad Nacional de Protección de Datos Personales [PENDIENTE: número de expediente o de inscripción].
+Tus datos forman parte del banco de datos "Clientes y prospectos", cuya inscripción solicitamos ante la Autoridad Nacional de Protección de Datos Personales con el expediente [número de expediente].
 
 ## Cambios
 
