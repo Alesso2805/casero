@@ -59,7 +59,8 @@ def fake_project(tmp_path: Path) -> Path:
         target = tmp_path / "src" / "casero" / init.relative_to(PACKAGE)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.touch()
-    (tmp_path / "src" / "casero" / "api.py").touch()
+    for root in PACKAGE.glob("*.py"):
+        (tmp_path / "src" / "casero" / root.name).touch()
     shutil.copy(PYPROJECT, tmp_path / "pyproject.toml")
     return tmp_path
 
