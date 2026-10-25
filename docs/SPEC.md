@@ -126,14 +126,14 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 | Componente | Tecnología | Responsabilidad |
 | --- | --- | --- |
-| `casero.api` | FastAPI, un proceso Uvicorn | API REST bajo `/api`, sesiones, validación, límites por plan, OpenAPI como contrato único |
+| `casero.api` | FastAPI, un proceso Uvicorn | API REST bajo `/api`, sesiones, validación, límites por plan, OpenAPI como contrato único; con `ADMIN_ENABLED=true`, un segundo listener solo en `127.0.0.1` para el panel |
 | `casero.worker` | Proceso Python con el mismo código y rol `casero_worker` | Asegurar cargos y cierres de contrato hasta hoy, enviar correos programados, purgar cuentas y archivos vencidos, alertar si falta el cronograma y si un reclamo se acerca a su plazo |
-| `web` | React 19, Vite, PWA instalable | `/app` para el arrendador, `/i` para el inquilino, `/admin` para ti; landing y calculadora pública en `/` |
+| `web` | React 19, Vite, PWA instalable | `/app` para el arrendador, `/i` para el inquilino, `/admin` para ti (solo por el puerto de administración); landing y calculadora pública en `/` |
 | PostgreSQL 17 | RLS por cuenta | Datos, libro de cobros de solo inserción, configuración tributaria por año, auditoría |
 | Almacenamiento S3 | Backblaze B2 (US-East), buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días desde la creación del bucket (`docs/ops/storage-buckets.md`) |
 | Correo | Resend (plan gratuito en la beta) detrás de una interfaz `Mailer`; Amazon SES como plan B | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes vía webhook; Mailpit en local |
 | Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
-| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, lista de IP permitidas (la red de Tailscale) para `/admin` y `/api/admin/*`, sin registrar `/i` ni consultas |
+| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, sin registrar `/i` ni consultas |
 
 **Contextos de acceso a la base**
 
@@ -143,7 +143,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | `account` | Rutas `/api/app/*` | `current_account` fija `app.account_id` con `set_config(..., true)` dentro de la transacción |
 | `tenant` | Rutas `/api/tenant/*` | `app_resolve_tenant_token(p_hash, p_today)` (`SECURITY DEFINER`, propiedad de `casero_owner`, `search_path` fijo) devuelve cuenta y contrato; luego una sola llamada fija `app.account_id`, `app.context = 'tenant'` y `app.lease_id`, y las políticas `RESTRICTIVE` limitan las filas a ese contrato |
 | `system` | Worker con el rol `casero_worker` | `app_list_account_ids(p_purpose, p_today)` (`SECURITY DEFINER`, p\_purpose ∈ jobs, purge) y una transacción por cuenta; tablas de sistema sin RLS (`job_runs`, `pending_object_deletions`) |
-| `admin` | Rutas `/api/admin/*` | Pool aparte con `casero_admin` (sin `BYPASSRLS`), creado solo si `ADMIN_ENABLED=true`; ve filas de cuenta solo por sus políticas en `accounts`, `subscriptions` y `subscription_payments`; sesiones en `staff_sessions`; cada acción queda en `staff_audit_log`; permisos por columna en la tabla de roles |
+| `admin` | Rutas `/api/admin/*` | Puerto aparte del mismo proceso, ligado solo a `127.0.0.1` del servidor y usado por túnel SSH, con un pool aparte como `casero_admin` (sin `BYPASSRLS`); ambos se crean solo si `ADMIN_ENABLED=true`; ve filas de cuenta solo por sus políticas en `accounts`, `subscriptions` y `subscription_payments`; sesiones en `staff_sessions`; cada acción queda en `staff_audit_log`; permisos por columna en la tabla de roles |
 
 **Políticas RLS.** Cada tabla de cuenta tiene la política por cuenta (`account_id = NULLIF(current_setting('app.account_id', true), '')::uuid`, en `accounts` sobre `id`). Además:
 
@@ -564,7 +564,7 @@ Esta especificación pasó por cuatro rondas de revisión con dos agentes indepe
 | Historial 2026 y resumen anual | No se importa historial; el resumen anual (CS-22) es posterior al lanzamiento |
 | Recordatorio por WhatsApp | Primera historia después del lanzamiento (CS-30); se adelanta si en la beta se abren menos de la mitad de los correos |
 | Exceso de plan | El arrendador elige qué contratos conservan WhatsApp y portal |
-| Panel interno | Mismo proceso, acceso solo por Tailscale (lista de IP en `/admin` y `/api/admin/*`) y TOTP |
+| Panel interno | Mismo proceso, puerto aparte solo en `127.0.0.1` del servidor con túnel SSH, y TOTP |
 | Velocidad | 7 puntos por sprint, con puerta al final del sprint 1 para comprimir o recortar |
 | Respaldo | Cada 6 horas a otro proveedor; restauración en menos de 4 horas |
 
