@@ -170,7 +170,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 **Correo.** Dominio con SPF, DKIM y DMARC, subdominio de envío propio, `List-Unsubscribe` de un clic en los correos programados (resumen diario y recordatorios de impuesto), que da de baja solo ese tipo de correo, y supresión automática de toda dirección que rebota o se queja. Una baja nunca suprime los correos transaccionales.
 
-**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo del gestor de contraseñas donde viven las claves. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
+**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions, publicadas en GHCR y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo de Bitwarden, donde viven las claves. Los proveedores de servidor, almacenamiento, correo y seguimiento de errores están pendientes de aprobación. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
 
 ## Reglas de negocio
 
@@ -531,6 +531,8 @@ Esta especificación pasó por cuatro rondas de revisión con dos agentes indepe
 | 3 | v3 | A21 (importante), A22–A24 | B36–B37 (importantes), B38–B44 | Todos aceptados; v4 con un declarante por cuenta, rol de respaldos y tabla de roles completa |
 | 4 | v4 | A25 (menor) | B45–B46 (menores) | Aplicados; ambos revisores: sin bloqueantes ni importantes |
 
+**Revisión previa al Sprint 0 (octubre de 2026).** Una revisión de v4 contra el plan de los sprints 0 y 1 encontró 24 puntos (10 que afectaban a esos sprints y 14 posteriores). Alessandro los decidió todos y v5 los aplica: orden acíclico de módulos, contexto tenant que falla cerrado, `casero_admin` sin `BYPASSRLS`, fechas como parámetro en las funciones SQL, créditos ordenados junto con los pagos, sobre de cifrado con id de clave, configuración tributaria con una sola fuente y `entitlements` adelantado a CS-07.
+
 **Correcciones de mayor impacto**
 
 - El Formulario 1683 es uno por documento de inquilino y mes de cobro, sumando sus contratos, con base y tributo redondeados al sol (ejemplo de prueba: 450.50 + 100.50 → base 551, tributo 28).
@@ -558,3 +560,4 @@ Esta especificación pasó por cuatro rondas de revisión con dos agentes indepe
 
 - Régimen tributario propio con el contador (evaluar Nuevo RUS).
 - Disponibilidad del nombre "Casero" como dominio y marca antes de CS-04.
+- Aprobación de los proveedores de servidor, almacenamiento, correo y seguimiento de errores, antes de declararlos ante la Autoridad.
