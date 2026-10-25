@@ -1,0 +1,165 @@
+[project]
+name = "casero"
+version = "0.1.0"
+description = "Casero API and worker"
+readme = "../README.md"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "fastapi>=0.162.0",
+    "uvicorn>=0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.16.0",
+    "import-linter>=2.15",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "ERA", "DTZ", "N", "S", "PT", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+mypy_path = "src:tests"
+explicit_package_bases = true
+files = ["src", "tests", "scripts"]
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+xfail_strict = true
+
+[tool.importlinter]
+root_package = "casero"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+id = "ar-01"
+name = "AR-01 modules follow the dependency order"
+type = "layers"
+layers = [
+    "casero.api | (casero.worker)",
+    "casero.admin",
+    "casero.tenant_portal",
+    "casero.reminders",
+    "casero.tax",
+    "casero.ledger",
+    "casero.leases",
+    "casero.properties",
+    "casero.accounts",
+    "casero.identity",
+    "casero.shared.infrastructure",
+    "casero.shared.kernel",
+]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-identity"
+name = "AR-02 identity internals stay private"
+type = "protected"
+protected_modules = ["casero.identity.domain", "casero.identity.infrastructure", "casero.identity.api"]
+allowed_importers = ["casero.identity", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-accounts"
+name = "AR-02 accounts internals stay private"
+type = "protected"
+protected_modules = ["casero.accounts.domain", "casero.accounts.infrastructure", "casero.accounts.api"]
+allowed_importers = ["casero.accounts", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-properties"
+name = "AR-02 properties internals stay private"
+type = "protected"
+protected_modules = ["casero.properties.domain", "casero.properties.infrastructure", "casero.properties.api"]
+allowed_importers = ["casero.properties", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-leases"
+name = "AR-02 leases internals stay private"
+type = "protected"
+protected_modules = ["casero.leases.domain", "casero.leases.infrastructure", "casero.leases.api"]
+allowed_importers = ["casero.leases", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-ledger"
+name = "AR-02 ledger internals stay private"
+type = "protected"
+protected_modules = ["casero.ledger.domain", "casero.ledger.infrastructure", "casero.ledger.api"]
+allowed_importers = ["casero.ledger", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-tax"
+name = "AR-02 tax internals stay private"
+type = "protected"
+protected_modules = ["casero.tax.domain", "casero.tax.infrastructure", "casero.tax.api"]
+allowed_importers = ["casero.tax", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-reminders"
+name = "AR-02 reminders internals stay private"
+type = "protected"
+protected_modules = ["casero.reminders.domain", "casero.reminders.infrastructure", "casero.reminders.api"]
+allowed_importers = ["casero.reminders", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-tenant_portal"
+name = "AR-02 tenant_portal internals stay private"
+type = "protected"
+protected_modules = ["casero.tenant_portal.domain", "casero.tenant_portal.infrastructure", "casero.tenant_portal.api"]
+allowed_importers = ["casero.tenant_portal", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-02-admin"
+name = "AR-02 admin internals stay private"
+type = "protected"
+protected_modules = ["casero.admin.domain", "casero.admin.infrastructure", "casero.admin.api"]
+allowed_importers = ["casero.admin", "casero.api"]
+
+[[tool.importlinter.contracts]]
+id = "ar-04"
+name = "AR-04 each module keeps its internal layers"
+type = "layers"
+containers = [
+    "casero.identity",
+    "casero.accounts",
+    "casero.properties",
+    "casero.leases",
+    "casero.ledger",
+    "casero.tax",
+    "casero.reminders",
+    "casero.tenant_portal",
+    "casero.admin",
+]
+layers = ["api", "infrastructure", "application", "domain"]
+
+[[tool.importlinter.contracts]]
+id = "ar-05"
+name = "AR-05 domain, application and kernel stay framework-free"
+type = "forbidden"
+source_modules = ["casero.*.domain", "casero.*.application", "casero.shared.kernel"]
+forbidden_modules = [
+    "fastapi",
+    "starlette",
+    "uvicorn",
+    "sqlalchemy",
+    "asyncpg",
+    "casero.shared.infrastructure",
+]
