@@ -7,10 +7,10 @@ El servidor se contrata antes de presentar la solicitud ante la Autoridad (seman
 Se toma la primera opción disponible, en este orden:
 
 1. Hetzner Cloud CX33 (4 vCPU x86, 8 GB, 80 GB) en Nuremberg (Alemania) o Helsinki (Finlandia).
-2. Cualquier plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes.
-3. Si no hay nada en Hetzner, un VPS de OVHcloud en Francia. En ese caso se declara Francia.
+2. Cualquier plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes, primero x86 (CX) y después ARM (CAX).
+3. Si no hay nada en Hetzner, un VPS x86 de OVHcloud, solo en un datacenter de Francia. En ese caso se declara Francia.
 
-Dentro de la opción 2, conviene preferir x86 (CX) antes que ARM (CAX). Con un servidor ARM, CI tiene que construir las imágenes para arm64.
+x86 va antes que ARM porque con un servidor ARM CI tendría que construir las imágenes para arm64.
 
 ## Opciones al 25 de octubre de 2026
 

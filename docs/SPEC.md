@@ -176,7 +176,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 | Servicio | Proveedor y plan | País de los datos |
 | --- | --- | --- |
-| Servidor | Según la regla de `docs/ops/server.md`, en este orden: Hetzner CX33 en Nuremberg o Helsinki; si no hay, otro plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes; si no hay nada en Hetzner, un VPS de OVHcloud en Francia | El del servidor contratado: [PENDIENTE: Alemania, Finlandia o Francia] |
+| Servidor | Según la regla de `docs/ops/server.md`, en este orden: Hetzner CX33 en Nuremberg o Helsinki; si no hay, otro plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes, primero x86; si no hay nada en Hetzner, un VPS x86 de OVHcloud en un datacenter de Francia | El del servidor contratado: [PENDIENTE: Alemania, Finlandia o Francia] |
 | Vouchers y respaldos | Backblaze B2, región US-East, con un bucket para cada uso (`docs/ops/storage-buckets.md`) | EE. UU. |
 | Correo | Amazon SES, región us-east-1; rebotes y quejas por SNS | EE. UU. |
 | Seguimiento de errores | Sentry, plan gratuito, región EE. UU. | EE. UU. |
