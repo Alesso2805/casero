@@ -31,7 +31,7 @@ No role used by the API, the worker or the panel owns tables or has `BYPASSRLS`.
 - Tenant scope, as `AS RESTRICTIVE` policies:
   - The condition is `current_setting('app.context', true) IS DISTINCT FROM 'tenant' OR lease_id = NULLIF(current_setting('app.lease_id', true), '')::uuid`. `leases` compares `id`.
   - Tables without `lease_id` use `EXISTS` on their parent: voids, deposit movements and files. `renters`, `units` and `properties` use `EXISTS` on the lease.
-  - `accounts` and `subscriptions` stay visible, because the portal needs the landlord's name and the plan features. Every other account table is invisible in the tenant context.
+  - `accounts` and `subscriptions` stay visible, because the portal needs the landlord's name and the plan features. The `/api/tenant/*` endpoints still read only `display_name` and the plan features, through an explicit DTO. Every other account table is invisible in the tenant context.
   - When `app.context = 'tenant'` and `app.lease_id` is missing, the comparison is `NULL` and nothing is visible: the context fails closed.
 - `casero_admin` policies: `TO casero_admin` policies exist only on `accounts`, `subscriptions` and `subscription_payments`, for the commands its grants allow. On every other account table it sees no rows even if a grant is added by mistake.
 
@@ -45,7 +45,7 @@ No role used by the API, the worker or the panel owns tables or has `BYPASSRLS`.
   - `app_resolve_tenant_token(p_hash, p_today)` returns the account and lease when the link is not revoked and its lease is active or ended less than 90 days before `p_today`.
   - A single statement then sets `app.account_id`, `app.context = 'tenant'` and `app.lease_id`, all transaction-local.
 - **`system`** (worker as `casero_worker`): `app_list_account_ids(p_purpose, p_today)`, with `p_purpose` ∈ `jobs`, `purge`, lists the accounts. Each account is then processed in its own transaction with `app.account_id` set. `job_runs` and `pending_object_deletions` have no RLS.
-- **`admin`** (`/api/admin/*`): a separate pool as `casero_admin`, created only when `ADMIN_ENABLED=true` (ADR-0008).
+- **`admin`** (`/api/admin/*`): a separate loopback-only listener and a separate pool as `casero_admin`, both created only when `ADMIN_ENABLED=true` (ADR-0008).
 
 Settings are always set with `set_config(name, :value, true)` and bound parameters, never with interpolated `SET` statements.
 
@@ -56,7 +56,7 @@ Settings are always set with `set_config(name, :value, true)` and bound paramete
 | `app_resolve_tenant_token(p_hash, p_today)` | `casero_app` | Resolve a tenant link to its account and lease |
 | `app_cancel_deletion(p_token_hash, p_now)` | `casero_app` | Validate the single-use token, clear the deletion schedule, clear and return `deletion_contact_enc`. The application decrypts it and restores the user's email in the same transaction |
 | `app_list_account_ids(p_purpose, p_today)` | `casero_worker` | List accounts for scheduled jobs or for purge |
-| `purge_account(p_account_id, p_today, p_email)` | `casero_worker` | Delete an account whose scheduled deletion has passed (ADR-0007) |
+| `purge_account(p_account_id, p_today, p_email)` | `casero_worker` | Delete an account whose scheduled deletion has passed (ADR-0007). `p_email` is used only to delete that email's invites and is never logged |
 
 All four are owned by `casero_owner`, set a fixed `search_path`, validate their arguments, receive dates as parameters instead of calling `CURRENT_DATE` or `now()`, and have `EXECUTE` revoked from `PUBLIC`.
 
@@ -80,3 +80,4 @@ All four are owned by `casero_owner`, set a fixed `search_path`, validate their 
 - Tests that `casero_app` gets "permission denied" on `app_list_account_ids` and `purge_account`.
 - Tests that the functions work with `app.account_id` empty.
 - Two-account tests on every endpoint (CS-07 onwards).
+- A test that no `/api/tenant/*` response contains the landlord's RUC or email (CS-18).

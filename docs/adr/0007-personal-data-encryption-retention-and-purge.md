@@ -39,7 +39,7 @@ The tenant document is required only for leases that enter the tax module, becau
 ### Logs and error tracking
 
 - A structlog processor drops known personal fields. Logs never include request bodies, query strings, cookies or `X-Tenant-Token`.
-- Error tracking uses `before_send` scrubbing plus the provider's server-side scrubbing.
+- Error tracking (Sentry, US region) uses `before_send` scrubbing plus Sentry's server-side scrubbing.
 - Caddy does not log `/i` or query strings.
 - A test verifies that a document number does not appear in plain text in the database, the logs or the error-tracking payloads.
 
@@ -72,7 +72,9 @@ Voucher files are unique by `(account_id, sha256)` only among rows that are not 
    - deletes rows in dependency order: account data, `job_runs` and `pending_object_deletions` of the account, `registration_invites` for that email, and the user with their sessions and email tokens;
    - keeps only the anonymized `accounts` row, marked as purged, and its `subscription_payments`.
 
-Backups are encrypted, locked for 30 days and expire after 30 days, so purged data disappears from them within that window. The privacy policy says so.
+   `p_email` is used only to delete those invites and is never written to any log, by the worker or by the function.
+
+Backups are encrypted, locked for 30 days and expire after 30 days in their own Backblaze B2 bucket (`docs/ops/storage-buckets.md`), so purged data disappears from them within that window. The privacy policy says so.
 
 ## Consequences
 
