@@ -94,6 +94,31 @@ jobs:
       - name: Generated API files match the backend
         run: git diff --exit-code -- web/src/api
 
+  compose:
+    name: Compose
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Start the stack
+        run: docker compose up --detach --build
+      - name: Wait for the API through Caddy
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://localhost/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose ps --all
+          docker compose logs
+          exit 1
+      - name: Check the migrator, the web app and the admin block
+        run: |
+          test "$(docker compose ps --all --format '{{.Service}} {{.State}} {{.ExitCode}}' | grep '^migrate ')" = "migrate exited 0"
+          curl --silent --fail http://localhost/ | grep --quiet "<title>Casero</title>"
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost/api/admin/x)" = "404"
+      - name: Stop the stack
+        if: always()
+        run: docker compose down --volumes
+
   security:
     name: Security
     runs-on: ubuntu-24.04
