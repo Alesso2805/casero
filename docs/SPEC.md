@@ -37,7 +37,7 @@ Casero calcula e informa; la decisión y el pago ante SUNAT son siempre del arre
 | Datos del formulario | RUC del arrendador, período (mes de cobro), tipo y número de documento del inquilino, tipo de bien y monto | La guía muestra esos datos listos para copiar en cada declaración |
 | Forma de pago | En SUNAT Operaciones en Línea con RUC y Clave SOL (cuenta, tarjeta o Yape), o en bancos y agentes | Casero guía el paso a paso; nunca pide la Clave SOL |
 | Vencimiento | Según el cronograma mensual de SUNAT por último dígito del RUC (grupos 0, 1, 2-3, 4-5, 6-7, 8-9 y buenos contribuyentes) | Tabla del cronograma por año; recordatorio 5 días y 1 día antes |
-| Multa por no declarar | Hasta 50 % de la UIT por cada declaración omitida (S/ 2,750 con la UIT 2026 de S/ 5,500); con gradualidad, la rebaja puede llegar al 90–100 % si se subsana antes de que SUNAT notifique | Se usa en la ayuda y la comunicación como "hasta S/ 2,750"; Casero no calcula multas ni intereses |
+| Multa por no declarar | Hasta 50 % de la UIT por cada declaración omitida (S/ 2,750 con la UIT 2026 de S/ 5,500); con gradualidad, la rebaja puede llegar al 90–100 % si se subsana antes de que SUNAT notifique | Se usa en la ayuda y la comunicación como "hasta {multa_maxima}" (50 % de la UIT del año, de `tax_rule_sets.uit_cents`); Casero no calcula multas ni intereses |
 | Declaración anual | Solo es obligatoria con saldo por pagar, pagos en exceso, mejoras no reembolsables, alquiler menor al 6 % del autovalúo o cesión gratuita | Fuera del MVP; la ayuda explica cuándo aplica |
 | Renta mínima | El alquiler anual no puede ser menor al 6 % del autovalúo del predio, proporcional a la parte alquilada y a los meses alquilados; si lo es, se tributa sobre ese mínimo en la declaración anual | Si el arrendador registró el autovalúo y la parte que alquila, y el alquiler anualizado queda por debajo, Casero muestra un aviso; no calcula el monto |
 | Inquilino empresa | No hay retención: el arrendador paga el mismo 1683 con el RUC del inquilino, y la empresa lo necesita pagado para deducir el gasto | Soportado, con un aviso para pagarlo a tiempo |
@@ -168,7 +168,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 **Tareas programadas.** El worker revisa cada minuto qué tareas tocan según la hora de Lima. Las tareas de datos (cargos, cierre de contratos vencidos) aseguran el estado hasta hoy: crean lo que falta desde el mes de control de cada contrato, así que se recuperan solas tras una caída. Las de correo se registran en `job_runs` antes de enviarse y no se reintentan el mismo día, salvo los recordatorios de impuesto, que reintentan hasta 3 veces los errores transitorios; las que tienen hora (resumen de las 8:00) se descartan si a las 12:00 no se pudieron enviar. La purga de una cuenta tiene dos fases: primero se borran sus objetos de S3 (con sus versiones) a través de `pending_object_deletions`, y cuando esa cola está vacía se llama a `purge_account()`.
 
-**Correo.** Dominio con SPF, DKIM y DMARC, subdominio de envío propio, `List-Unsubscribe` de un clic en los correos programados y supresión automática de direcciones que rebotan o se quejan.
+**Correo.** Dominio con SPF, DKIM y DMARC, subdominio de envío propio, `List-Unsubscribe` de un clic en los correos programados (resumen diario y recordatorios de impuesto), que da de baja solo ese tipo de correo, y supresión automática de toda dirección que rebota o se queja. Una baja nunca suprime los correos transaccionales.
 
 **Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo del gestor de contraseñas donde viven las claves. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
 
@@ -210,7 +210,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 | Idempotencia | El cliente genera el id (uuid v7) al abrir el formulario de lo que crea el arrendador: pagos, cargos manuales (ajuste, corrección y saldo anterior), garantías, devoluciones, cambios de renta y pagos a SUNAT. Reenviar devuelve el existente; un id que ya existe con otro contenido o en otra cuenta responde 409 sin detalle. Las anulaciones son idempotentes por su PK natural (repetirla devuelve 200 y la existente) |
 | Pagos adelantados | Cuentan para el impuesto del mes en que se cobraron, aunque cubran meses siguientes |
 | Anulación | Se registra con motivo; si el mes de ese pago ya tiene un pago a SUNAT registrado, Casero avisa que el tributo pagado ya no coincide |
-| Bancarización | Si la renta vigente en el período de la fecha de cobro es de S/ 2,000 o más al mes, registrar un pago en efectivo muestra: "Para alquileres desde S/ 2,000 la ley exige pagar por banco, transferencia o billetera. Sin eso tu inquilino no puede deducir el gasto y te será más difícil probar cuándo cobraste" |
+| Bancarización | Si la renta vigente en el período de la fecha de cobro es igual o mayor que el umbral del año (`cash_threshold_cents`; S/ 2,000 en 2026), registrar un pago en efectivo muestra: "Para alquileres desde {umbral} la ley exige pagar por banco, transferencia o billetera. Sin eso tu inquilino no puede deducir el gasto y te será más difícil probar cuándo cobraste" |
 | Saldo a favor al terminar | Se muestra como "a devolver al inquilino"; la devolución se registra como un ajuste |
 
 **Garantías**
@@ -236,7 +236,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 ```
 
 - Hay una declaración por cada documento de inquilino (`renter_doc_hmac`; si el inquilino no tiene documento, por `renter_id`, y la tarjeta queda "incompleta" sin permitir registrar el pago a SUNAT hasta completarlo) con pagos cobrados en el mes en contratos `standard` o `company_tenant`; si un mismo inquilino tiene dos contratos, se suman. El total del mes es la suma de sus tributos. Ejemplo de prueba: 450.50 + 100.50 en dos contratos del mismo inquilino dan base 551 y tributo 28.
-- El redondeo es al sol entero, mitad hacia arriba, primero en la base y luego en el tributo. Tasa, deducción, redondeo y umbral de bancarización se leen de `tax_rule_sets` del año del mes de cobro.
+- El redondeo es al sol entero, mitad hacia arriba, primero en la base y luego en el tributo. Tasa, deducción, redondeo, umbral de bancarización y UIT se leen de `tax_rule_sets` del año del mes de cobro.
 - De la base se excluye la parte de un pago que la aplicación asigna al saldo anterior de 2025 o antes (ya gravado por devengado); esa parte se muestra aparte para revisar con el contador. Pruebas de propiedades con Hypothesis verifican que el tributo no depende del orden en que se insertaron los movimientos y que un crédito no cambia la base de ningún mes anterior a su fecha.
 - Caso para validar con el contador: un crédito registrado después de pagos que cubrieron deuda de 2025 o antes no cambia la asignación de esos pagos ni la base de sus meses; solo afecta a los movimientos posteriores a su fecha.
 - Cada tarjeta muestra los datos del 1683: RUC del arrendador, período, tipo y número de documento del inquilino (descifrado solo en esa vista), tipo de bien "predio", base y tributo, con botones para copiar. Sin documento del inquilino, la tarjeta pide completarlo.
@@ -258,7 +258,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 
 `{enlace}` siempre es el mismo enlace vigente del contrato, así que los mensajes ya enviados siguen funcionando. La ayuda recomienda enviar entre las 8:00 y las 20:00. Cada envío queda registrado para mostrar "recordado hace N días".
 
-**Recordatorios de impuesto.** Por correo 5 días y 1 día antes del vencimiento, con aviso fijo en la app los últimos 5 días; tras el lanzamiento, también por notificación push si la app está instalada. Estos recordatorios no dependen del resumen diario y reintentan hasta 3 veces los errores transitorios del proveedor de correo.
+**Recordatorios de impuesto.** Por correo 5 días y 1 día antes del vencimiento, con aviso fijo en la app los últimos 5 días; tras el lanzamiento, también por notificación push si la app está instalada. Estos recordatorios no dependen del resumen diario y reintentan hasta 3 veces los errores transitorios del proveedor de correo. Si la declaración no tiene documento del inquilino, el correo pide completarlo.
 
 **Planes, funciones y límites**
 
@@ -283,7 +283,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 
 ## Esquema de base de datos
 
-PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configuración global, sistema, y datos de cada arrendador con RLS por `account_id`. Las claves primarias son `uuid` v7 generados en la aplicación, o en el cliente para lo que crea el arrendador (ver Idempotencia en Pagos). Cada tabla de cuenta con `id` tiene `UNIQUE (account_id, id)` y las foráneas entre ellas son compuestas `(account_id, x_id)`, para que ninguna fila apunte a otra cuenta; las tablas de anulación usan como PK la clave del registro anulado y una FK compuesta `(account_id, x_id)` hacia él. La aplicación pone `created_at`; las tablas del libro no tienen `DEFAULT now()`. Los planes, la configuración tributaria de 2026 y los feriados de 2026 y 2027 se cargan en migraciones de datos (CS-03 y CS-20), no a mano.
+PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configuración global, sistema, y datos de cada arrendador con RLS por `account_id`. Las claves primarias son `uuid` v7 generados en la aplicación, o en el cliente para lo que crea el arrendador (ver Idempotencia en Pagos). Cada tabla de cuenta con `id` tiene `UNIQUE (account_id, id)` y las foráneas entre ellas son compuestas `(account_id, x_id)`, para que ninguna fila apunte a otra cuenta; las tablas de anulación usan como PK la clave del registro anulado y una FK compuesta `(account_id, x_id)` hacia él. La aplicación pone `created_at`; las tablas del libro no tienen `DEFAULT now()`. Los planes se cargan en una migración de datos (CS-03). La configuración tributaria, el cronograma de SUNAT y los feriados tienen una sola fuente, los YAML de `infra/seed/tax/`: el año 2026 se carga en una migración (CS-20) y los siguientes con `make load-tax-config`, que corre como `casero_owner`, hace upsert y también lo ejecuta el migrador al arrancar; el panel interno solo los muestra.
 
 **Tablas sin RLS (lista cerrada; el test de CS-03 falla si aparece otra):** `users`, `sessions`, `email_tokens`, `registration_invites`, `account_members`, `legal_documents`, `staff_users`, `staff_sessions`, `staff_audit_log`, `plans`, `tax_rule_sets`, `sunat_due_dates`, `holidays`, `complaints`, `complaint_counters`, `waitlist_entries`, `email_suppressions`, `rate_limit_buckets`, `job_runs`, `pending_object_deletions` y la tabla de versiones de Alembic. Todas las demás del esquema `public` tienen RLS con `FORCE`.
 
@@ -316,13 +316,13 @@ PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configu
 | Tabla | Columnas principales | Restricciones clave |
 | --- | --- | --- |
 | `plans` | code, name, price\_month\_cents, price\_year\_cents, max\_active\_leases, features `jsonb` | code ∈ free, casero; features con las claves de la tabla de funciones; se cargan en migración |
-| `tax_rule_sets` | year, rate\_bp, deduction\_bp, rounding, cash\_threshold\_cents, min\_rent\_bp, source\_url | PK `year`; 2026: rate\_bp = 625, deduction\_bp = 2000, rounding = half\_up\_sol, cash\_threshold\_cents = 200000, min\_rent\_bp = 600 |
+| `tax_rule_sets` | year, rate\_bp, deduction\_bp, rounding, cash\_threshold\_cents, min\_rent\_bp, uit\_cents, source\_url | PK `year`; 2026: rate\_bp = 625, deduction\_bp = 2000, rounding = half\_up\_sol, cash\_threshold\_cents = 200000, min\_rent\_bp = 600, uit\_cents = 550000; solo se escribe desde los YAML de `infra/seed/tax/` |
 | `sunat_due_dates` | year, period, ruc\_group, due\_date, source\_url | PK `(year, period, ruc_group)`; `year` es el año del período declarado (diciembre de 2026 está en 2026 aunque venza en enero de 2027); ruc\_group ∈ 0, 1, 2-3, 4-5, 6-7, 8-9, bc |
 | `holidays` | date, name | Feriados nacionales; se usan para los 15 días hábiles del Libro de Reclamaciones |
 | `complaints` | id, number, created\_at, full\_name, document, email, phone, kind, detail, request, response, responded\_at, due\_at | Libro de Reclamaciones; number = `AAAA-NNNNNN` tomado de `complaint_counters` en la misma transacción; due\_at = 15 días hábiles; se responde con `make complaint-respond` |
 | `complaint_counters` | year, last\_number | PK `year`; se incrementa con `UPDATE ... RETURNING` |
 | `waitlist_entries` | id, email, source, consented\_at, created\_at | Se borra al registrarse o a los 12 meses |
-| `email_suppressions` | email\_hash, reason, created\_at | reason ∈ bounce, complaint, unsubscribe |
+| `email_suppressions` | email\_hash, email\_kind, reason, created\_at | reason ∈ bounce, complaint, unsubscribe; email\_kind nulo en un rebote o una queja (bloquea todo correo) o ∈ daily\_digest, tax\_reminders en una baja (bloquea solo ese tipo); único `(email_hash, email_kind)` con `NULLS NOT DISTINCT`; los correos transaccionales (verificación, recuperación, cancelación de la eliminación y copia del reclamo) nunca se suprimen por una baja |
 | `rate_limit_buckets` | key\_hash, window\_start, count | Tabla `UNLOGGED`; IP guardada como hash con sal rotada |
 | `job_runs` | job, run\_key, account\_id, status, attempts, started\_at, finished\_at, error\_code | Único `(job, run_key, account_id)` con `NULLS NOT DISTINCT`; status ∈ running, done, failed |
 | `pending_object_deletions` | storage\_key, account\_id, requested\_at, attempts, done\_at | Cola para borrar objetos de S3 (con todas sus versiones) antes de purgar filas |
@@ -354,7 +354,7 @@ PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configu
 | `tenant_links` | id, account\_id, lease\_id, nonce, key\_id, token\_hash, created\_at, revoked\_at, last\_used\_at | `token_hash` único; uno vigente por contrato; `key_id` identifica la clave HMAC para rotarla; vence 90 días después de `leases.ended_at`, calculado al resolver el token (no se guarda) |
 | `files` | id, account\_id, purpose, storage\_key, mime, size\_bytes, sha256, created\_at, purged\_at | purpose = voucher; único `(account_id, sha256)` donde `purged_at` es nulo: si el mismo archivo se sube otra vez se reutiliza la fila vigente; la purga de vouchers rechazados a los 90 días borra el objeto (vía `pending_object_deletions`) solo si ninguna otra solicitud no rechazada usa ese archivo, conserva las filas y marca `purged_at`, y una nueva subida del mismo archivo crea otra fila; storage\_key = `{account_id}/{file_id}` |
 | `message_templates` | account\_id, kind, body | PK `(account_id, kind)`; kind ∈ friendly, due\_today, overdue |
-| `reminder_logs` | id, account\_id, kind, charge\_id, period, renter\_doc\_hmac, channel, created\_at | kind ∈ rent, tax\_due; `charge_id` obligatorio si kind = rent y nulo si kind = tax\_due (que lleva period y renter\_doc\_hmac); channel ∈ whatsapp\_link, email, push; solo inserción |
+| `reminder_logs` | id, account\_id, kind, charge\_id, period, renter\_id, renter\_doc\_hmac, channel, created\_at | kind ∈ rent, tax\_due; `charge_id` obligatorio si kind = rent y nulo si kind = tax\_due, que lleva period, renter\_id y renter\_doc\_hmac (nulo si la declaración no tiene documento); channel ∈ whatsapp\_link, email, push; solo inserción |
 | `tax_payments` | id, account\_id, period, renter\_doc\_hmac, renter\_id, amount\_cents, paid\_on, order\_number, created\_by, created\_at | `renter_doc_hmac` NOT NULL; la declaración se identifica por `(renter_doc_hmac, period)`; `renter_id` es el inquilino que se mostró al registrar; se permiten varios por declaración; solo inserción |
 | `tax_payment_voids` | tax\_payment\_id, account\_id, reason, voided\_by, voided\_at | PK `tax_payment_id`; solo inserción |
 | `audit_log` | id, account\_id, actor\_user\_id, action, entity, entity\_id, changed\_fields `text[]`, at | Solo inserción; nombres de campos, nunca valores personales |
@@ -502,7 +502,7 @@ casero/
 | `docs/adr/` | Decisiones técnicas en inglés | Cada decisión no trivial |
 | `docs/legal/` | Términos, privacidad y consentimiento con versión y fecha | Antes de cualquier cambio que afecte datos o precios |
 | `docs/ops/` | Respaldos, restauración, claves, incidentes y carga del cronograma | Cada vez que se ejecuta uno |
-| `infra/seed/tax/` | Reglas y cronograma de SUNAT por año, con fuente | Cada diciembre, validado con el contador |
+| `infra/seed/tax/` | Única fuente de las reglas, la UIT, el cronograma de SUNAT y los feriados por año, con su fuente | Cada diciembre, validado con el contador |
 | Contrato OpenAPI | Generado por la API; CI falla si los tipos del frontend no están al día | Cada cambio de endpoint |
 
 **Idioma.** Interfaz, especificación y textos legales en español de Perú. Código, nombres de tablas, ADR y README en inglés.
@@ -516,7 +516,7 @@ casero/
 | Día | Revisar alertas del monitor, respaldos, tareas fallidas y errores; responder soporte por el WhatsApp Business del negocio |
 | Semana | Revisar reclamos (respuesta en máximo 15 días hábiles), métricas de activación y conversión, y conversar con 2 clientes |
 | Mes | Probar una restauración desde cero; revisar costos; registrar ingresos para tus propios impuestos |
-| Año (diciembre) | Cargar el cronograma de SUNAT, las reglas y los feriados del año siguiente, validados con el contador; revisar términos y privacidad |
+| Año (diciembre) | Agregar al YAML del año siguiente el cronograma de SUNAT, las reglas (con la UIT) y los feriados, validados con el contador, y cargarlos con `make load-tax-config`; revisar términos y privacidad |
 
 **Antes de CS-04.** Verificar que "Casero" esté disponible como dominio y marca; si no, elegir otro nombre antes de comprar el dominio y antes de registrar la marca en Indecopi.
 
