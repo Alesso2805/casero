@@ -401,6 +401,12 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 
 CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fechas del plan y la puerta del 22 de noviembre no cambian; el adelanto se refleja en la velocidad medida del Sprint 0.
 
+**Seguimiento de velocidad**
+
+| Sprint | Puntos planificados | Puntos reales | Cierre | Velocidad media |
+| --- | --- | --- | --- | --- |
+| Sprint 0 | 5 (CS-01, CS-02) | 5 | 25 oct 2026 (el plan lo cerraba el 6 dic) | 5 puntos por sprint |
+
 **Puertas de decisión**
 
 - **Fin de la validación (22 nov):** se empieza el sprint 0 solo si hay 5 preventas (al menos 3 de personas sin relación previa), RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas. Si las preventas vienen solo de arrendadores sin RUC, Casero se reposiciona como herramienta de cobros y el impuesto queda como complemento.
