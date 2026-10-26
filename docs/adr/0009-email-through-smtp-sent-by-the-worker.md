@@ -34,3 +34,13 @@ There are two constraints:
 - Switching from SES to another provider means changing environment variables only, as long as the provider offers SMTP.
 - The suppression check before sending arrived with the SNS webhook (ADR-0010). `List-Unsubscribe` headers arrive with the scheduled emails. A complaint copy is transactional, so an unsubscribe never suppresses it.
 - Using the SES HTTP API would remove the SMTP dependency but add the AWS SDK and a second adapter for Mailpit. This can be revisited if SMTP limits show up.
+
+## Amendment (CS-05, 2026-10-26)
+
+Account emails (verification and password reset) are sent during the request that creates their token, not by the worker:
+
+- only `casero_app` can read and write `email_tokens` (the roles table gives the worker no access to it);
+- the token in clear exists only in that request, because the table keeps its SHA-256;
+- the person is waiting on the screen, so an immediate error ("no pudimos enviar el correo") is better than a silent failure a minute later.
+
+A failed send doesn't undo the request: registration still succeeds, and the app offers to resend the email (three per hour). Suppressions still apply: a bounced or complained address gets no email. Scheduled emails and complaint copies stay in the worker.
