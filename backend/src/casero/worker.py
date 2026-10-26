@@ -17,6 +17,7 @@ from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.identity.infrastructure.email_suppressions import SuppressionLookup
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.mail import SmtpMailer
+from casero.shared.infrastructure.rate_limits import purge_expired_buckets
 from casero.shared.infrastructure.settings import WorkerSettings
 from casero.shared.kernel.clock import Clock, SystemClock
 
@@ -48,7 +49,14 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
     mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
     suppressed: SuppressedAddresses = SuppressionLookup(engine, settings.email_hash_key)
     identity = business_identity(settings)
-    return {"complaint_emails": SendComplaintEmails(outbox, mailer, suppressed, clock, identity)}
+
+    async def purge_rate_limits() -> None:
+        await purge_expired_buckets(engine, clock)
+
+    return {
+        "complaint_emails": SendComplaintEmails(outbox, mailer, suppressed, clock, identity),
+        "rate_limit_purge": purge_rate_limits,
+    }
 
 
 async def complaint_copy_text(

@@ -64,6 +64,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/tax-calculator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Calculate
+         * @description Estimate each renter's monthly SUNAT payment; amounts are not stored.
+         */
+        post: operations["calculate_api_public_tax_calculator_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/unsubscribe": {
         parameters: {
             query?: never;
@@ -108,6 +128,39 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CalculatorLine */
+        CalculatorLine: {
+            /** Base Cents */
+            base_cents: number;
+            /** Collected Cents */
+            collected_cents: number;
+            /** Tax Cents */
+            tax_cents: number;
+        };
+        /** CalculatorRequest */
+        CalculatorRequest: {
+            /** Collected Cents */
+            collected_cents: number[];
+            /** Period */
+            period: string;
+            /** Ruc Group */
+            ruc_group?: ("0" | "1" | "2-3" | "4-5" | "6-7" | "8-9" | "bc") | null;
+        };
+        /** CalculatorResponse */
+        CalculatorResponse: {
+            /** Deduction Bp */
+            deduction_bp: number;
+            /** Due On */
+            due_on: string | null;
+            /** Lines */
+            lines: components["schemas"]["CalculatorLine"][];
+            /** Period */
+            period: string;
+            /** Rate Bp */
+            rate_bp: number;
+            /** Total Tax Cents */
+            total_tax_cents: number;
+        };
         /** FileComplaintRequest */
         FileComplaintRequest: {
             /** Address */
@@ -317,6 +370,53 @@ export interface operations {
             };
             /** @description Wrong topic or invalid signature */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    calculate_api_public_tax_calculator_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalculatorRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalculatorResponse"];
+                };
+            };
+            /** @description The rules of that year are not loaded */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many requests from this client */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
