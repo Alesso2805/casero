@@ -7,6 +7,7 @@ class Email:
     subject: str
     text: str
     reply_to: str | None = None
+    unsubscribe_url: str | None = None
 
 
 class MailDeliveryError(Exception):

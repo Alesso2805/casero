@@ -19,7 +19,7 @@
 		-Server
 	}
 
-	@noindex path /privacidad /privacidad/* /libro-de-reclamaciones /libro-de-reclamaciones/* /api/*
+	@noindex path /privacidad /privacidad/* /libro-de-reclamaciones /libro-de-reclamaciones/* /baja /api/*
 	header @noindex X-Robots-Tag noindex
 
 	@too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 5242880`

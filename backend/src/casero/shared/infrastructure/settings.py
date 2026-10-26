@@ -29,6 +29,7 @@ class ApiSettings:
     rate_limit_key: bytes
     email_hash_key: bytes
     ses_events_topic_arn: str
+    unsubscribe_key: bytes
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -37,6 +38,7 @@ class ApiSettings:
             rate_limit_key=os.environ["CASERO_RATE_LIMIT_KEY"].encode(),
             email_hash_key=os.environ["CASERO_EMAIL_HASH_KEY"].encode(),
             ses_events_topic_arn=os.environ["CASERO_SES_EVENTS_TOPIC_ARN"],
+            unsubscribe_key=os.environ["CASERO_UNSUBSCRIBE_KEY"].encode(),
         )
 
 

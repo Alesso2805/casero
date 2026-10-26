@@ -38,6 +38,9 @@ class SmtpMailer:
         )
         if email.reply_to:
             message["Reply-To"] = email.reply_to
+        if email.unsubscribe_url:
+            message["List-Unsubscribe"] = f"<{email.unsubscribe_url}>"
+            message["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
         message.set_content(email.text)
         return message
 

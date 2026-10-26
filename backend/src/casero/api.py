@@ -22,13 +22,16 @@ from casero.admin.application.complaints import (
 )
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.identity.api import email_events as email_events_api
+from casero.identity.api import unsubscribe as unsubscribe_api
 from casero.identity.application.email_suppressions import (
     RecordEmailEvent,
     SnsMessageVerifier,
     SuppressionStore,
 )
+from casero.identity.application.unsubscribe import Unsubscribe, UnsubscribeTokens, UserEmails
 from casero.identity.infrastructure.email_suppressions import SqlSuppressionStore
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
+from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
@@ -99,6 +102,17 @@ def create_app(
         return RecordEmailEvent(store, verifier, app_clock, config.ses_events_topic_arn)
 
     app.include_router(email_events_api.create_router(provide_record_email_event))
+
+    tokens: UnsubscribeTokens = HmacUnsubscribeTokens(config.unsubscribe_key)
+
+    async def provide_unsubscribe(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> Unsubscribe:
+        users: UserEmails = SqlUserEmails(connection)
+        store: SuppressionStore = SqlSuppressionStore(connection, config.email_hash_key)
+        return Unsubscribe(tokens, users, store, app_clock)
+
+    app.include_router(unsubscribe_api.create_router(provide_unsubscribe))
 
     @app.get("/api/health")
     def health() -> HealthResponse:
