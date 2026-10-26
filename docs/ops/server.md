@@ -1,48 +1,97 @@
-# Servidor
+# Servidor (Google Cloud y DuckDNS)
 
-El servidor se contrata antes de presentar la solicitud ante la Autoridad (semana del 2 al 8 de noviembre de 2026), porque esa solicitud declara el país donde quedan los datos. Se declara el país del servidor que de verdad se contrate.
+Decisión (25 de octubre de 2026):
 
-## Regla para elegirlo
+- Una VM de Compute Engine **e2-small** (2 vCPU compartidas, 2 GB de RAM) en **us-east1** (Carolina del Sur, EE. UU.), con disco pd-balanced de 20 GB.
+- IP externa estática en el nivel de red **Standard**.
+- Un subdominio de **DuckDNS** para la web.
+- País que se declara ante la Autoridad: **EE. UU.**
 
-Se toma la primera opción disponible, en este orden:
+Costo estimado: unos US$ 18 al mes (VM US$ 12.23, disco US$ 2.00, IP US$ 3.65). En el nivel Standard, los primeros 200 GiB de salida al mes son gratis. Si un día falta memoria, se pasa a e2-medium: se detiene la VM, se cambia el tipo y se vuelve a iniciar.
 
-1. Hetzner Cloud CX33 (4 vCPU x86, 8 GB, 80 GB) en Nuremberg (Alemania) o Helsinki (Finlandia).
-2. Cualquier plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes, primero x86 (CX) y después ARM (CAX).
-3. Si no hay nada en Hetzner, un VPS x86 de OVHcloud, solo en un datacenter de Francia. En ese caso se declara Francia.
+El correo no sale desde DuckDNS, porque no permite los registros que pide Amazon SES. Usa un dominio propio comprado solo para el correo (ver SPEC.md, Proveedores).
 
-x86 va antes que ARM porque con un servidor ARM CI tendría que construir las imágenes para arm64.
+## 1. Crear la VM (una vez)
 
-## Opciones al 25 de octubre de 2026
+Desde Cloud Shell o con `gcloud` instalado y autenticado:
 
-Precios sin IVA. En Hetzner incluyen la IPv4.
+```sh
+gcloud config set project <proyecto>
+gcloud compute addresses create casero-ip --region=us-east1 --network-tier=STANDARD
+gcloud compute instances create casero \
+  --zone=us-east1-b --machine-type=e2-small \
+  --image-family=debian-13 --image-project=debian-cloud \
+  --boot-disk-size=20GB --boot-disk-type=pd-balanced \
+  --network-tier=STANDARD --address=casero-ip --tags=casero-web
+gcloud compute firewall-rules create casero-web \
+  --allow=tcp:80,tcp:443,udp:443 --target-tags=casero-web
+```
 
-| Opción | Plan | vCPU, RAM y disco | Precio al mes | Ubicaciones | Estado |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Hetzner CX33 | 4 x86, 8 GB, 80 GB | € 8.99 | Nuremberg, Helsinki | No disponible |
-| 2 | Hetzner CX23 | 2 x86, 4 GB, 40 GB | € 5.99 | Nuremberg, Helsinki | No disponible |
-| 2 | Hetzner CAX11 | 2 ARM, 4 GB, 40 GB | € 6.49 | Nuremberg, Helsinki | No disponible |
-| 2 | Hetzner CAX21 | 4 ARM, 8 GB, 80 GB | € 10.99 | Nuremberg, Helsinki | No disponible |
-| 3 | OVHcloud VPS-1 | 2 vCores, 4 GB, 40 GB | desde € 3.81 | Francia, por confirmar en el configurador | Por revisar al contratar |
-| 3 | OVHcloud VPS-2 | 4 vCores, 8 GB, 75 GB | desde € 7.21 | Francia, por confirmar en el configurador | Por revisar al contratar |
+La red por defecto ya permite SSH (puerto 22). El acceso es solo con llave.
 
-- Hetzner tiene abierto desde el 26 de junio de 2026 un aviso de disponibilidad limitada de servidores cloud.
-- Hetzner no ofrece el CX33 en Falkenstein.
-- Su CX43 (€ 16.49) y su CPX22 (€ 19.99) superan el tope de la opción 2.
-- Los precios "desde" de OVHcloud parecen suponer un pago adelantado de 12 meses; se confirma al contratar.
+## 2. Preparar la VM
 
-## Al contratar
+Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
 
-1. Elegir el servidor según la regla y anotarlo en el registro de abajo.
-2. Activar el doble factor en la cuenta del proveedor y guardar las credenciales en Bitwarden.
-3. Configurar el acceso SSH solo con llave (la llave vive en Bitwarden), sin contraseñas y sin acceso de root por SSH.
-4. Abrir en el firewall solo los puertos 22, 80 y 443. El puerto del panel interno queda ligado a `127.0.0.1` (ADR-0008).
-5. No contratar las copias de seguridad del proveedor: la restauración parte de los respaldos en B2.
-6. Declarar el país ante la Autoridad. Actualizar la tabla de proveedores de SPEC, la política de privacidad y la tabla de costos del repositorio privado `casero-business` con el plan real.
+1. Crear 2 GB de swap, para que PostgreSQL y la API no se queden sin memoria en picos:
+   ```sh
+   sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+   sudo mkswap /swapfile && sudo swapon /swapfile
+   echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+   ```
+2. Instalar Docker Engine con el plugin de Compose desde el repositorio oficial de Docker para Debian.
+3. Activar las actualizaciones de seguridad automáticas: `sudo apt install unattended-upgrades`.
+4. Crear el usuario del despliegue y su carpeta:
+   ```sh
+   sudo adduser --disabled-password --gecos "" casero
+   sudo usermod -aG docker casero
+   sudo install -d -o casero -g casero /opt/casero
+   ```
+5. Comprobar en `/etc/ssh/sshd_config` que estén `PasswordAuthentication no` y `PermitRootLogin no`.
+6. Crear `/opt/casero/.env`, con permisos 600 y dueño `casero`. Las contraseñas son alfanuméricas de 32 caracteres y se guardan en Bitwarden:
+   ```
+   POSTGRES_PASSWORD=...
+   CASERO_OWNER_PASSWORD=...
+   CASERO_BACKUP_PASSWORD=...
+   CASERO_APP_PASSWORD=...
+   CASERO_WORKER_PASSWORD=...
+   CASERO_ADMIN_PASSWORD=...
+   CASERO_DOMAIN=<subdominio>.duckdns.org
+   CASERO_TLS=<correo para los avisos de Let's Encrypt>
+   ```
 
-CS-04 instala sobre este servidor la configuración definitiva.
+## 3. DuckDNS
+
+1. Entrar a duckdns.org, crear el subdominio y apuntarlo a la IP estática (`gcloud compute addresses describe casero-ip --region=us-east1`).
+2. Guardar el token de DuckDNS en Bitwarden. El servidor no lo necesita, porque la IP es fija.
+3. Antes del primer despliegue, comprobar que la consulta CAA del subdominio no devuelve SERVFAIL (`dig CAA <subdominio>.duckdns.org`). Si lo devuelve, Let's Encrypt no emite el certificado. Caddy intenta además con ZeroSSL, y los registros de Caddy lo muestran en el primer arranque.
+
+## 4. Despliegue automático (GitHub)
+
+1. Generar una llave solo para el despliegue: `ssh-keygen -t ed25519 -f casero-deploy -C github-actions`.
+2. Agregar `casero-deploy.pub` a `/home/casero/.ssh/authorized_keys` en la VM y guardar la llave privada en Bitwarden.
+3. Crear en el repositorio el entorno `production`:
+   - Secreto `DEPLOY_SSH_KEY`: la llave privada.
+   - Secreto `DEPLOY_KNOWN_HOSTS`: la línea de `ssh-keyscan <ip>`, comparada antes con la huella que muestra `gcloud compute ssh`.
+   - Variables `DEPLOY_HOST` (la IP), `DEPLOY_USER` (`casero`) y `CASERO_DOMAIN`.
+4. Crear la variable de repositorio `DEPLOY_ENABLED=true`.
+
+Desde ese momento, cada fusión en `main` con el CI en verde:
+
+1. construye las imágenes y las publica en GHCR;
+2. copia `infra/deploy/docker-compose.yml` y los scripts de roles a `/opt/casero`;
+3. levanta la versión nueva con la etiqueta del commit (guardada en `/opt/casero/image.env`);
+4. comprueba `https://<dominio>/api/health`.
+
+Para volver a una versión anterior, se ejecuta en `/opt/casero`:
+
+```sh
+printf 'IMAGE_TAG=<sha>\n' > image.env
+docker compose --env-file .env --env-file image.env up --detach
+```
 
 ## Registro
 
-| Fecha | Proveedor y plan | Ubicación | País declarado | Quién |
-| --- | --- | --- | --- | --- |
-| | | | | |
+| Fecha | Acción | Quién |
+| --- | --- | --- |
+| | | |
