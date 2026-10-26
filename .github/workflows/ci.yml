@@ -133,6 +133,7 @@ jobs:
       CASERO_APP_PASSWORD: ci_app
       CASERO_WORKER_PASSWORD: ci_worker
       CASERO_ADMIN_PASSWORD: ci_admin
+      CASERO_RATE_LIMIT_KEY: ci_rate_limit
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the production images

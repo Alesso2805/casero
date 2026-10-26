@@ -47,7 +47,10 @@ services:
 
   api:
     <<: *backend
-    command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    environment:
+      CASERO_APP_DATABASE_URL: postgresql+asyncpg://casero_app:${CASERO_APP_PASSWORD:?}@postgres:5432/casero
+      CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:?}
     depends_on:
       migrate:
         condition: service_completed_successfully
