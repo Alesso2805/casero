@@ -397,6 +397,29 @@
         "summary": "File Complaint"
       }
     },
+    "/api/public/email-events": {
+      "post": {
+        "description": "Receive SES bounces and complaints through an SNS subscription.",
+        "operationId": "receive_email_event_api_public_email_events_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Not an SNS message"
+          },
+          "403": {
+            "description": "Wrong topic or invalid signature"
+          }
+        },
+        "summary": "Receive Email Event"
+      }
+    },
     "/api/public/waitlist": {
       "post": {
         "description": "Add an email to the waitlist once the visitor has given consent.",

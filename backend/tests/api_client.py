@@ -6,9 +6,13 @@ from datetime import date, datetime
 from fastapi.testclient import TestClient
 
 from casero.api import create_app
+from casero.identity.application.email_suppressions import SnsMessageVerifier
 from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.clock import LIMA, Clock
 from database import Database
+
+TEST_EMAIL_HASH_KEY = b"test-email-hash-key"
+TEST_TOPIC_ARN = "arn:aws:sns:us-east-1:000000000000:casero-test"
 
 
 class FixedClock:
@@ -28,10 +32,18 @@ def address_for(name: str) -> str:
 
 @contextmanager
 def api_client(
-    database: Database, address: str, clock: Clock | None = None
+    database: Database,
+    address: str,
+    clock: Clock | None = None,
+    sns_verifier: SnsMessageVerifier | None = None,
 ) -> Iterator[TestClient]:
     url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
-    settings = ApiSettings(database_url=url, rate_limit_key=b"test-key")
-    app = create_app(settings, clock)
+    settings = ApiSettings(
+        database_url=url,
+        rate_limit_key=b"test-key",
+        email_hash_key=TEST_EMAIL_HASH_KEY,
+        ses_events_topic_arn=TEST_TOPIC_ARN,
+    )
+    app = create_app(settings, clock, sns_verifier)
     with TestClient(app, client=(address, 50000)) as client:
         yield client
