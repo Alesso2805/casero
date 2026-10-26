@@ -46,12 +46,33 @@ const calculatorRoute = createRoute({
   ),
 });
 
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/registro",
+  component: lazyRouteComponent(() => import("./account/RegisterPage"), "RegisterPage"),
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ingresar",
+  component: lazyRouteComponent(() => import("./account/LoginPage"), "LoginPage"),
+});
+
+const appRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app",
+  component: lazyRouteComponent(() => import("./account/AppHome"), "AppHome"),
+});
+
 export const routeTree = rootRoute.addChildren([
   landingRoute,
   privacyRoute,
   complaintsRoute,
   unsubscribeRoute,
   calculatorRoute,
+  registerRoute,
+  loginRoute,
+  appRoute,
 ]);
 
 export const router = createRouter({ routeTree });
