@@ -6,9 +6,13 @@ from datetime import date, datetime
 from fastapi.testclient import TestClient
 
 from casero.api import create_app
-from casero.shared.infrastructure.settings import ApiSettings
+from casero.shared.infrastructure.settings import ApiSettings, BusinessSettings
 from casero.shared.kernel.clock import LIMA, Clock
 from database import Database
+
+TEST_BUSINESS = BusinessSettings(
+    name="Negocio de Prueba", ruc="10000000001", address="Av. Ficticia 100, Lima"
+)
 
 
 class FixedClock:
@@ -31,6 +35,7 @@ def api_client(
     database: Database, address: str, clock: Clock | None = None
 ) -> Iterator[TestClient]:
     url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
-    app = create_app(ApiSettings(database_url=url, rate_limit_key=b"test-key"), clock)
+    settings = ApiSettings(database_url=url, rate_limit_key=b"test-key", business=TEST_BUSINESS)
+    app = create_app(settings, clock)
     with TestClient(app, client=(address, 50000)) as client:
         yield client

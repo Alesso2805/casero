@@ -40,6 +40,9 @@ services:
     environment:
       CASERO_APP_DATABASE_URL: postgresql+asyncpg://casero_app:${CASERO_APP_PASSWORD:-casero_app_dev}@postgres:5432/casero
       CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:-rate_limit_dev}
+      CASERO_BUSINESS_NAME: "[nombre completo]"
+      CASERO_BUSINESS_RUC: "[RUC]"
+      CASERO_BUSINESS_ADDRESS: "[domicilio]"
     depends_on:
       migrate:
         condition: service_completed_successfully

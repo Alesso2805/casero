@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useBusiness } from "../api/business";
 import { api } from "../api/client";
 import { copy } from "./copy";
 
@@ -38,6 +39,7 @@ export function WaitlistForm() {
     formState: { errors },
   } = useForm<WaitlistValues>({ resolver: zodResolver(schema) });
   const mutation = useMutation({ mutationFn: joinWaitlist });
+  const business = useBusiness();
 
   if (mutation.data === "joined") {
     return (
@@ -88,7 +90,7 @@ export function WaitlistForm() {
             {...register("consent")}
           />
           <label htmlFor="waitlist-consent" className="text-base">
-            {text.consentLabel}{" "}
+            {text.consentLabel(business.data?.name ?? text.controllerFallback)}{" "}
             <Link to="/privacidad" className="text-brand underline">
               {text.privacyLink}
             </Link>

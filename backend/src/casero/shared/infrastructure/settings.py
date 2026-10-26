@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
@@ -8,15 +9,32 @@ SMTP_SECURITY_MODES = ("none", "starttls", "tls")
 
 
 @dataclass(frozen=True)
+class BusinessSettings:
+    name: str
+    ruc: str
+    address: str
+
+    @classmethod
+    def from_environment(cls, env: Mapping[str, str]) -> BusinessSettings:
+        return cls(
+            name=env["CASERO_BUSINESS_NAME"],
+            ruc=env["CASERO_BUSINESS_RUC"],
+            address=env["CASERO_BUSINESS_ADDRESS"],
+        )
+
+
+@dataclass(frozen=True)
 class ApiSettings:
     database_url: str
     rate_limit_key: bytes
+    business: BusinessSettings
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
         return cls(
             database_url=os.environ["CASERO_APP_DATABASE_URL"],
             rate_limit_key=os.environ["CASERO_RATE_LIMIT_KEY"].encode(),
+            business=BusinessSettings.from_environment(os.environ),
         )
 
 
@@ -27,18 +45,11 @@ def smtp_security(value: str) -> SmtpSecurity:
 
 
 @dataclass(frozen=True)
-class BusinessSettings:
-    name: str
-    ruc: str
-    address: str
-    complaints_inbox: str
-
-
-@dataclass(frozen=True)
 class WorkerSettings:
     database_url: str
     smtp: SmtpSettings
     business: BusinessSettings
+    complaints_inbox: str
 
     @property
     def engine_url(self) -> str:
@@ -57,10 +68,6 @@ class WorkerSettings:
                 password=env.get("CASERO_SMTP_PASSWORD") or None,
                 sender=env["CASERO_MAIL_FROM"],
             ),
-            business=BusinessSettings(
-                name=env["CASERO_BUSINESS_NAME"],
-                ruc=env["CASERO_BUSINESS_RUC"],
-                address=env["CASERO_BUSINESS_ADDRESS"],
-                complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
-            ),
+            business=BusinessSettings.from_environment(env),
+            complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
         )
