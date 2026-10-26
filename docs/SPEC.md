@@ -464,7 +464,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 
 ## Repositorio, convenciones y operación
 
-Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
+Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. Los datos del negocio que la web debe mostrar (nombre, RUC y domicilio del responsable) viven en variables de entorno (`CASERO_BUSINESS_*`); el worker los usa en la copia de cada reclamo y la web los lee de `GET /api/public/business` para el Libro de Reclamaciones, la política de privacidad y el aviso de la lista de espera. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
 
 ```text
 casero/
