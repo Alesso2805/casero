@@ -158,3 +158,10 @@ COLUMN_PRIVILEGES = {
         "staff_users": {"UPDATE": frozenset({"recovery_codes_hash"})},
     },
 }
+
+FUNCTION_EXECUTORS = {
+    "app_resolve_tenant_token": frozenset({"casero_app"}),
+    "app_cancel_deletion": frozenset({"casero_app"}),
+    "app_list_account_ids": frozenset({"casero_worker"}),
+    "purge_account": frozenset({"casero_worker"}),
+}

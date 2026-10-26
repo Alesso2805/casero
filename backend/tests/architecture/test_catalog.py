@@ -4,7 +4,12 @@ import asyncpg
 import pytest
 
 from architecture import catalog
-from architecture.expected_grants import COLUMN_PRIVILEGES, TABLE_PRIVILEGES, TABLES_WITHOUT_RLS
+from architecture.expected_grants import (
+    COLUMN_PRIVILEGES,
+    FUNCTION_EXECUTORS,
+    TABLE_PRIVILEGES,
+    TABLES_WITHOUT_RLS,
+)
 from database import Database
 
 pytestmark = pytest.mark.anyio
@@ -103,3 +108,21 @@ async def test_ar14_meta_detects_an_application_role_bypassing_rls(
     )
 
     assert problems == ["casero_app has BYPASSRLS=True", "plans is owned by casero_admin"]
+
+
+async def test_ar19_functions_follow_the_security_definer_contract(
+    owner: asyncpg.Connection,
+) -> None:
+    assert await catalog.function_problems(owner, FUNCTION_EXECUTORS) == []
+
+
+async def test_ar19_meta_detects_function_problems(owner: asyncpg.Connection) -> None:
+    await owner.execute("GRANT EXECUTE ON FUNCTION purge_account(uuid, date, text) TO casero_app")
+    await owner.execute("ALTER FUNCTION app_list_account_ids(text, date) RESET search_path")
+    await owner.execute("CREATE FUNCTION stray() RETURNS integer LANGUAGE sql AS 'SELECT 1'")
+
+    assert await catalog.function_problems(owner, FUNCTION_EXECUTORS) == [
+        "app_list_account_ids has no fixed search_path",
+        "purge_account is executable by ['casero_app', 'casero_worker']",
+        "stray is not a listed function",
+    ]

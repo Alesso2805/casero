@@ -1,9 +1,10 @@
 import os
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
+import asyncpg
 from alembic import command
 from alembic.config import Config
 from testcontainers.community.postgres import PostgresContainer
@@ -58,3 +59,17 @@ def running_database() -> Iterator[Database]:
         )
         migrate(database)
         yield database
+
+
+@asynccontextmanager
+async def rolled_back(dsn: str, role: str | None = None) -> AsyncIterator[asyncpg.Connection]:
+    connection = await asyncpg.connect(dsn)
+    transaction = connection.transaction()
+    await transaction.start()
+    try:
+        if role is not None:
+            await connection.execute(f"SET LOCAL ROLE {role}")
+        yield connection
+    finally:
+        await transaction.rollback()
+        await connection.close()

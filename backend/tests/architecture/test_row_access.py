@@ -1,14 +1,13 @@
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from uuid import UUID
 
 import asyncpg
 import pytest
 
-from architecture import row_access
+import seed
+from architecture import catalog
 from architecture.expected_grants import ACCOUNT_TABLES
-from architecture.row_access import SeededAccount
-from database import Database
+from database import Database, rolled_back
+from seed import SeededAccount
 
 pytestmark = pytest.mark.anyio
 
@@ -24,37 +23,23 @@ def anyio_backend() -> str:
 async def seeded(database: Database) -> tuple[SeededAccount, SeededAccount]:
     owner = await asyncpg.connect(database.dsn("casero_owner"))
     try:
-        first = await row_access.seed_account(owner, lease_count=2)
-        second = await row_access.seed_account(owner, lease_count=1)
+        first = await seed.seed_account(owner, lease_count=2)
+        second = await seed.seed_account(owner, lease_count=1)
     finally:
         await owner.close()
     return first, second
 
 
-@asynccontextmanager
-async def session(dsn: str, role: str | None = None) -> AsyncIterator[asyncpg.Connection]:
-    connection = await asyncpg.connect(dsn)
-    transaction = connection.transaction()
-    await transaction.start()
-    try:
-        if role is not None:
-            await connection.execute(f"SET LOCAL ROLE {role}")
-        yield connection
-    finally:
-        await transaction.rollback()
-        await connection.close()
-
-
 async def tenant_scope_leaks(
     connection: asyncpg.Connection, seeded: SeededAccount, lease_id: UUID
 ) -> list[str]:
-    await row_access.set_context(connection, seeded.account_id, "tenant", lease_id)
+    await seed.set_context(connection, seeded.account_id, "tenant", lease_id)
     return sorted(
         [
             table
             for table in ACCOUNT_TABLES
-            if await row_access.visible_keys(connection, table)
-            != row_access.expected_tenant_keys(seeded, lease_id, table)
+            if await seed.visible_keys(connection, table)
+            != seed.expected_tenant_keys(seeded, lease_id, table)
         ]
     )
 
@@ -62,38 +47,38 @@ async def tenant_scope_leaks(
 async def account_isolation_leaks(
     connection: asyncpg.Connection, seeded: SeededAccount
 ) -> list[str]:
-    await row_access.set_context(connection, seeded.account_id)
+    await seed.set_context(connection, seeded.account_id)
     return sorted(
         [
             table
             for table in ACCOUNT_TABLES
-            if await row_access.visible_keys(connection, table) != seeded.keys[table]
+            if await seed.visible_keys(connection, table) != seeded.keys[table]
         ]
     )
 
 
 async def tables_with_visible_rows(connection: asyncpg.Connection) -> set[str]:
-    return {table for table in ACCOUNT_TABLES if await row_access.visible_keys(connection, table)}
+    return {table for table in ACCOUNT_TABLES if await seed.visible_keys(connection, table)}
 
 
 async def test_ar15_no_column_default_reads_the_clock(database: Database) -> None:
-    async with session(database.dsn("casero_owner")) as owner:
-        assert await row_access.clock_defaults(owner) == []
+    async with rolled_back(database.dsn("casero_owner")) as owner:
+        assert await catalog.clock_defaults(owner) == []
 
 
 async def test_ar15_meta_detects_a_clock_default(database: Database) -> None:
-    async with session(database.dsn("casero_owner")) as owner:
+    async with rolled_back(database.dsn("casero_owner")) as owner:
         await owner.execute("ALTER TABLE charges ALTER COLUMN created_at SET DEFAULT now()")
 
-        assert await row_access.clock_defaults(owner) == ["charges.created_at DEFAULT now()"]
+        assert await catalog.clock_defaults(owner) == ["charges.created_at DEFAULT now()"]
 
 
 async def test_ar16_tenant_context_without_a_lease_sees_no_rows(
     database: Database, seeded: tuple[SeededAccount, SeededAccount]
 ) -> None:
     first, _ = seeded
-    async with session(database.dsn("casero_app")) as app:
-        await row_access.set_context(app, first.account_id, "tenant")
+    async with rolled_back(database.dsn("casero_app")) as app:
+        await seed.set_context(app, first.account_id, "tenant")
 
         assert await tables_with_visible_rows(app) == set()
 
@@ -103,7 +88,7 @@ async def test_ar16_tenant_context_sees_only_its_lease(
 ) -> None:
     first, _ = seeded
     for lease_id in first.lease_ids:
-        async with session(database.dsn("casero_app")) as app:
+        async with rolled_back(database.dsn("casero_app")) as app:
             assert await tenant_scope_leaks(app, first, lease_id) == []
 
 
@@ -111,7 +96,7 @@ async def test_ar16_meta_detects_a_missing_tenant_policy(
     database: Database, seeded: tuple[SeededAccount, SeededAccount]
 ) -> None:
     first, _ = seeded
-    async with session(database.superuser_dsn()) as superuser:
+    async with rolled_back(database.superuser_dsn()) as superuser:
         await superuser.execute("DROP POLICY tenant_scope ON charges")
         await superuser.execute("SET LOCAL ROLE casero_app")
 
@@ -121,7 +106,7 @@ async def test_ar16_meta_detects_a_missing_tenant_policy(
 async def test_ar17_admin_sees_rows_only_where_it_has_a_policy(
     database: Database, seeded: tuple[SeededAccount, SeededAccount]
 ) -> None:
-    async with session(database.superuser_dsn()) as superuser:
+    async with rolled_back(database.superuser_dsn()) as superuser:
         await superuser.execute(f"GRANT SELECT ON {', '.join(ACCOUNT_TABLES)} TO casero_admin")
         await superuser.execute("SET LOCAL ROLE casero_admin")
 
@@ -131,7 +116,7 @@ async def test_ar17_admin_sees_rows_only_where_it_has_a_policy(
 async def test_ar17_meta_detects_an_admin_policy_on_another_table(
     database: Database, seeded: tuple[SeededAccount, SeededAccount]
 ) -> None:
-    async with session(database.superuser_dsn()) as superuser:
+    async with rolled_back(database.superuser_dsn()) as superuser:
         await superuser.execute(f"GRANT SELECT ON {', '.join(ACCOUNT_TABLES)} TO casero_admin")
         await superuser.execute("CREATE POLICY leak ON leases TO casero_admin USING (true)")
         await superuser.execute("SET LOCAL ROLE casero_admin")
@@ -144,7 +129,7 @@ async def test_ar18_each_account_sees_only_its_own_rows(
     database: Database, seeded: tuple[SeededAccount, SeededAccount], role: str
 ) -> None:
     for account in seeded:
-        async with session(database.dsn(role)) as connection:
+        async with rolled_back(database.dsn(role)) as connection:
             assert await account_isolation_leaks(connection, account) == []
 
 
@@ -152,8 +137,8 @@ async def test_ar18_each_account_sees_only_its_own_rows(
 async def test_ar18_without_an_account_no_row_is_visible(
     database: Database, seeded: tuple[SeededAccount, SeededAccount], role: str
 ) -> None:
-    async with session(database.dsn(role)) as connection:
-        await row_access.set_context(connection, None)
+    async with rolled_back(database.dsn(role)) as connection:
+        await seed.set_context(connection, None)
 
         assert await tables_with_visible_rows(connection) == set()
 
@@ -162,7 +147,7 @@ async def test_ar18_meta_detects_a_table_without_rls(
     database: Database, seeded: tuple[SeededAccount, SeededAccount]
 ) -> None:
     _, second = seeded
-    async with session(database.superuser_dsn(), role=None) as superuser:
+    async with rolled_back(database.superuser_dsn()) as superuser:
         await superuser.execute("ALTER TABLE properties DISABLE ROW LEVEL SECURITY")
         await superuser.execute("SET LOCAL ROLE casero_app")
 

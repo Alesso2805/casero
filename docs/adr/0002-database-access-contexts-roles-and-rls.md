@@ -42,7 +42,7 @@ No role used by the API, the worker or the panel owns tables or has `BYPASSRLS`.
   - Cancelling an account deletion from the email link: `app_cancel_deletion(p_token_hash, p_now)`.
 - **`account`** (`/api/app/*`): the `current_account` dependency resolves the session to its account through `account_members` and runs `set_config('app.account_id', :id, true)` with a bound parameter inside the request transaction.
 - **`tenant`** (`/api/tenant/*`):
-  - `app_resolve_tenant_token(p_hash, p_today)` returns the account and lease when the link is not revoked and its lease is active or ended less than 90 days before `p_today`.
+  - `app_resolve_tenant_token(p_hash, p_today)` returns the account and lease when the link is not revoked, its lease is active or ended less than 90 days before `p_today`, and the account has not asked to be deleted.
   - A single statement then sets `app.account_id`, `app.context = 'tenant'` and `app.lease_id`, all transaction-local.
 - **`system`** (worker as `casero_worker`): `app_list_account_ids(p_purpose, p_today)`, with `p_purpose` ∈ `jobs`, `purge`, lists the accounts. Each account is then processed in its own transaction with `app.account_id` set. `job_runs` and `pending_object_deletions` have no RLS.
 - **`admin`** (`/api/admin/*`): a separate loopback-only listener and a separate pool as `casero_admin`, both created only when `ADMIN_ENABLED=true` (ADR-0008).
