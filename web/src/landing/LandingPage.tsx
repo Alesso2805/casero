@@ -23,6 +23,12 @@ export function LandingPage() {
         >
           {copy.hero.action}
         </a>
+        <Link
+          to="/calculadora"
+          className="flex min-h-11 items-center justify-center rounded-lg border border-brand px-5 text-base font-semibold text-brand"
+        >
+          {copy.hero.calculator}
+        </Link>
       </header>
 
       <section aria-labelledby="como-funciona" className="flex flex-col gap-4">

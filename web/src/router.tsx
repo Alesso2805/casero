@@ -37,11 +37,21 @@ const unsubscribeRoute = createRoute({
   component: lazyRouteComponent(() => import("./landing/UnsubscribePage"), "UnsubscribePage"),
 });
 
+const calculatorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/calculadora",
+  component: lazyRouteComponent(
+    () => import("./landing/calculator/CalculatorPage"),
+    "CalculatorPage",
+  ),
+});
+
 export const routeTree = rootRoute.addChildren([
   landingRoute,
   privacyRoute,
   complaintsRoute,
   unsubscribeRoute,
+  calculatorRoute,
 ]);
 
 export const router = createRouter({ routeTree });

@@ -7,7 +7,8 @@ import { api } from "../../api/client";
 import type { components } from "../../api/schema";
 import { PublicFooter } from "../PublicFooter";
 import { ComplaintForm } from "./ComplaintForm";
-import { ComplaintSheet, formatDay } from "./ComplaintSheet";
+import { formatDay } from "../dates";
+import { ComplaintSheet } from "./ComplaintSheet";
 import { complaintsCopy as text } from "./copy";
 import { toRequest, type ComplaintRequest } from "./sheet";
 
