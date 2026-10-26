@@ -1,5 +1,3 @@
-const dataController = "[nombre completo]";
-
 export const copy = {
   hero: {
     title: "Cobra tus alquileres sin incomodarte y ten claro cuánto pagar a SUNAT cada mes",
@@ -43,7 +41,9 @@ export const copy = {
   waitlist: {
     title: "Te avisamos cuando abramos",
     emailLabel: "Tu correo electrónico",
-    consentLabel: `Acepto que ${dataController}, responsable de Casero, use mi correo solo para avisarme cuando abra el registro. Lo guardará hasta que me registre o 12 meses como máximo, y puedo pedir que lo borre cuando quiera.`,
+    consentLabel: (controller: string) =>
+      `Acepto que ${controller}, responsable de Casero, use mi correo solo para avisarme cuando abra el registro. Lo guardará hasta que me registre o 12 meses como máximo, y puedo pedir que lo borre cuando quiera.`,
+    controllerFallback: "la persona responsable de Casero",
     privacyLink: "Ver la política de privacidad.",
     submit: "Avisarme",
     sending: "Enviando…",
@@ -56,6 +56,7 @@ export const copy = {
   },
   footer: {
     privacy: "Política de privacidad",
+    complaints: "Libro de Reclamaciones",
     disclaimer:
       "Casero es una herramienta de registro y cálculo. No es asesoría tributaria ni legal y no reemplaza a tu contador. El cálculo depende de los datos que registres.",
   },

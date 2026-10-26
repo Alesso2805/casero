@@ -22,7 +22,16 @@ const privacyRoute = createRoute({
   component: lazyRouteComponent(() => import("./landing/PrivacyPage"), "PrivacyPage"),
 });
 
-export const routeTree = rootRoute.addChildren([landingRoute, privacyRoute]);
+const complaintsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/libro-de-reclamaciones",
+  component: lazyRouteComponent(
+    () => import("./landing/complaints/ComplaintsPage"),
+    "ComplaintsPage",
+  ),
+});
+
+export const routeTree = rootRoute.addChildren([landingRoute, privacyRoute, complaintsRoute]);
 
 export const router = createRouter({ routeTree });
 
