@@ -57,9 +57,18 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_WORKER_PASSWORD=...
    CASERO_ADMIN_PASSWORD=...
    CASERO_RATE_LIMIT_KEY=...
+   CASERO_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
+   CASERO_SMTP_USERNAME=<usuario SMTP de SES>
+   CASERO_SMTP_PASSWORD=<contraseña SMTP de SES>
+   CASERO_MAIL_FROM=Casero <no-reply@<dominio del correo>>
+   CASERO_BUSINESS_NAME=<nombre completo según el RUC>
+   CASERO_BUSINESS_RUC=<RUC>
+   CASERO_BUSINESS_ADDRESS=<domicilio fiscal>
+   CASERO_COMPLAINTS_INBOX=<correo donde llegan los avisos de reclamos>
    CASERO_DOMAIN=<subdominio>.duckdns.org
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
    ```
+   El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en la copia de cada reclamo.
 
 ## 3. DuckDNS
 
