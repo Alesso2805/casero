@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #0f5c4d;
+  --color-brand-dark: #0a4339;
+}
+
+html {
+  font-size: 100%;
+}
+
+body {
+  @apply bg-white text-stone-900 antialiased;
+}
