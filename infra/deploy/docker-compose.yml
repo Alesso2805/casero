@@ -1,0 +1,84 @@
+name: casero
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend: &backend
+  image: ${CASERO_BACKEND_IMAGE:-ghcr.io/alesso2805/casero-backend}:${IMAGE_TAG:?}
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  postgres:
+    image: postgres:17-trixie
+    restart: unless-stopped
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=50"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: casero
+      CASERO_OWNER_PASSWORD: ${CASERO_OWNER_PASSWORD:?}
+      CASERO_BACKUP_PASSWORD: ${CASERO_BACKUP_PASSWORD:?}
+      CASERO_APP_PASSWORD: ${CASERO_APP_PASSWORD:?}
+      CASERO_WORKER_PASSWORD: ${CASERO_WORKER_PASSWORD:?}
+      CASERO_ADMIN_PASSWORD: ${CASERO_ADMIN_PASSWORD:?}
+    volumes:
+      - ${CASERO_POSTGRES_INIT:-./postgres-init}:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username postgres --dbname casero --host 127.0.0.1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      CASERO_MIGRATION_DATABASE_URL: postgresql+asyncpg://casero_owner:${CASERO_OWNER_PASSWORD:?}@postgres:5432/casero
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "casero.worker"]
+    environment:
+      CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:?}@postgres:5432/casero
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  edge:
+    image: ${CASERO_EDGE_IMAGE:-ghcr.io/alesso2805/casero-edge}:${IMAGE_TAG:?}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CASERO_DOMAIN: ${CASERO_DOMAIN:?}
+      CASERO_TLS: ${CASERO_TLS:?}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+    logging: *logging
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
