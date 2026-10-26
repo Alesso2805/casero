@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import policy from "../../../docs/legal/privacy-short.md?raw";
 import { useBusiness, type Business } from "../api/business";
 import { copy } from "./copy";
+import { PublicFooter } from "./PublicFooter";
 
 function withBusiness(text: string, business: Business | undefined): string {
   if (!business) {
@@ -26,6 +27,7 @@ export function PrivacyPage() {
       <article className="flex flex-col gap-4 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:mt-4 [&_h2]:text-2xl [&_h2]:font-bold [&_table]:w-full [&_td]:border [&_td]:border-stone-300 [&_td]:p-2 [&_th]:border [&_th]:border-stone-300 [&_th]:p-2 [&_th]:text-left [&_ul]:list-disc [&_ul]:pl-6">
         <Markdown remarkPlugins={[remarkGfm]}>{withBusiness(policy, business.data)}</Markdown>
       </article>
+      <PublicFooter />
     </div>
   );
 }

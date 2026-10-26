@@ -21,7 +21,7 @@ def get(path: str) -> httpx2.Response:
 
 def assert_security_headers(response: httpx2.Response) -> None:
     assert response.headers["content-security-policy"] == CONTENT_SECURITY_POLICY
-    assert response.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+    assert response.headers["strict-transport-security"] == "max-age=31536000"
     assert response.headers["referrer-policy"] == "no-referrer"
     assert response.headers["x-content-type-options"] == "nosniff"
     assert "server" not in response.headers
@@ -74,3 +74,47 @@ def test_request_bodies_over_5_mb_are_rejected() -> None:
     response = httpx2.post(f"{EDGE_URL}/api/health", content=b"x" * SIX_MEGABYTES, verify=False)
 
     assert response.status_code == 413
+
+
+def test_the_edge_serves_the_business_identity_from_its_environment() -> None:
+    response = get("/api/public/business")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {
+        "name": os.environ["CASERO_BUSINESS_NAME"],
+        "ruc": os.environ["CASERO_BUSINESS_RUC"],
+        "address": os.environ["CASERO_BUSINESS_ADDRESS"],
+        "complaints_inbox": os.environ["CASERO_COMPLAINTS_INBOX"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("path", "indexed"),
+    [
+        ("/", True),
+        ("/privacidad", False),
+        ("/libro-de-reclamaciones", False),
+        ("/api/health", False),
+        ("/api/public/business", False),
+    ],
+)
+def test_pages_with_the_business_address_are_kept_out_of_search_engines(
+    path: str, indexed: bool
+) -> None:
+    assert ("x-robots-tag" not in get(path).headers) is indexed
+    if not indexed:
+        assert get(path).headers["x-robots-tag"] == "noindex"
+
+
+def test_www_redirects_to_the_main_domain() -> None:
+    host = EDGE_URL.removeprefix("https://")
+    response = httpx2.get(
+        f"{EDGE_URL}/privacidad",
+        headers={"Host": f"www.{host}"},
+        verify=False,
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 301
+    assert response.headers["location"] == f"https://{host}/privacidad"

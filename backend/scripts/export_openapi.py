@@ -3,12 +3,10 @@ import sys
 from pathlib import Path
 
 from casero.api import create_app
-from casero.shared.infrastructure.settings import ApiSettings, BusinessSettings
+from casero.shared.infrastructure.settings import ApiSettings
 
 UNUSED_SETTINGS = ApiSettings(
-    database_url="postgresql+asyncpg://unused@localhost/unused",
-    rate_limit_key=b"unused",
-    business=BusinessSettings(name="unused", ruc="unused", address="unused"),
+    database_url="postgresql+asyncpg://unused@localhost/unused", rate_limit_key=b"unused"
 )
 
 

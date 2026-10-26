@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useBusiness } from "../../api/business";
 import { api } from "../../api/client";
 import type { components } from "../../api/schema";
+import { PublicFooter } from "../PublicFooter";
 import { ComplaintForm } from "./ComplaintForm";
 import { ComplaintSheet, formatDay } from "./ComplaintSheet";
 import { complaintsCopy as text } from "./copy";
@@ -28,6 +29,20 @@ const primaryButton =
   "min-h-11 rounded-lg bg-brand px-5 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
 const secondaryButton =
   "min-h-11 rounded-lg border border-brand px-5 text-base font-semibold text-brand";
+
+function PrintButton() {
+  return (
+    <button
+      type="button"
+      className={`${primaryButton} print:hidden`}
+      onClick={() => {
+        globalThis.print();
+      }}
+    >
+      {text.filed.print}
+    </button>
+  );
+}
 
 export function ComplaintsPage() {
   const business = useBusiness();
@@ -63,21 +78,9 @@ export function ComplaintsPage() {
             <p>
               {text.filed.dueOn} {formatDay(filed.due_on)}.
             </p>
-            {sheet.email && (
-              <p>
-                {text.filed.copySent} {sheet.email}. {text.filed.copyHint}
-              </p>
-            )}
+            {sheet.email && <p>{text.filed.copyWillBeSent(sheet.email)}</p>}
           </div>
-          <button
-            type="button"
-            className={`${primaryButton} print:hidden`}
-            onClick={() => {
-              globalThis.print();
-            }}
-          >
-            {text.filed.print}
-          </button>
+          <PrintButton />
           <ComplaintSheet
             sheet={sheet}
             business={business.data}
@@ -107,9 +110,14 @@ export function ComplaintsPage() {
                 </p>
               )}
               {mutation.isError && (
-                <p role="alert" className="text-red-800">
-                  {text.errors.failure}
-                </p>
+                <div role="alert" className="flex flex-col gap-3 text-red-800">
+                  <p>
+                    {business.data
+                      ? text.errors.fallback(business.data.complaints_inbox)
+                      : text.errors.failure}
+                  </p>
+                  {business.data && <PrintButton />}
+                </div>
               )}
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
@@ -138,11 +146,12 @@ export function ComplaintsPage() {
         </>
       )}
 
-      <footer className="flex flex-col gap-2 border-t border-stone-300 pt-4">
+      <section className="flex flex-col gap-2 border-t border-stone-300 pt-4">
         {text.notices.map((notice) => (
           <p key={notice}>{notice}</p>
         ))}
-      </footer>
+      </section>
+      <PublicFooter />
     </div>
   );
 }

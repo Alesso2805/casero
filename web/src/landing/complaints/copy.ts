@@ -86,8 +86,8 @@ export const complaintsCopy = {
     title: { claim: "Registramos tu reclamo", complaint: "Registramos tu queja" },
     number: "Número",
     dueOn: "Te responderemos a más tardar el",
-    copySent: "Te enviamos una copia a",
-    copyHint: "Si no la ves en unos minutos, revisa tu carpeta de spam.",
+    copyWillBeSent: (email: string) =>
+      `Te enviaremos una copia a ${email} en unos minutos. Igual guarda o imprime esta hoja.`,
     print: "Imprimir o guardar como PDF",
     back: "Volver al inicio",
   },
@@ -101,5 +101,7 @@ export const complaintsCopy = {
     amount: "Escribe el monto en soles, por ejemplo: 19.50.",
     tooManyAttempts: "Recibimos muchos intentos desde tu conexión. Vuelve a intentarlo en una hora.",
     failure: "No pudimos registrar tu reclamo. Vuelve a intentarlo en unos minutos.",
+    fallback: (inbox: string) =>
+      `No pudimos registrar tu reclamo. Imprime o guarda esta hoja y envíala a ${inbox}. La registraremos y el plazo de respuesta contará desde que la recibamos.`,
   },
 } as const;

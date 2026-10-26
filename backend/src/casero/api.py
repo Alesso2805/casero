@@ -13,7 +13,6 @@ from casero.accounts.application.waitlist import (
     WaitlistRepository,
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
-from casero.admin.api import business as business_api
 from casero.admin.api import complaints as complaints_api
 from casero.admin.application.complaints import (
     ComplaintRateLimiter,
@@ -75,15 +74,6 @@ def create_app(settings: ApiSettings | None = None, clock: Clock | None = None) 
         return FileComplaint(repository, limiter, app_clock)
 
     app.include_router(complaints_api.create_router(provide_file_complaint))
-    app.include_router(
-        business_api.create_router(
-            business_api.BusinessResponse(
-                name=config.business.name,
-                ruc=config.business.ruc,
-                address=config.business.address,
-            )
-        )
-    )
 
     @app.get("/api/health")
     def health() -> HealthResponse:

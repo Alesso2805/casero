@@ -27,14 +27,12 @@ class BusinessSettings:
 class ApiSettings:
     database_url: str
     rate_limit_key: bytes
-    business: BusinessSettings
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
         return cls(
             database_url=os.environ["CASERO_APP_DATABASE_URL"],
             rate_limit_key=os.environ["CASERO_RATE_LIMIT_KEY"].encode(),
-            business=BusinessSettings.from_environment(os.environ),
         )
 
 
