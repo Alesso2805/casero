@@ -1,0 +1,64 @@
+# Configuración tributaria de 2026. Única fuente de estos valores (CLAUDE.md, regla 6).
+# Se carga en la migración 0006 y en cada arranque del migrador (docs/ops/tax-config.md).
+# Pendiente: validación del contador antes de la beta.
+year: 2026
+
+rules:
+  # LIR art. 84, modificado por la Ley N.° 32541 (vigente desde el 1.1.2026): 6.25 % sobre
+  # la renta bruta percibida menos el 20 %. Otras fuentes de esta sección:
+  # - UIT: D.S. N.° 301-2025-EF, https://busquedas.elperuano.pe/dispositivo/NL/2469116-1
+  # - Bancarización desde S/ 2,000: TUO de la Ley N.° 28194, art. 4 (D.Leg. N.° 1529),
+  #   https://busquedas.elperuano.pe/dispositivo/NL/2044433-2
+  # - Renta mínima del 6 % del autovalúo: LIR art. 23 a),
+  #   https://www.sunat.gob.pe/legislacion/renta/ley/capv.pdf
+  # - Redondeo a soles enteros, mitad hacia arriba: R.S. N.° 025-2000/SUNAT, art. 2,
+  #   https://www.sunat.gob.pe/legislacion/superin/2000/025.htm. Casero redondea la base y
+  #   el tributo (SPEC); pendiente de confirmar con el contador.
+  source_url: https://www.sunat.gob.pe/legislacion/renta/ley/capxi.pdf
+  rate_bp: 625
+  deduction_bp: 2000
+  rounding: half_up_sol
+  cash_threshold_cents: 200000
+  min_rent_bp: 600
+  uit_cents: 550000
+
+due_dates:
+  # Cronograma de obligaciones mensuales 2026 (R.S. N.° 000281-2022/SUNAT, Anexo I, que rige
+  # desde 2023). El Formulario 1683 sigue este cronograma general.
+  source_url: https://www.sunat.gob.pe/orientacion/cronogramas/2026/cObligacionMensual2026.html
+  periods:
+    "2026-01": {"0": 2026-02-16, "1": 2026-02-17, "2-3": 2026-02-18, "4-5": 2026-02-19, "6-7": 2026-02-20, "8-9": 2026-02-23, "bc": 2026-02-24}
+    "2026-02": {"0": 2026-03-16, "1": 2026-03-17, "2-3": 2026-03-18, "4-5": 2026-03-19, "6-7": 2026-03-20, "8-9": 2026-03-23, "bc": 2026-03-24}
+    "2026-03": {"0": 2026-04-17, "1": 2026-04-20, "2-3": 2026-04-21, "4-5": 2026-04-22, "6-7": 2026-04-23, "8-9": 2026-04-24, "bc": 2026-04-27}
+    "2026-04": {"0": 2026-05-18, "1": 2026-05-19, "2-3": 2026-05-20, "4-5": 2026-05-21, "6-7": 2026-05-22, "8-9": 2026-05-25, "bc": 2026-05-26}
+    "2026-05": {"0": 2026-06-15, "1": 2026-06-16, "2-3": 2026-06-17, "4-5": 2026-06-18, "6-7": 2026-06-19, "8-9": 2026-06-22, "bc": 2026-06-23}
+    "2026-06": {"0": 2026-07-15, "1": 2026-07-16, "2-3": 2026-07-17, "4-5": 2026-07-20, "6-7": 2026-07-21, "8-9": 2026-07-22, "bc": 2026-07-24}
+    "2026-07": {"0": 2026-08-18, "1": 2026-08-19, "2-3": 2026-08-20, "4-5": 2026-08-21, "6-7": 2026-08-24, "8-9": 2026-08-25, "bc": 2026-08-26}
+    "2026-08": {"0": 2026-09-15, "1": 2026-09-16, "2-3": 2026-09-17, "4-5": 2026-09-18, "6-7": 2026-09-21, "8-9": 2026-09-22, "bc": 2026-09-23}
+    "2026-09": {"0": 2026-10-16, "1": 2026-10-19, "2-3": 2026-10-20, "4-5": 2026-10-21, "6-7": 2026-10-22, "8-9": 2026-10-23, "bc": 2026-10-26}
+    "2026-10": {"0": 2026-11-16, "1": 2026-11-17, "2-3": 2026-11-18, "4-5": 2026-11-19, "6-7": 2026-11-20, "8-9": 2026-11-23, "bc": 2026-11-24}
+    "2026-11": {"0": 2026-12-17, "1": 2026-12-18, "2-3": 2026-12-21, "4-5": 2026-12-22, "6-7": 2026-12-23, "8-9": 2026-12-24, "bc": 2026-12-28}
+    "2026-12": {"0": 2027-01-18, "1": 2027-01-19, "2-3": 2027-01-20, "4-5": 2027-01-21, "6-7": 2027-01-22, "8-9": 2027-01-25, "bc": 2027-01-26}
+
+holidays:
+  # Feriados nacionales del art. 6 del D.Leg. N.° 713, en el texto de la Ley N.° 31822
+  # (agregaron días las leyes 31381, 31530, 31788 y 31822). Los días no laborables del sector
+  # público no son feriados: para fines tributarios son hábiles.
+  source_url: https://busquedas.elperuano.pe/dispositivo/NL/2194316-1
+  dates:
+    2026-01-01: Año Nuevo
+    2026-04-02: Jueves Santo
+    2026-04-03: Viernes Santo
+    2026-05-01: Día del Trabajo
+    2026-06-07: Batalla de Arica y Día de la Bandera
+    2026-06-29: San Pedro y San Pablo
+    2026-07-23: Día de la Fuerza Aérea del Perú
+    2026-07-28: Fiestas Patrias
+    2026-07-29: Fiestas Patrias
+    2026-08-06: Batalla de Junín
+    2026-08-30: Santa Rosa de Lima
+    2026-10-08: Combate de Angamos
+    2026-11-01: Todos los Santos
+    2026-12-08: Inmaculada Concepción
+    2026-12-09: Batalla de Ayacucho
+    2026-12-25: Navidad del Señor
