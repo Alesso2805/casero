@@ -22,6 +22,10 @@ Los tests viven en `backend/tests/architecture/`. Los contratos de import-linter
 | AR-12 | `set_config` se llama solo con parámetros enlazados, nunca con texto interpolado | CLAUDE.md (regla 3), ADR-0002 | `test_ar12_*` |
 | AR-13 | Toda tabla del esquema `public` tiene RLS habilitada y forzada, salvo la lista cerrada de tablas sin RLS de SPEC.md | CLAUDE.md (regla 3), ADR-0002 | `test_catalog.py::test_ar13_*` |
 | AR-14 | Cada rol tiene exactamente los permisos de la tabla de roles de SPEC.md, por tabla y por columna. Solo `casero_owner` y `casero_backup` tienen `BYPASSRLS`, ningún rol es superusuario, `casero_owner` es dueño de todas las tablas, `casero_backup` solo lee y `PUBLIC` no tiene permisos | CLAUDE.md (regla 3), ADR-0002 | `test_catalog.py::test_ar14_*` |
+| AR-15 | Ninguna columna tiene un valor por defecto que lea el reloj de la base (`DEFAULT now()` y similares): la aplicación pone las fechas | CLAUDE.md (regla 2), ADR-0003 | `test_row_access.py::test_ar15_*` |
+| AR-16 | En el contexto `tenant` solo se ven las filas del contrato de `app.lease_id` (o de su cuenta y su suscripción). Sin `app.lease_id` no se ve ninguna fila | ADR-0002 | `test_row_access.py::test_ar16_*` |
+| AR-17 | `casero_admin` solo ve filas de cuenta en `accounts`, `subscriptions` y `subscription_payments`, aunque se le otorgue SELECT en otra tabla | ADR-0002, ADR-0008 | `test_row_access.py::test_ar17_*` |
+| AR-18 | `casero_app` y `casero_worker` solo ven filas de la cuenta de `app.account_id`, y ninguna sin él | CLAUDE.md (regla 3), ADR-0002 | `test_row_access.py::test_ar18_*` |
 
 ## Patrón de puertos (AR-03)
 

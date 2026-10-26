@@ -31,7 +31,7 @@ No role used by the API, the worker or the panel owns tables or has `BYPASSRLS`.
 - Tenant scope, as `AS RESTRICTIVE` policies:
   - The condition is `current_setting('app.context', true) IS DISTINCT FROM 'tenant' OR lease_id = NULLIF(current_setting('app.lease_id', true), '')::uuid`. `leases` compares `id`.
   - Tables without `lease_id` use `EXISTS` on their parent: voids, deposit movements and files. `renters`, `units` and `properties` use `EXISTS` on the lease.
-  - `accounts` and `subscriptions` stay visible, because the portal needs the landlord's name and the plan features. The `/api/tenant/*` endpoints still read only `display_name` and the plan features, through an explicit DTO. Every other account table is invisible in the tenant context.
+  - `accounts` and `subscriptions` stay visible while `app.lease_id` is set, because the portal needs the landlord's name and the plan features. The `/api/tenant/*` endpoints still read only `display_name` and the plan features, through an explicit DTO. Every other account table is invisible in the tenant context.
   - When `app.context = 'tenant'` and `app.lease_id` is missing, the comparison is `NULL` and nothing is visible: the context fails closed.
 - `casero_admin` policies: `TO casero_admin` policies exist only on `accounts`, `subscriptions` and `subscription_payments`, for the commands its grants allow. On every other account table it sees no rows even if a grant is added by mistake.
 
