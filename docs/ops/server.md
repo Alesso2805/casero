@@ -68,7 +68,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_DOMAIN=<subdominio>.duckdns.org
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
    ```
-   El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en la copia de cada reclamo.
+   El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
 
 ## 3. DuckDNS
 

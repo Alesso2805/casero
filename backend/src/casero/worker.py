@@ -38,7 +38,7 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
         name=business.name,
         ruc=business.ruc,
         address=business.address,
-        complaints_inbox=business.complaints_inbox,
+        complaints_inbox=settings.complaints_inbox,
     )
     return {"complaint_emails": SendComplaintEmails(outbox, mailer, clock, identity)}
 

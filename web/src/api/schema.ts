@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/business": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Business
+         * @description Identify the business behind Casero for the complaints book and the privacy notices.
+         */
+        get: operations["get_business_api_public_business_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/complaints": {
         parameters: {
             query?: never;
@@ -68,6 +88,15 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** BusinessResponse */
+        BusinessResponse: {
+            /** Address */
+            address: string;
+            /** Name */
+            name: string;
+            /** Ruc */
+            ruc: string;
+        };
         /** FileComplaintRequest */
         FileComplaintRequest: {
             /** Address */
@@ -206,6 +235,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    get_business_api_public_business_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessResponse"];
                 };
             };
         };
