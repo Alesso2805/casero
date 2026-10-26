@@ -31,7 +31,18 @@ const complaintsRoute = createRoute({
   ),
 });
 
-export const routeTree = rootRoute.addChildren([landingRoute, privacyRoute, complaintsRoute]);
+const unsubscribeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/baja",
+  component: lazyRouteComponent(() => import("./landing/UnsubscribePage"), "UnsubscribePage"),
+});
+
+export const routeTree = rootRoute.addChildren([
+  landingRoute,
+  privacyRoute,
+  complaintsRoute,
+  unsubscribeRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

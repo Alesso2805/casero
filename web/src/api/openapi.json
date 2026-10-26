@@ -420,6 +420,66 @@
         "summary": "Receive Email Event"
       }
     },
+    "/api/public/unsubscribe": {
+      "post": {
+        "description": "Stop one kind of scheduled email: RFC 8058 one-click, also used by the /baja page.",
+        "operationId": "unsubscribe_api_public_unsubscribe_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "u",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "U",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "k",
+            "required": true,
+            "schema": {
+              "enum": [
+                "daily_digest",
+                "tax_reminders"
+              ],
+              "title": "K",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "t",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "title": "T",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "The link is not valid"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unsubscribe"
+      }
+    },
     "/api/public/waitlist": {
       "post": {
         "description": "Add an email to the waitlist once the visitor has given consent.",

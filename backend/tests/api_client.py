@@ -13,6 +13,7 @@ from database import Database
 
 TEST_EMAIL_HASH_KEY = b"test-email-hash-key"
 TEST_TOPIC_ARN = "arn:aws:sns:us-east-1:000000000000:casero-test"
+TEST_UNSUBSCRIBE_KEY = b"test-unsubscribe-key"
 
 
 class FixedClock:
@@ -43,6 +44,7 @@ def api_client(
         rate_limit_key=b"test-key",
         email_hash_key=TEST_EMAIL_HASH_KEY,
         ses_events_topic_arn=TEST_TOPIC_ARN,
+        unsubscribe_key=TEST_UNSUBSCRIBE_KEY,
     )
     app = create_app(settings, clock, sns_verifier)
     with TestClient(app, client=(address, 50000)) as client:
