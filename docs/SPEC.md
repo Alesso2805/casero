@@ -399,7 +399,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 | Sprint 12 | 10 may – 23 may | Bienvenida, constancias y garantías | CS-10, 14, 15 | 6 |
 | Sprint 13 | 24 may – 6 jun | Vouchers, resumen diario y notificaciones push | CS-19, 17, 33 | 7 |
 | Sprint 14 | 7 jun – 20 jun | Pruebas de punta a punta y `REGISTRATION_MODE=open` | CS-27 | 2 |
-| Lanzamiento | 21 jun 2027 | Apertura pública con "cobra sin incomodarte y no te olvides ningún formulario a SUNAT" | — | — |
+| Lanzamiento | 21 jun 2027 | Apertura pública con "cobra tus alquileres sin incomodarte y ten claro cuánto pagar a SUNAT cada mes" | — | — |
 
 CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fechas del plan y la puerta del 22 de noviembre no cambian; el adelanto se refleja en la velocidad medida del Sprint 0.
 

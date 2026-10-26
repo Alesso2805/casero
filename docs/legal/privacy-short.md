@@ -14,7 +14,7 @@ Casero es un servicio para arrendadores que está en preparación. Esta polític
 
 | Cuándo | Qué datos | Para qué | Cuánto tiempo los guardamos |
 | --- | --- | --- | --- |
-| Te unes a la lista de espera | Tu correo, cómo nos conociste y la fecha en que aceptaste | Avisarte cuando puedas registrarte | Hasta que te registres o, como máximo, 12 meses |
+| Te unes a la lista de espera | Tu correo, desde dónde te uniste y la fecha en que aceptaste | Avisarte cuando puedas registrarte | Hasta que te registres o, como máximo, 12 meses |
 | Conversas con nosotros en una entrevista | Tu nombre, tu celular o correo y tus respuestas (por ejemplo, cuántos alquileres tienes, cómo cobras, si tienes RUC y tu edad aproximada) | Entender cómo administras tus alquileres para diseñar Casero | 12 meses; después se eliminan |
 | Compras la preventa | Tu nombre, tu DNI o RUC, tu celular o correo, el monto, la fecha y el medio de pago | Emitir tu boleta, darte el servicio y devolverte el dinero si corresponde | El plazo que exigen las normas tributarias |
 | Recibes el servicio para fundadores | Lo que nos reportas de tus alquileres: nombre y documento de tus inquilinos, montos que cobraste y fechas | Prepararte cada mes la lista de tus formularios 1683, con su monto y su vencimiento | Mientras dure el servicio; luego se trasladan a tu cuenta de Casero o se eliminan, como prefieras |
@@ -42,7 +42,6 @@ No vendemos tus datos ni los cedemos a nadie para su propio uso. Los guardan por
 | Registro de errores técnicos | Sentry | Estados Unidos |
 | Mensajería con fundadores y entrevistados | WhatsApp (Meta) | Estados Unidos |
 | Notas de las entrevistas | Notion | Estados Unidos |
-| Lista de espera, mientras no exista la página web | Google Forms (Google) | Estados Unidos |
 | Cobro de la preventa | Yape (BCP) | Perú |
 | Videollamadas | Google Meet (Google) | Estados Unidos |
 | Correo para coordinar con fundadores y entrevistados | Gmail (Google) | Estados Unidos |
