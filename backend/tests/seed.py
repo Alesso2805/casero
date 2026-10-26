@@ -1,6 +1,5 @@
 import json
 import os
-import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid7
@@ -42,27 +41,14 @@ LEASE_SCOPED_TABLES = frozenset(
 )
 TENANT_ACCOUNT_TABLES = frozenset({"accounts", "subscriptions"})
 
-CLOCK_DEFAULT = re.compile(
-    r"\b(?:now|clock_timestamp|statement_timestamp|transaction_timestamp)\s*\(\s*\)"
-    r"|\b(?:current_date|current_timestamp|current_time|localtimestamp|localtime)\b",
-    re.IGNORECASE,
-)
-
-COLUMN_DEFAULTS = """
-SELECT c.relname AS table_name, a.attname AS column_name,
-       pg_get_expr(d.adbin, d.adrelid) AS expression
-FROM pg_attrdef d
-JOIN pg_class c ON c.oid = d.adrelid
-JOIN pg_namespace n ON n.oid = c.relnamespace
-JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
-WHERE n.nspname = 'public'
-"""
-
 
 @dataclass
 class SeededAccount:
     account_id: UUID
-    lease_ids: list[UUID]
+    user_id: UUID
+    email: str
+    lease_ids: list[UUID] = field(default_factory=list)
+    token_hashes: dict[UUID, bytes] = field(default_factory=dict)
     keys: dict[str, set[str]] = field(default_factory=dict)
     lease_keys: dict[UUID, dict[str, set[str]]] = field(default_factory=dict)
 
@@ -70,14 +56,6 @@ class SeededAccount:
         self.keys.setdefault(table, set()).add(str(key))
         if lease_id is not None:
             self.lease_keys.setdefault(lease_id, {}).setdefault(table, set()).add(str(key))
-
-
-async def clock_defaults(connection: asyncpg.Connection) -> list[str]:
-    return sorted(
-        f"{row['table_name']}.{row['column_name']} DEFAULT {row['expression']}"
-        for row in await connection.fetch(COLUMN_DEFAULTS)
-        if CLOCK_DEFAULT.search(row["expression"])
-    )
 
 
 async def visible_keys(connection: asyncpg.Connection, table: str) -> set[str]:
@@ -104,11 +82,11 @@ async def set_context(
 
 async def seed_account(owner: asyncpg.Connection, lease_count: int) -> SeededAccount:
     account_id, user_id, property_id = uuid7(), uuid7(), uuid7()
-    seeded = SeededAccount(account_id, [])
+    seeded = SeededAccount(account_id, user_id, f"{user_id}@example.test")
     await owner.execute(
         "INSERT INTO users (id, email, password_hash, created_at) VALUES ($1, $2, 'x', $3)",
         user_id,
-        f"{user_id}@example.test",
+        seeded.email,
         SEEDED_AT,
     )
     await owner.execute(
@@ -180,6 +158,8 @@ async def seed_lease(
     account_id = seeded.account_id
     unit_id, renter_id, lease_id = uuid7(), uuid7(), uuid7()
     seeded.lease_ids.append(lease_id)
+    token_hash = os.urandom(32)
+    seeded.token_hashes[lease_id] = token_hash
     seeded.add("properties", property_id, lease_id)
     ids = {
         table: uuid7()
@@ -320,7 +300,7 @@ async def seed_lease(
             ids["tenant_links"],
             "INSERT INTO tenant_links (id, account_id, lease_id, nonce, key_id, token_hash,"
             " created_at) VALUES ($1, $2, $3, $4, 'k1', $5, $6)",
-            (lease_id, os.urandom(16), os.urandom(32), SEEDED_AT),
+            (lease_id, os.urandom(16), token_hash, SEEDED_AT),
         ),
         (
             "reminder_logs",

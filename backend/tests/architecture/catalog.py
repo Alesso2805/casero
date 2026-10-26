@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
@@ -42,6 +43,23 @@ JOIN pg_namespace n ON n.oid = c.relnamespace
 JOIN pg_roles r ON r.oid = c.relowner
 WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
 """
+
+CLOCK_DEFAULT = re.compile(
+    r"\b(?:now|clock_timestamp|statement_timestamp|transaction_timestamp)\s*\(\s*\)"
+    r"|\b(?:current_date|current_timestamp|current_time|localtimestamp|localtime)\b",
+    re.IGNORECASE,
+)
+
+COLUMN_DEFAULTS = """
+SELECT c.relname AS table_name, a.attname AS column_name,
+       pg_get_expr(d.adbin, d.adrelid) AS expression
+FROM pg_attrdef d
+JOIN pg_class c ON c.oid = d.adrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+WHERE n.nspname = 'public'
+"""
+
 
 ROLES = r"SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname LIKE 'casero\_%'"
 
@@ -144,3 +162,51 @@ def privilege_differences(
         if table in actual_tables.get("PUBLIC", {}) or table in actual_columns.get("PUBLIC", {}):
             differences.append(f"PUBLIC: has privileges on {table}")
     return differences
+
+
+async def clock_defaults(connection: asyncpg.Connection) -> list[str]:
+    return sorted(
+        f"{row['table_name']}.{row['column_name']} DEFAULT {row['expression']}"
+        for row in await connection.fetch(COLUMN_DEFAULTS)
+        if CLOCK_DEFAULT.search(row["expression"])
+    )
+
+
+SECURITY_DEFINER_FUNCTIONS = """
+SELECT p.proname AS name, r.rolname AS owner, p.prosecdef AS security_definer,
+       coalesce(array_to_string(p.proconfig, ','), '') AS config,
+       coalesce(
+           (SELECT array_agg(coalesce(g.rolname, 'PUBLIC') ORDER BY coalesce(g.rolname, 'PUBLIC'))
+            FROM aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+            LEFT JOIN pg_roles g ON g.oid = a.grantee
+            WHERE a.privilege_type = 'EXECUTE' AND a.grantee <> p.proowner),
+           '{}'
+       ) AS executors
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_roles r ON r.oid = p.proowner
+WHERE n.nspname = 'public'
+"""
+
+
+async def function_problems(
+    connection: asyncpg.Connection, expected_executors: Mapping[str, frozenset[str]]
+) -> list[str]:
+    problems = []
+    rows = {row["name"]: row for row in await connection.fetch(SECURITY_DEFINER_FUNCTIONS)}
+    for name in sorted(set(rows) | set(expected_executors)):
+        row = rows.get(name)
+        if row is None:
+            problems.append(f"{name} is missing")
+            continue
+        if name not in expected_executors:
+            problems.append(f"{name} is not a listed function")
+            continue
+        if row["owner"] != OWNER:
+            problems.append(f"{name} is owned by {row['owner']}")
+        if row["security_definer"] and "search_path=" not in row["config"]:
+            problems.append(f"{name} has no fixed search_path")
+        executors = frozenset(row["executors"])
+        if executors != expected_executors[name]:
+            problems.append(f"{name} is executable by {sorted(executors)}")
+    return problems
