@@ -2,10 +2,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import TextClause, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from casero.admin.application.complaint_emails import COPY_JOB, NOTICE_JOB
+from casero.admin.application.complaint_emails import COPY_JOB, NOTICE_JOB, PendingNotice
+from casero.admin.domain.complaint_emails import CopyStatus
 from casero.admin.domain.complaints import Complaint, ComplaintSheet, Guardian
 
 WITHOUT_COPY = text(
@@ -16,11 +17,15 @@ WITHOUT_COPY = text(
 )
 
 WITHOUT_NOTICE = text(
-    "SELECT c.* FROM complaints c"
+    "SELECT c.*, cj.status AS copy_status, cj.error_code AS copy_error FROM complaints c"
+    " LEFT JOIN job_runs cj ON cj.job = :copy_job AND cj.run_key = c.id::text"
+    " AND cj.account_id IS NULL"
     " WHERE NOT EXISTS (SELECT 1 FROM job_runs j"
     " WHERE j.job = :job AND j.run_key = c.id::text AND j.account_id IS NULL)"
     " ORDER BY c.created_at, c.id LIMIT :limit"
 )
+
+BY_NUMBER = text("SELECT c.* FROM complaints c WHERE c.number = :number")
 
 CLAIM = text(
     "INSERT INTO job_runs (job, run_key, account_id, status, attempts, started_at)"
@@ -32,6 +37,16 @@ FINISH = text(
     "UPDATE job_runs SET status = :status, finished_at = :now, error_code = :error_code"
     " WHERE job = :job AND run_key = :run_key AND account_id IS NULL"
 )
+
+
+def copy_status_from_row(row: Any) -> CopyStatus:
+    if row.copy_status == "done":
+        return CopyStatus("sent")
+    if row.copy_status == "failed":
+        return CopyStatus("failed", row.copy_error)
+    if row.copy_status is None and row.email is None:
+        return CopyStatus("no_email")
+    return CopyStatus("unfinished")
 
 
 def complaint_from_row(row: Any) -> Complaint:
@@ -74,10 +89,23 @@ class SqlComplaintOutbox:
         self._engine = engine
 
     async def without_copy(self, limit: int) -> list[Complaint]:
-        return await self._unsent(WITHOUT_COPY, COPY_JOB, limit)
+        async with self._engine.connect() as connection:
+            result = await connection.execute(WITHOUT_COPY, {"job": COPY_JOB, "limit": limit})
+            return [complaint_from_row(row) for row in result]
 
-    async def without_notice(self, limit: int) -> list[Complaint]:
-        return await self._unsent(WITHOUT_NOTICE, NOTICE_JOB, limit)
+    async def without_notice(self, limit: int) -> list[PendingNotice]:
+        async with self._engine.connect() as connection:
+            result = await connection.execute(
+                WITHOUT_NOTICE, {"job": NOTICE_JOB, "copy_job": COPY_JOB, "limit": limit}
+            )
+            return [
+                PendingNotice(complaint_from_row(row), copy_status_from_row(row)) for row in result
+            ]
+
+    async def by_number(self, number: str) -> Complaint | None:
+        async with self._engine.connect() as connection:
+            row = (await connection.execute(BY_NUMBER, {"number": number})).first()
+            return complaint_from_row(row) if row else None
 
     async def claim(self, job: str, complaint_id: UUID, now: datetime) -> bool:
         async with self._engine.begin() as connection:
@@ -100,8 +128,3 @@ class SqlComplaintOutbox:
                     "error_code": error_code,
                 },
             )
-
-    async def _unsent(self, query: TextClause, job: str, limit: int) -> list[Complaint]:
-        async with self._engine.connect() as connection:
-            result = await connection.execute(query, {"job": job, "limit": limit})
-            return [complaint_from_row(row) for row in result]

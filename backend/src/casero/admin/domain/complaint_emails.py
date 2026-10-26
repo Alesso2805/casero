@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date, datetime
+from typing import Literal
 
 from casero.admin.domain.complaints import (
     Complaint,
@@ -34,6 +35,25 @@ NOTICES = (
     "El proveedor debe dar respuesta al reclamo o queja en un plazo no mayor a quince (15)"
     " días hábiles, el cual es improrrogable.",
 )
+
+
+CopyState = Literal["sent", "failed", "unfinished", "no_email"]
+
+
+@dataclass(frozen=True)
+class CopyStatus:
+    state: CopyState
+    error_code: str | None = None
+
+
+COPY_STATUS_LINES: dict[CopyState, str] = {
+    "sent": "Copia al consumidor: enviada.",
+    "failed": "Copia al consumidor: no se pudo enviar ({error_code})."
+    " Envíala tú desde este correo.",
+    "unfinished": "Copia al consumidor: el envío no terminó. Revisa docs/ops/complaints.md y,"
+    " si no llegó, envíala tú desde este correo.",
+    "no_email": "Copia al consumidor: no dejó correo; responde por carta.",
+}
 
 
 @dataclass(frozen=True)
@@ -123,7 +143,7 @@ def consumer_copy(complaint: Complaint, business: BusinessIdentity) -> Email:
     )
 
 
-def inbox_notice(complaint: Complaint, business: BusinessIdentity) -> Email:
+def inbox_notice(complaint: Complaint, business: BusinessIdentity, copy: CopyStatus) -> Email:
     sheet = complaint.sheet
     article = "un reclamo" if sheet.kind == "claim" else "una queja"
     lines = [
@@ -133,6 +153,7 @@ def inbox_notice(complaint: Complaint, business: BusinessIdentity) -> Email:
         f"Presentado: {lima_timestamp(complaint.created_at)} (hora de Lima)",
         f"Responder a más tardar el: {day(complaint.due_on)}",
         f"Respuesta por: {CHANNEL_LABELS[sheet.response_channel]}",
+        COPY_STATUS_LINES[copy.state].format(error_code=copy.error_code),
         "",
         "El detalle está en la tabla complaints. Cómo leerlo y responderlo:"
         " docs/ops/complaints.md.",

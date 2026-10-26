@@ -16,6 +16,7 @@ from casero.admin.domain.complaint_emails import BusinessIdentity
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.mail import SmtpMailer, SmtpSettings
+from casero.worker import complaint_copy_text
 from database import Database
 
 pytestmark = pytest.mark.anyio
@@ -49,6 +50,17 @@ class Mailpit:
         messages: list[dict[str, Any]] = response.json()["messages"]
         return messages
 
+    def notice_text(self, number: str) -> str:
+        [notice] = [
+            message
+            for message in self.messages_to(BUSINESS.complaints_inbox)
+            if number in message["Subject"]
+        ]
+        response = httpx2.get(f"{self.api}/message/{notice['ID']}")
+        response.raise_for_status()
+        text: str = response.json()["Text"]
+        return text
+
 
 @pytest.fixture(scope="module")
 def mailpit() -> Iterator[Mailpit]:
@@ -80,16 +92,17 @@ async def worker_engine(database: Database) -> AsyncIterator[AsyncEngine]:
         await engine.dispose()
 
 
-def file_complaint(database: Database, name: str, email: str) -> str:
+def file_complaint(database: Database, name: str, email: str | None) -> str:
     body = {
         "full_name": "Ana Quispe Mamani",
         "document_type": "dni",
         "document_number": "12345678",
         "email": email,
+        "address": None if email else "Jr. Los Pinos 123, Arequipa",
         "item_kind": "service",
         "kind": "claim",
         "detail": "Me cobraron dos veces la suscripción.",
-        "response_channel": "email",
+        "response_channel": "email" if email else "letter",
     }
     with api_client(database, address_for(name), FixedClock(NOW)) as client:
         response = client.post("/api/public/complaints", json=body)
@@ -119,6 +132,7 @@ async def test_the_worker_sends_the_copy_and_the_notice_once(
 ) -> None:
     consumer = f"{uuid7()}@example.com"
     number = file_complaint(database, request.node.name, consumer)
+    letter_only = file_complaint(database, request.node.name, None)
     clock = FixedClock(NOW)
     send = SendComplaintEmails(
         SqlComplaintOutbox(worker_engine), SmtpMailer(mailpit.smtp, clock), clock, BUSINESS
@@ -130,16 +144,27 @@ async def test_the_worker_sends_the_copy_and_the_notice_once(
     [copy] = mailpit.messages_to(consumer)
     assert copy["Subject"] == f"Copia de tu reclamo N.° {number}"
     assert copy["ReplyTo"][0]["Address"] == "reclamos@example.com"
-    notices = [
-        message
-        for message in mailpit.messages_to("reclamos@example.com")
-        if number in message["Subject"]
-    ]
-    assert len(notices) == 1
+    assert "Copia al consumidor: enviada." in mailpit.notice_text(number)
+    assert "no dejó correo; responde por carta" in mailpit.notice_text(letter_only)
     assert await job_runs(database, number) == {
         COPY_JOB: ("done", None),
         NOTICE_JOB: ("done", None),
     }
+    assert await job_runs(database, letter_only) == {NOTICE_JOB: ("done", None)}
+
+
+async def test_the_owner_can_print_the_exact_copy_to_send_by_hand(
+    database: Database, worker_engine: AsyncEngine, request: pytest.FixtureRequest
+) -> None:
+    consumer = f"{uuid7()}@example.com"
+    number = file_complaint(database, request.node.name, consumer)
+
+    text = await complaint_copy_text(worker_engine, number, BUSINESS)
+
+    assert text is not None
+    assert text.startswith(f"Para: {consumer}\nAsunto: Copia de tu reclamo N.° {number}")
+    assert f"HOJA DE RECLAMACIÓN N.° {number}" in text
+    assert await complaint_copy_text(worker_engine, "999999999-2030", BUSINESS) is None
 
 
 async def test_an_unreachable_server_marks_the_emails_failed_without_retrying(

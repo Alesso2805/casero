@@ -5,7 +5,12 @@ from uuid import UUID
 
 import structlog
 
-from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy, inbox_notice
+from casero.admin.domain.complaint_emails import (
+    BusinessIdentity,
+    CopyStatus,
+    consumer_copy,
+    inbox_notice,
+)
 from casero.admin.domain.complaints import Complaint
 from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.email import Email, MailDeliveryError
@@ -17,10 +22,16 @@ BATCH_SIZE = 20
 log = structlog.get_logger()
 
 
+@dataclass(frozen=True)
+class PendingNotice:
+    complaint: Complaint
+    copy: CopyStatus
+
+
 class ComplaintOutbox(Protocol):
     async def without_copy(self, limit: int) -> list[Complaint]: ...
 
-    async def without_notice(self, limit: int) -> list[Complaint]: ...
+    async def without_notice(self, limit: int) -> list[PendingNotice]: ...
 
     async def claim(self, job: str, complaint_id: UUID, now: datetime) -> bool: ...
 
@@ -43,8 +54,9 @@ class SendComplaintEmails:
     async def __call__(self) -> None:
         for complaint in await self.outbox.without_copy(BATCH_SIZE):
             await self._send_once(COPY_JOB, complaint, consumer_copy(complaint, self.business))
-        for complaint in await self.outbox.without_notice(BATCH_SIZE):
-            await self._send_once(NOTICE_JOB, complaint, inbox_notice(complaint, self.business))
+        for pending in await self.outbox.without_notice(BATCH_SIZE):
+            notice = inbox_notice(pending.complaint, self.business, pending.copy)
+            await self._send_once(NOTICE_JOB, pending.complaint, notice)
 
     async def _send_once(self, job: str, complaint: Complaint, email: Email) -> None:
         if not await self.outbox.claim(job, complaint.id, self.clock.now()):
