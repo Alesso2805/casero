@@ -13,12 +13,20 @@ from casero.accounts.application.waitlist import (
     WaitlistRepository,
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
+from casero.admin.api import complaints as complaints_api
+from casero.admin.application.complaints import (
+    ComplaintRateLimiter,
+    ComplaintRepository,
+    FileComplaint,
+)
+from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.clock import Clock, SystemClock
 
 WAITLIST_JOINS_PER_HOUR = 5
+COMPLAINTS_PER_HOUR = 5
 
 
 class HealthResponse(BaseModel):
@@ -55,6 +63,17 @@ def create_app(settings: ApiSettings | None = None, clock: Clock | None = None) 
         return JoinWaitlist(repository, limiter, app_clock)
 
     app.include_router(waitlist_api.create_router(provide_join_waitlist))
+
+    async def provide_file_complaint(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> FileComplaint:
+        repository: ComplaintRepository = SqlComplaintRepository(connection)
+        limiter: ComplaintRateLimiter = PostgresRateLimiter(
+            connection, config.rate_limit_key, app_clock, "complaints", COMPLAINTS_PER_HOUR
+        )
+        return FileComplaint(repository, limiter, app_clock)
+
+    app.include_router(complaints_api.create_router(provide_file_complaint))
 
     @app.get("/api/health")
     def health() -> HealthResponse:

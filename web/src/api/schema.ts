@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/complaints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * File Complaint
+         * @description File a claim or a complaint in the virtual Libro de Reclamaciones.
+         */
+        post: operations["file_complaint_api_public_complaints_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/waitlist": {
         parameters: {
             query?: never;
@@ -48,6 +68,74 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** FileComplaintRequest */
+        FileComplaintRequest: {
+            /** Address */
+            address?: string | null;
+            /** Claimed Amount Cents */
+            claimed_amount_cents?: number | null;
+            /** Detail */
+            detail: string;
+            /** Document Number */
+            document_number: string;
+            /**
+             * Document Type
+             * @enum {string}
+             */
+            document_type: "dni" | "ce" | "passport";
+            /** Email */
+            email?: string | null;
+            /** Full Name */
+            full_name: string;
+            guardian?: components["schemas"]["GuardianRequest"] | null;
+            /** Item Description */
+            item_description?: string | null;
+            /**
+             * Item Kind
+             * @enum {string}
+             */
+            item_kind: "product" | "service";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "claim" | "complaint";
+            /** Phone */
+            phone?: string | null;
+            /** Request */
+            request?: string | null;
+            /**
+             * Response Channel
+             * @enum {string}
+             */
+            response_channel: "email" | "letter";
+        };
+        /** FiledComplaintResponse */
+        FiledComplaintResponse: {
+            /**
+             * Due On
+             * Format: date
+             */
+            due_on: string;
+            /**
+             * Filed At
+             * Format: date-time
+             */
+            filed_at: string;
+            /** Number */
+            number: string;
+        };
+        /** GuardianRequest */
+        GuardianRequest: {
+            /** Address */
+            address?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Full Name */
+            full_name: string;
+            /** Phone */
+            phone?: string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -119,6 +207,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    file_complaint_api_public_complaints_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileComplaintRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FiledComplaintResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many requests from this client */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
