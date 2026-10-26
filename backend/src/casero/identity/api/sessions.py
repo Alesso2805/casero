@@ -1,5 +1,4 @@
 from collections.abc import Awaitable, Callable
-from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -10,10 +9,12 @@ from casero.identity.application.sessions import AuthenticateSession, LogIn, Log
 from casero.identity.domain.sessions import Session
 from casero.identity.infrastructure.sessions import SqlCredentials
 from casero.shared.infrastructure.csrf import issue_csrf_cookie, require_csrf
+from casero.shared.infrastructure.session_cookie import (
+    SESSION_COOKIE,
+    clear_session_cookie,
+    set_session_cookie,
+)
 
-SESSION_COOKIE = "__Host-casero_session"
-# Browsers cap cookies at 400 days; the server enforces the 30-day sliding expiry (ADR-0004).
-SESSION_COOKIE_MAX_AGE = timedelta(days=400) // timedelta(seconds=1)
 MAX_PASSWORD_LENGTH = 1024
 
 
@@ -26,22 +27,6 @@ class MeResponse(BaseModel):
     user_id: UUID
     email: str
     email_verified: bool
-
-
-def set_session_cookie(response: Response, token: str) -> None:
-    response.set_cookie(
-        SESSION_COOKIE,
-        token,
-        max_age=SESSION_COOKIE_MAX_AGE,
-        secure=True,
-        httponly=True,
-        samesite="lax",
-        path="/",
-    )
-
-
-def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(SESSION_COOKIE, secure=True, httponly=True, samesite="lax", path="/")
 
 
 def session_dependency(

@@ -9,6 +9,8 @@ UNUSED_SETTINGS = ApiSettings(
     email_hash_key=b"unused",
     ses_events_topic_arn="arn:aws:sns:us-east-1:000000000000:unused",
     unsubscribe_key=b"unused",
+    acceptance_ip_key=b"unused",
+    registration_mode="closed",
 )
 
 

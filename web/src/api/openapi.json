@@ -451,6 +451,58 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "RegistrationRequest": {
+        "properties": {
+          "accept_terms_and_privacy": {
+            "const": true,
+            "title": "Accept Terms And Privacy",
+            "type": "boolean"
+          },
+          "consent_sensitive_data": {
+            "const": true,
+            "title": "Consent Sensitive Data",
+            "type": "boolean"
+          },
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "invite_token": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Token"
+          },
+          "password": {
+            "maxLength": 1024,
+            "minLength": 10,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "display_name",
+          "accept_terms_and_privacy",
+          "consent_sensitive_data"
+        ],
+        "title": "RegistrationRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -639,6 +691,52 @@
           }
         },
         "summary": "Receive Email Event"
+      }
+    },
+    "/api/public/registration": {
+      "post": {
+        "description": "Create a landlord account, record the legal acceptances and start a session.",
+        "operationId": "register_api_public_registration_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "Registration is closed or the invitation is not valid"
+          },
+          "409": {
+            "description": "That email already has an account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many attempts from this client"
+          }
+        },
+        "summary": "Register"
       }
     },
     "/api/public/session": {

@@ -20,6 +20,8 @@ class Credentials(Protocol):
 
 
 class PasswordHasher(Protocol):
+    async def hash(self, password: str) -> str: ...
+
     async def verify(self, password_hash: str, password: str) -> bool: ...
 
     async def verify_nothing(self, password: str) -> None: ...
@@ -65,14 +67,30 @@ LoginOutcome = LoggedIn | Literal["invalid", "limited"]
 
 
 @dataclass(frozen=True)
+class StartSession:
+    tokens: SessionTokens
+    store: SessionStore
+    clock: Clock
+
+    async def __call__(self, user_id: UUID, previous_token: str | None) -> LoggedIn:
+        now = self.clock.now()
+        if previous_token:
+            previous = await self.store.by_token_hash(self.tokens.hash(previous_token))
+            if previous is not None:
+                await self.store.revoke(previous.id, now)
+        token, token_hash = self.tokens.new()
+        session = Session(new_id(), user_id, now, now, now + SESSION_LIFETIME, None)
+        await self.store.create(session, token_hash)
+        return LoggedIn(token, session)
+
+
+@dataclass(frozen=True)
 class LogIn:
     credentials: Credentials
     hasher: PasswordHasher
-    tokens: SessionTokens
-    store: SessionStore
+    start_session: StartSession
     throttle: LoginThrottle
     sleeper: Sleeper
-    clock: Clock
 
     async def __call__(
         self, email: str, password: str, client: str, previous_token: str | None
@@ -91,18 +109,7 @@ class LogIn:
         if not await self.hasher.verify(user.password_hash, password):
             await self.throttle.record_failure(email)
             return "invalid"
-        now = self.clock.now()
-        if previous_token:
-            await self._revoke(previous_token, now)
-        token, token_hash = self.tokens.new()
-        session = Session(new_id(), user.user_id, now, now, now + SESSION_LIFETIME, None)
-        await self.store.create(session, token_hash)
-        return LoggedIn(token, session)
-
-    async def _revoke(self, token: str, now: datetime) -> None:
-        session = await self.store.by_token_hash(self.tokens.hash(token))
-        if session is not None:
-            await self.store.revoke(session.id, now)
+        return await self.start_session(user.user_id, previous_token)
 
 
 @dataclass(frozen=True)

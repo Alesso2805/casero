@@ -1,11 +1,13 @@
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
 from casero.shared.infrastructure.mail import SmtpSecurity, SmtpSettings
 
 SMTP_SECURITY_MODES = ("none", "starttls", "tls")
+RegistrationMode = Literal["closed", "invite", "open"]
+REGISTRATION_MODES = ("closed", "invite", "open")
 
 
 @dataclass(frozen=True)
@@ -30,6 +32,8 @@ class ApiSettings:
     email_hash_key: bytes
     ses_events_topic_arn: str
     unsubscribe_key: bytes
+    acceptance_ip_key: bytes
+    registration_mode: RegistrationMode
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -39,7 +43,15 @@ class ApiSettings:
             email_hash_key=os.environ["CASERO_EMAIL_HASH_KEY"].encode(),
             ses_events_topic_arn=os.environ["CASERO_SES_EVENTS_TOPIC_ARN"],
             unsubscribe_key=os.environ["CASERO_UNSUBSCRIBE_KEY"].encode(),
+            acceptance_ip_key=os.environ["CASERO_ACCEPTANCE_IP_KEY"].encode(),
+            registration_mode=registration_mode(os.environ.get("REGISTRATION_MODE", "closed")),
         )
+
+
+def registration_mode(value: str) -> RegistrationMode:
+    if value not in REGISTRATION_MODES:
+        raise ValueError(f"REGISTRATION_MODE must be one of {', '.join(REGISTRATION_MODES)}")
+    return cast(RegistrationMode, value)
 
 
 def smtp_security(value: str) -> SmtpSecurity:
