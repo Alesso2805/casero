@@ -10,10 +10,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 from testcontainers.core.container import DockerContainer
 
-from api_client import FixedClock, address_for, api_client
+from api_client import TEST_EMAIL_HASH_KEY, FixedClock, address_for, api_client
 from casero.admin.application.complaint_emails import COPY_JOB, NOTICE_JOB, SendComplaintEmails
 from casero.admin.domain.complaint_emails import BusinessIdentity
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
+from casero.identity.infrastructure.email_suppressions import SuppressionLookup
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.mail import SmtpMailer, SmtpSettings
 from casero.worker import complaint_copy_text
@@ -30,6 +31,10 @@ BUSINESS = BusinessIdentity(
     address="Av. Ficticia 100, Lima",
     complaints_inbox="reclamos@example.com",
 )
+
+
+def no_suppressions(engine: AsyncEngine) -> SuppressionLookup:
+    return SuppressionLookup(engine, TEST_EMAIL_HASH_KEY)
 
 
 class Mailpit:
@@ -135,7 +140,11 @@ async def test_the_worker_sends_the_copy_and_the_notice_once(
     letter_only = file_complaint(database, request.node.name, None)
     clock = FixedClock(NOW)
     send = SendComplaintEmails(
-        SqlComplaintOutbox(worker_engine), SmtpMailer(mailpit.smtp, clock), clock, BUSINESS
+        SqlComplaintOutbox(worker_engine),
+        SmtpMailer(mailpit.smtp, clock),
+        no_suppressions(worker_engine),
+        clock,
+        BUSINESS,
     )
 
     await send()
@@ -186,8 +195,12 @@ async def test_an_unreachable_server_marks_the_emails_failed_without_retrying(
         sender="Casero <no-reply@example.com>",
     )
 
-    await SendComplaintEmails(outbox, SmtpMailer(unreachable, clock), clock, BUSINESS)()
-    await SendComplaintEmails(outbox, SmtpMailer(mailpit.smtp, clock), clock, BUSINESS)()
+    await SendComplaintEmails(
+        outbox, SmtpMailer(unreachable, clock), no_suppressions(worker_engine), clock, BUSINESS
+    )()
+    await SendComplaintEmails(
+        outbox, SmtpMailer(mailpit.smtp, clock), no_suppressions(worker_engine), clock, BUSINESS
+    )()
 
     runs = await job_runs(database, number)
     assert {status for status, _ in runs.values()} == {"failed"}

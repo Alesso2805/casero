@@ -51,6 +51,8 @@ services:
     environment:
       CASERO_APP_DATABASE_URL: postgresql+asyncpg://casero_app:${CASERO_APP_PASSWORD:?}@postgres:5432/casero
       CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:?}
+      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:?}
+      CASERO_SES_EVENTS_TOPIC_ARN: ${CASERO_SES_EVENTS_TOPIC_ARN:?}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -60,6 +62,7 @@ services:
     command: ["python", "-m", "casero.worker"]
     environment:
       CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:?}@postgres:5432/casero
+      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:?}
       CASERO_SMTP_HOST: ${CASERO_SMTP_HOST:?}
       CASERO_SMTP_PORT: ${CASERO_SMTP_PORT:-587}
       CASERO_SMTP_SECURITY: ${CASERO_SMTP_SECURITY:-starttls}

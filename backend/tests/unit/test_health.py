@@ -4,7 +4,10 @@ from casero.api import create_app
 from casero.shared.infrastructure.settings import ApiSettings
 
 UNUSED_SETTINGS = ApiSettings(
-    database_url="postgresql+asyncpg://unused@localhost/unused", rate_limit_key=b"unused"
+    database_url="postgresql+asyncpg://unused@localhost/unused",
+    rate_limit_key=b"unused",
+    email_hash_key=b"unused",
+    ses_events_topic_arn="arn:aws:sns:us-east-1:000000000000:unused",
 )
 
 
