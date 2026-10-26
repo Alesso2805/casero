@@ -45,7 +45,7 @@ No vendemos tus datos ni los cedemos a nadie para su propio uso. Los guardan por
 | Notas de las entrevistas | Notion | Estados Unidos |
 | Cobro de la preventa | Yape (BCP) | Perú |
 | Videollamadas | Google Meet (Google) | Estados Unidos |
-| Correo para coordinar con fundadores y entrevistados | Gmail (Google) | Estados Unidos |
+| Correo para coordinar con fundadores y entrevistados, y para atender reclamos | Gmail (Google) | Estados Unidos |
 
 Salvo Yape, todos estos proveedores guardan los datos fuera del Perú. Solo entregamos tus datos a una autoridad cuando una norma nos obliga.
 

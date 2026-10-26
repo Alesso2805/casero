@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from collections.abc import Awaitable, Callable, Mapping
 
 import asyncpg
@@ -10,7 +11,7 @@ from casero.admin.application.complaint_emails import (
     ComplaintOutbox,
     SendComplaintEmails,
 )
-from casero.admin.domain.complaint_emails import BusinessIdentity
+from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.mail import SmtpMailer
@@ -30,17 +31,45 @@ async def acquire_worker_lock(connection: asyncpg.Connection) -> bool:
     return acquired
 
 
-def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> dict[str, Job]:
-    outbox: ComplaintOutbox = SqlComplaintOutbox(engine)
-    mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
+def business_identity(settings: WorkerSettings) -> BusinessIdentity:
     business = settings.business
-    identity = BusinessIdentity(
+    return BusinessIdentity(
         name=business.name,
         ruc=business.ruc,
         address=business.address,
         complaints_inbox=settings.complaints_inbox,
     )
+
+
+def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> dict[str, Job]:
+    outbox: ComplaintOutbox = SqlComplaintOutbox(engine)
+    mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
+    identity = business_identity(settings)
     return {"complaint_emails": SendComplaintEmails(outbox, mailer, clock, identity)}
+
+
+async def complaint_copy_text(
+    engine: AsyncEngine, number: str, business: BusinessIdentity
+) -> str | None:
+    complaint = await SqlComplaintOutbox(engine).by_number(number)
+    if complaint is None or complaint.sheet.email is None:
+        return None
+    email = consumer_copy(complaint, business)
+    return f"Para: {email.to}\nAsunto: {email.subject}\n\n{email.text}"
+
+
+async def print_complaint_copy(number: str) -> int:
+    settings = WorkerSettings.from_environment()
+    engine = create_engine(settings.engine_url)
+    try:
+        copy = await complaint_copy_text(engine, number, business_identity(settings))
+    finally:
+        await engine.dispose()
+    if copy is None:
+        print(f"No hay un reclamo {number} con correo del consumidor.", file=sys.stderr)
+        return 1
+    print(copy)
+    return 0
 
 
 async def run_jobs(jobs: Mapping[str, Job]) -> None:
@@ -72,6 +101,8 @@ async def run() -> None:
 
 
 def main() -> None:
+    if sys.argv[1:2] == ["complaint-copy"] and len(sys.argv) == 3:
+        sys.exit(asyncio.run(print_complaint_copy(sys.argv[2])))
     asyncio.run(run())
 
 
