@@ -64,6 +64,36 @@ const appRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/AppHome"), "AppHome"),
 });
 
+const verifyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/verificar",
+  component: lazyRouteComponent(() => import("./account/VerifyPage"), "VerifyPage"),
+});
+
+const forgotRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/recuperar",
+  component: lazyRouteComponent(() => import("./account/ForgotPasswordPage"), "ForgotPasswordPage"),
+});
+
+const newPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/nueva-clave",
+  component: lazyRouteComponent(() => import("./account/NewPasswordPage"), "NewPasswordPage"),
+});
+
+const legalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/legal/$document",
+  component: lazyRouteComponent(() => import("./landing/LegalDocumentPage"), "LegalDocumentPage"),
+});
+
+const legalVersionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/legal/$document/$version",
+  component: lazyRouteComponent(() => import("./landing/LegalDocumentPage"), "LegalDocumentPage"),
+});
+
 export const routeTree = rootRoute.addChildren([
   landingRoute,
   privacyRoute,
@@ -73,6 +103,11 @@ export const routeTree = rootRoute.addChildren([
   registerRoute,
   loginRoute,
   appRoute,
+  verifyRoute,
+  forgotRoute,
+  newPasswordRoute,
+  legalRoute,
+  legalVersionRoute,
 ]);
 
 export const router = createRouter({ routeTree });

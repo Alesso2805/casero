@@ -62,4 +62,5 @@ export const copy = {
       "Casero es una herramienta de registro y cálculo. No es asesoría tributaria ni legal y no reemplaza a tu contador. El cálculo depende de los datos que registres.",
   },
   privacyBack: "Volver al inicio",
+  legalNotFound: "No encontramos ese documento.",
 } as const;

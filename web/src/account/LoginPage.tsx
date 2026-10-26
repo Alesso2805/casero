@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -92,9 +92,9 @@ export function LoginPage() {
           {mutation.isPending ? text.login.sending : text.login.submit}
         </button>
       </form>
-      <a href="/recuperar" className="text-brand underline">
+      <Link to="/recuperar" className="text-brand underline">
         {text.login.forgot}
-      </a>
+      </Link>
       <p>{text.login.noAccount}</p>
       <PublicFooter />
     </div>
