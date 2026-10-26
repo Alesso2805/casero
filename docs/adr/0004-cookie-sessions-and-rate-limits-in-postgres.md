@@ -41,6 +41,22 @@ Landlords use a PWA from their phones and the internal panel is used by one pers
 
 `__Host-` cookies need a secure context. They work on `http://localhost`. Testing from a phone on the local network uses Caddy's `tls internal`.
 
+## Parameters chosen in CS-05
+
+- **Argon2id:** argon2-cffi's defaults, the RFC 9106 low-memory profile (t=3, m=64 MiB, p=4).
+  - Hashing runs in a worker thread, so the single API process keeps serving.
+  - The time on the e2-small is measured at the first deploy. If one check takes more than about 250 ms, `t` is lowered, never `m`.
+- **Cookies:**
+  - The session cookie has `Max-Age` 400 days (the browser cap). The 30-day sliding expiry lives only in `sessions.expires_at`, so a cookie that outlives its session is useless.
+  - A login revokes the session of any cookie it brings and issues new session and CSRF tokens.
+- **Throttling:**
+  - **Per IP:** 30 login attempts per hour, then 429.
+  - **Per email:** failures within the current hour window. From the third one, each attempt waits 2^(n−3) seconds before the password is checked, capped at 30 seconds.
+  - An unknown email spends the same Argon2 time as a real one (`verify_nothing`), so a login doesn't reveal which emails have accounts.
+- **CSRF:** `GET /api/public/csrf` issues the cookie before login. `require_csrf` guards the login, the logout and every unsafe `/api/app/*` route.
+  - The SNS webhook and RFC 8058 one-click unsubscribe can't carry a header, so they don't take it.
+  - Neither do the anonymous public forms, which use no cookie.
+
 ## Consequences
 
 - No extra infrastructure. Sessions are revocable and visible in SQL.
