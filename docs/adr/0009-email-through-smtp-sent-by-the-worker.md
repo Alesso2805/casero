@@ -32,5 +32,5 @@ There are two constraints:
 
 - The copy arrives within about a minute of filing, not during the request.
 - Switching from SES to another provider means changing environment variables only, as long as the provider offers SMTP.
-- `List-Unsubscribe` headers and the suppression check before sending arrive with the scheduled emails and the SNS webhook. A complaint copy is transactional, so an unsubscribe never suppresses it.
+- The suppression check before sending arrived with the SNS webhook (ADR-0010). `List-Unsubscribe` headers arrive with the scheduled emails. A complaint copy is transactional, so an unsubscribe never suppresses it.
 - Using the SES HTTP API would remove the SMTP dependency but add the AWS SDK and a second adapter for Mailpit. This can be revisited if SMTP limits show up.
