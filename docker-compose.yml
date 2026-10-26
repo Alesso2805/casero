@@ -49,9 +49,19 @@ services:
     command: ["python", "-m", "casero.worker"]
     environment:
       CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:-casero_worker_dev}@postgres:5432/casero
+      CASERO_SMTP_HOST: mailpit
+      CASERO_SMTP_PORT: "1025"
+      CASERO_SMTP_SECURITY: none
+      CASERO_MAIL_FROM: Casero <no-reply@casero.localhost>
+      CASERO_BUSINESS_NAME: "[nombre completo]"
+      CASERO_BUSINESS_RUC: "[RUC]"
+      CASERO_BUSINESS_ADDRESS: "[domicilio]"
+      CASERO_COMPLAINTS_INBOX: reclamos@casero.localhost
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
 
   web:
     build: ./web

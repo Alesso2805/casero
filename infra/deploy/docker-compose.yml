@@ -60,6 +60,16 @@ services:
     command: ["python", "-m", "casero.worker"]
     environment:
       CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:?}@postgres:5432/casero
+      CASERO_SMTP_HOST: ${CASERO_SMTP_HOST:?}
+      CASERO_SMTP_PORT: ${CASERO_SMTP_PORT:-587}
+      CASERO_SMTP_SECURITY: ${CASERO_SMTP_SECURITY:-starttls}
+      CASERO_SMTP_USERNAME: ${CASERO_SMTP_USERNAME:?}
+      CASERO_SMTP_PASSWORD: ${CASERO_SMTP_PASSWORD:?}
+      CASERO_MAIL_FROM: ${CASERO_MAIL_FROM:?}
+      CASERO_BUSINESS_NAME: ${CASERO_BUSINESS_NAME:?}
+      CASERO_BUSINESS_RUC: ${CASERO_BUSINESS_RUC:?}
+      CASERO_BUSINESS_ADDRESS: ${CASERO_BUSINESS_ADDRESS:?}
+      CASERO_COMPLAINTS_INBOX: ${CASERO_COMPLAINTS_INBOX:?}
     depends_on:
       migrate:
         condition: service_completed_successfully

@@ -134,6 +134,14 @@ jobs:
       CASERO_WORKER_PASSWORD: ci_worker
       CASERO_ADMIN_PASSWORD: ci_admin
       CASERO_RATE_LIMIT_KEY: ci_rate_limit
+      CASERO_SMTP_HOST: smtp.invalid
+      CASERO_SMTP_USERNAME: ci_smtp
+      CASERO_SMTP_PASSWORD: ci_smtp
+      CASERO_MAIL_FROM: Casero <no-reply@example.com>
+      CASERO_BUSINESS_NAME: Negocio de Prueba
+      CASERO_BUSINESS_RUC: "10000000001"
+      CASERO_BUSINESS_ADDRESS: Av. Ficticia 100, Lima
+      CASERO_COMPLAINTS_INBOX: reclamos@example.com
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the production images
