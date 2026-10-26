@@ -7,6 +7,7 @@ import asyncpg
 import pytest
 
 import seed
+from api_client import FixedClock, api_client
 from database import Database, rolled_back
 from smoke.harness import rows_left
 
@@ -105,3 +106,34 @@ async def test_purge_leaves_only_the_anonymized_account_and_its_payments(
     assert await owner.fetchval("SELECT count(*) FROM users WHERE id = $1", account.user_id) == 0
     invites = "SELECT count(*) FROM registration_invites WHERE lower(email) = lower($1)"
     assert await owner.fetchval(invites, account.email) == 0
+
+
+async def test_a_filed_complaint_is_read_by_the_worker_and_the_admin_only(
+    database: Database,
+) -> None:
+    clock = FixedClock(datetime(2045, 3, 6, 15, 0, tzinfo=UTC))
+    body = {
+        "full_name": "Luis Huamán",
+        "document_type": "ce",
+        "document_number": "001234567",
+        "address": "Calle Las Flores 456, Cusco",
+        "item_kind": "service",
+        "kind": "complaint",
+        "detail": "Nadie respondió mi mensaje de soporte.",
+        "response_channel": "letter",
+    }
+
+    with api_client(database, "198.51.100.251", clock) as client:
+        response = client.post("/api/public/complaints", json=body)
+
+    assert response.status_code == 201
+    number = response.json()["number"]
+    for role in ("casero_worker", "casero_admin"):
+        async with rolled_back(database.dsn(role)) as connection:
+            kind = await connection.fetchval(
+                "SELECT kind FROM complaints WHERE number = $1", number
+            )
+            assert kind == "complaint"
+    async with rolled_back(database.dsn("casero_app")) as app:
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            await app.fetchval("SELECT count(*) FROM complaints")

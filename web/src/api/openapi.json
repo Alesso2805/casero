@@ -1,6 +1,237 @@
 {
   "components": {
     "schemas": {
+      "FileComplaintRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "claimed_amount_cents": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed Amount Cents"
+          },
+          "detail": {
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "document_number": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Document Number",
+            "type": "string"
+          },
+          "document_type": {
+            "enum": [
+              "dni",
+              "ce",
+              "passport"
+            ],
+            "title": "Document Type",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "guardian": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuardianRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "item_description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Description"
+          },
+          "item_kind": {
+            "enum": [
+              "product",
+              "service"
+            ],
+            "title": "Item Kind",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "claim",
+              "complaint"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request"
+          },
+          "response_channel": {
+            "enum": [
+              "email",
+              "letter"
+            ],
+            "title": "Response Channel",
+            "type": "string"
+          }
+        },
+        "required": [
+          "full_name",
+          "document_type",
+          "document_number",
+          "item_kind",
+          "kind",
+          "detail",
+          "response_channel"
+        ],
+        "title": "FileComplaintRequest",
+        "type": "object"
+      },
+      "FiledComplaintResponse": {
+        "properties": {
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "filed_at": {
+            "format": "date-time",
+            "title": "Filed At",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "filed_at",
+          "due_on"
+        ],
+        "title": "FiledComplaintResponse",
+        "type": "object"
+      },
+      "GuardianRequest": {
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "full_name"
+        ],
+        "title": "GuardianRequest",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -122,6 +353,48 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/public/complaints": {
+      "post": {
+        "description": "File a claim or a complaint in the virtual Libro de Reclamaciones.",
+        "operationId": "file_complaint_api_public_complaints_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileComplaintRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FiledComplaintResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many requests from this client"
+          }
+        },
+        "summary": "File Complaint"
       }
     },
     "/api/public/waitlist": {

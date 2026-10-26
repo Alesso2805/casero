@@ -1,4 +1,3 @@
-import zlib
 from collections.abc import Iterator
 from uuid import uuid7
 
@@ -6,17 +5,14 @@ import asyncpg
 import pytest
 from fastapi.testclient import TestClient
 
-from casero.api import WAITLIST_JOINS_PER_HOUR, create_app
-from casero.shared.infrastructure.settings import ApiSettings
+from api_client import address_for, api_client
+from casero.api import WAITLIST_JOINS_PER_HOUR
 from database import Database
 
 
 @pytest.fixture
 def client(database: Database, request: pytest.FixtureRequest) -> Iterator[TestClient]:
-    url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
-    app = create_app(ApiSettings(database_url=url, rate_limit_key=b"test-key"))
-    address = f"198.51.100.{zlib.crc32(request.node.name.encode()) % 250 + 1}"
-    with TestClient(app, client=(address, 50000)) as test_client:
+    with api_client(database, address_for(request.node.name)) as test_client:
         yield test_client
 
 
