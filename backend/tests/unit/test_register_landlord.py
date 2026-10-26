@@ -88,6 +88,15 @@ class Records:
         self.forgotten.append(email)
 
 
+class SendVerification:
+    def __init__(self) -> None:
+        self.sent_to: list[UUID] = []
+
+    async def __call__(self, user_id: UUID) -> str:
+        self.sent_to.append(user_id)
+        return "sent"
+
+
 class StartSession:
     async def __call__(self, user_id: UUID, previous_token: str | None) -> LoggedIn:
         return LoggedIn("token", Session(uuid7(), user_id, NOW, NOW, NOW, None))
@@ -109,6 +118,7 @@ def register(
         CreateUser(user or uuid7()),  # type: ignore[arg-type]
         records or Records(),
         StartSession(),  # type: ignore[arg-type]
+        SendVerification(),  # type: ignore[arg-type]
         Clock(),
     )
 

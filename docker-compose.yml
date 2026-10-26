@@ -6,6 +6,12 @@ x-backend: &backend
     dockerfile: backend/Dockerfile
   image: casero-backend:dev
 
+x-mail: &mail
+  CASERO_SMTP_HOST: mailpit
+  CASERO_SMTP_PORT: "1025"
+  CASERO_SMTP_SECURITY: none
+  CASERO_MAIL_FROM: Casero <no-reply@casero.localhost>
+
 x-business: &business
   CASERO_BUSINESS_NAME: "[nombre completo]"
   CASERO_BUSINESS_RUC: "[RUC]"
@@ -55,9 +61,13 @@ services:
       CASERO_UNSUBSCRIBE_KEY: ${CASERO_UNSUBSCRIBE_KEY:-unsubscribe_dev}
       CASERO_ACCEPTANCE_IP_KEY: ${CASERO_ACCEPTANCE_IP_KEY:-acceptance_ip_dev}
       REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
+      CASERO_PUBLIC_URL: http://localhost
+      <<: *mail
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
 
   worker:
     <<: *backend
@@ -65,11 +75,7 @@ services:
     environment:
       CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:-casero_worker_dev}@postgres:5432/casero
       CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:-email_hash_dev}
-      CASERO_SMTP_HOST: mailpit
-      CASERO_SMTP_PORT: "1025"
-      CASERO_SMTP_SECURITY: none
-      CASERO_MAIL_FROM: Casero <no-reply@casero.localhost>
-      <<: *business
+      <<: [*mail, *business]
     depends_on:
       migrate:
         condition: service_completed_successfully

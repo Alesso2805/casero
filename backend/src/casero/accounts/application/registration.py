@@ -9,6 +9,7 @@ from casero.accounts.domain.registration import (
     LegalVersion,
     RegistrationMode,
 )
+from casero.identity.application.account_emails import SendVerification
 from casero.identity.application.sessions import LoggedIn, StartSession
 from casero.identity.application.users import CreateUser
 from casero.shared.kernel.clock import Clock
@@ -77,6 +78,7 @@ class RegisterLandlord:
     create_user: CreateUser
     records: AccountRecords
     start_session: StartSession
+    send_verification: SendVerification
     clock: Clock
 
     async def __call__(self, registration: Registration) -> RegistrationOutcome:
@@ -115,4 +117,6 @@ class RegisterLandlord:
             await self.invites.consume(invite_id, now)
         await self.records.forget_waitlist_entry(registration.email)
         login = await self.start_session(user, registration.previous_token)
+        # A failed email doesn't undo the registration: the app offers to resend it.
+        await self.send_verification(user)
         return Registered(account_id, login)

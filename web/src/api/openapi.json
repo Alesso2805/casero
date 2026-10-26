@@ -429,6 +429,10 @@
       },
       "MeResponse": {
         "properties": {
+          "blocked_until_verified": {
+            "title": "Blocked Until Verified",
+            "type": "boolean"
+          },
           "email": {
             "title": "Email",
             "type": "string"
@@ -441,14 +445,50 @@
             "format": "uuid",
             "title": "User Id",
             "type": "string"
+          },
+          "verify_by": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify By"
           }
         },
         "required": [
           "user_id",
           "email",
-          "email_verified"
+          "email_verified",
+          "verify_by",
+          "blocked_until_verified"
         ],
         "title": "MeResponse",
+        "type": "object"
+      },
+      "NewPasswordRequest": {
+        "properties": {
+          "password": {
+            "maxLength": 1024,
+            "minLength": 10,
+            "title": "Password",
+            "type": "string"
+          },
+          "token": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ],
+        "title": "NewPasswordRequest",
         "type": "object"
       },
       "RegistrationRequest": {
@@ -503,6 +543,35 @@
         "title": "RegistrationRequest",
         "type": "object"
       },
+      "ResetRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ResetRequest",
+        "type": "object"
+      },
+      "TokenRequest": {
+        "properties": {
+          "token": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenRequest",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -551,6 +620,35 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/app/email-verification": {
+      "post": {
+        "description": "Send a new email-verification link.",
+        "operationId": "send_verification_api_app_email_verification_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "204": {
+            "description": "The email is already verified"
+          },
+          "422": {
+            "description": "The address bounced or complained; it gets no email"
+          },
+          "429": {
+            "description": "Three verification emails per hour at most"
+          },
+          "503": {
+            "description": "The email could not be sent"
+          }
+        },
+        "summary": "Send Verification"
+      }
+    },
     "/api/app/me": {
       "get": {
         "description": "Who is signed in.",
@@ -691,6 +789,116 @@
           }
         },
         "summary": "Receive Email Event"
+      }
+    },
+    "/api/public/email-verification": {
+      "post": {
+        "description": "Confirm an email with the token from the verification link.",
+        "operationId": "confirm_email_api_public_email_verification_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "The link is invalid, used or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Email"
+      }
+    },
+    "/api/public/password-reset": {
+      "post": {
+        "description": "Email a password-reset link if the address has an account; the answer is the same.",
+        "operationId": "request_reset_api_public_password_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many requests from this client"
+          }
+        },
+        "summary": "Request Reset"
+      }
+    },
+    "/api/public/password-reset/confirm": {
+      "post": {
+        "description": "Set a new password with the token from the reset link and close every session.",
+        "operationId": "reset_password_api_public_password_reset_confirm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "The link is invalid, used or expired"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Password"
       }
     },
     "/api/public/registration": {

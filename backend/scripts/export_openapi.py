@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from casero.api import create_app
+from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings
 
 UNUSED_SETTINGS = ApiSettings(
@@ -13,6 +14,8 @@ UNUSED_SETTINGS = ApiSettings(
     unsubscribe_key=b"unused",
     acceptance_ip_key=b"unused",
     registration_mode="closed",
+    smtp=SmtpSettings("localhost", 25, "none", None, None, "Casero <no-reply@example.com>"),
+    public_url="https://casero.example",
 )
 
 

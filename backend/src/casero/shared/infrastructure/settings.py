@@ -34,6 +34,8 @@ class ApiSettings:
     unsubscribe_key: bytes
     acceptance_ip_key: bytes
     registration_mode: RegistrationMode
+    smtp: SmtpSettings
+    public_url: str
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -45,6 +47,8 @@ class ApiSettings:
             unsubscribe_key=os.environ["CASERO_UNSUBSCRIBE_KEY"].encode(),
             acceptance_ip_key=os.environ["CASERO_ACCEPTANCE_IP_KEY"].encode(),
             registration_mode=registration_mode(os.environ.get("REGISTRATION_MODE", "closed")),
+            smtp=smtp_from_environment(os.environ),
+            public_url=os.environ["CASERO_PUBLIC_URL"],
         )
 
 
@@ -52,6 +56,17 @@ def registration_mode(value: str) -> RegistrationMode:
     if value not in REGISTRATION_MODES:
         raise ValueError(f"REGISTRATION_MODE must be one of {', '.join(REGISTRATION_MODES)}")
     return cast(RegistrationMode, value)
+
+
+def smtp_from_environment(env: Mapping[str, str]) -> SmtpSettings:
+    return SmtpSettings(
+        host=env["CASERO_SMTP_HOST"],
+        port=int(env["CASERO_SMTP_PORT"]),
+        security=smtp_security(env["CASERO_SMTP_SECURITY"]),
+        username=env.get("CASERO_SMTP_USERNAME") or None,
+        password=env.get("CASERO_SMTP_PASSWORD") or None,
+        sender=env["CASERO_MAIL_FROM"],
+    )
 
 
 def smtp_security(value: str) -> SmtpSecurity:
@@ -77,14 +92,7 @@ class WorkerSettings:
         env = os.environ
         return cls(
             database_url=env["CASERO_WORKER_DATABASE_URL"],
-            smtp=SmtpSettings(
-                host=env["CASERO_SMTP_HOST"],
-                port=int(env["CASERO_SMTP_PORT"]),
-                security=smtp_security(env["CASERO_SMTP_SECURITY"]),
-                username=env.get("CASERO_SMTP_USERNAME") or None,
-                password=env.get("CASERO_SMTP_PASSWORD") or None,
-                sender=env["CASERO_MAIL_FROM"],
-            ),
+            smtp=smtp_from_environment(env),
             business=BusinessSettings.from_environment(env),
             complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
             email_hash_key=env["CASERO_EMAIL_HASH_KEY"].encode(),
