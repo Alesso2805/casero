@@ -170,18 +170,20 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 **Correo.** Amazon SES en us-east-1, con DKIM, un subdominio MAIL FROM propio (SPF) y DMARC. Los correos programados (resumen diario y recordatorios de impuesto) llevan `List-Unsubscribe` y `List-Unsubscribe-Post` de un clic, que dan de baja solo ese tipo de correo. Los rebotes y las quejas llegan por SNS a un webhook que verifica la firma de cada mensaje y alimenta `email_suppressions`: una dirección que rebota o se queja deja de recibir todo correo. Una baja nunca suprime los correos transaccionales.
 
-**Despliegue y respaldos.** Un servidor virtual con Docker Compose (Caddy, API, worker, PostgreSQL), imágenes construidas en GitHub Actions, publicadas en GHCR y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo de Bitwarden, donde viven las claves. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
+**Despliegue y respaldos.** Un servidor virtual de Google Cloud con Docker Compose (Caddy con la web compilada, API, worker, PostgreSQL; `infra/deploy/`), imágenes construidas en GitHub Actions, publicadas en GHCR y desplegadas por SSH al fusionar en `main`. Respaldo con `pg_dump` cada 6 horas, cifrado y enviado a otro proveedor; prueba de restauración mensual partiendo solo de Bitwarden, donde viven las claves. Monitor externo de `/api/health` y alerta si el disco supera el 80 %.
 
 **Proveedores.** Precios y capacidades verificados el 25 de octubre de 2026. Todos guardan datos fuera del Perú, así que cada uno se declara ante la Autoridad como flujo transfronterizo.
 
 | Servicio | Proveedor y plan | País de los datos |
 | --- | --- | --- |
-| Servidor | Según la regla de `docs/ops/server.md`, en este orden: Hetzner CX33 en Nuremberg o Helsinki; si no hay, otro plan cloud de Hetzner en Alemania o Finlandia con 4 GB de RAM o más y menos de € 15 al mes, primero x86; si no hay nada en Hetzner, un VPS x86 de OVHcloud en un datacenter de Francia | El del servidor contratado: [PENDIENTE: Alemania, Finlandia o Francia] |
+| Servidor | Google Cloud Compute Engine e2-small (2 GB) en us-east1, con IP estática en el nivel Standard (`docs/ops/server.md`) | EE. UU. |
+| Dominio de la web | Subdominio gratuito de DuckDNS; solo resuelve el nombre y no trata datos personales | — |
+| Dominio del correo | Dominio .com propio, solo para el correo de SES (DKIM, MAIL FROM y DMARC), con su registrador y DNS | — |
 | Vouchers y respaldos | Backblaze B2, región US-East, con un bucket para cada uso (`docs/ops/storage-buckets.md`) | EE. UU. |
 | Correo | Amazon SES, región us-east-1; rebotes y quejas por SNS | EE. UU. |
 | Seguimiento de errores | Sentry, plan gratuito, región EE. UU. | EE. UU. |
 
-El servidor se contrata antes de la solicitud ante la Autoridad, porque esa solicitud declara el país donde quedan los datos; se declara el país del servidor que de verdad se contrate.
+DuckDNS no permite los registros CNAME, MX ni DMARC que pide SES, por eso el correo usa su propio dominio. La reputación de los dominios de DNS dinámico es baja, así que pasar la web a un dominio propio queda como opción antes del lanzamiento.
 
 ## Reglas de negocio
 
@@ -432,7 +434,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 | Seguridad web | CSP estricta, HSTS, `Referrer-Policy: no-referrer`, cookies `__Host-`, validación con Pydantic, escaneo de dependencias en CI | Test de cabeceras |
 | Disponibilidad | 99 % mensual; worker que se recupera solo | Monitor externo |
 | Pérdida de datos aceptable | Hasta 6 horas de registros en el peor caso; restauración en menos de 4 horas | Prueba mensual de restauración desde cero |
-| Rendimiento | Panel de cobros en menos de 1 s (p95) con 10 contratos, medido en el servidor (sin la latencia Lima–Europa); primera carga móvil en menos de 3 s en 4G, con los assets estáticos con hash servidos con caché larga | Prueba de carga simple en el servidor y Lighthouse |
+| Rendimiento | Panel de cobros en menos de 1 s (p95) con 10 contratos, medido en el servidor (sin la latencia Lima–EE. UU.); primera carga móvil en menos de 3 s en 4G, con los assets estáticos con hash servidos con caché larga | Prueba de carga simple en el servidor y Lighthouse |
 | Accesibilidad y uso | WCAG 2.1 AA; letra mínima de 16 px; botones de 44 px; usable con una mano en 360 px | axe y revisión con 3 usuarios mayores de 45 años |
 | Tiempo | `Clock` inyectado con `now()` y `today_lima()`; fin de mes, febrero y año bisiesto probados | Tests con reloj falso |
 | Costo | Infraestructura bajo US$ 30 al mes hasta 200 cuentas | Revisión mensual |
@@ -538,7 +540,7 @@ casero/
 | Mes | Probar una restauración desde cero; revisar costos; registrar ingresos para tus propios impuestos |
 | Año (diciembre) | Agregar al YAML del año siguiente el cronograma de SUNAT, las reglas (con la UIT) y los feriados, validados con el contador, y cargarlos con `make load-tax-config`; revisar términos y privacidad |
 
-**Antes de CS-04.** Verificar que "Casero" esté disponible como dominio y marca; si no, elegir otro nombre antes de comprar el dominio y antes de registrar la marca en Indecopi.
+**Antes de comprar el dominio del correo.** Verificar que "Casero" esté disponible como dominio y marca; si no, elegir otro nombre antes de comprar el dominio y antes de registrar la marca en Indecopi.
 
 ## Registro del debate y decisiones abiertas
 

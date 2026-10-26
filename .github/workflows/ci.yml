@@ -119,6 +119,53 @@ jobs:
         if: always()
         run: docker compose down --volumes
 
+  edge:
+    name: Edge
+    runs-on: ubuntu-24.04
+    env:
+      IMAGE_TAG: ci
+      CASERO_DOMAIN: localhost
+      CASERO_TLS: internal
+      CASERO_POSTGRES_INIT: ../postgres/init
+      POSTGRES_PASSWORD: ci_postgres
+      CASERO_OWNER_PASSWORD: ci_owner
+      CASERO_BACKUP_PASSWORD: ci_backup
+      CASERO_APP_PASSWORD: ci_app
+      CASERO_WORKER_PASSWORD: ci_worker
+      CASERO_ADMIN_PASSWORD: ci_admin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the production images
+        run: |
+          docker build --tag ghcr.io/alesso2805/casero-backend:ci backend
+          docker build --file infra/edge/Dockerfile --tag ghcr.io/alesso2805/casero-edge:ci .
+      - name: Start the production stack
+        run: docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml up --detach
+      - name: Wait for the edge
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl --silent --insecure --fail https://localhost/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml logs
+          exit 1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Check headers, caching and routing
+        working-directory: backend
+        env:
+          CASERO_EDGE_URL: https://localhost
+        run: |
+          uv sync --locked
+          uv run pytest tests/deployment
+      - name: Stop the stack
+        if: always()
+        run: docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml down --volumes
+
   security:
     name: Security
     runs-on: ubuntu-24.04

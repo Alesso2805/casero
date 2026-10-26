@@ -36,7 +36,7 @@ No vendemos tus datos ni los cedemos a nadie para su propio uso. Los guardan por
 
 | Servicio | Proveedor | País donde están los datos |
 | --- | --- | --- |
-| Servidor | [proveedor del servidor contratado: Hetzner u OVHcloud] | [país del servidor contratado: Alemania, Finlandia o Francia] |
+| Servidor | Google (Google Cloud) | Estados Unidos |
 | Almacenamiento y copias de seguridad | Backblaze | Estados Unidos |
 | Envío de correos | Amazon Web Services (Amazon SES) | Estados Unidos |
 | Registro de errores técnicos | Sentry | Estados Unidos |
