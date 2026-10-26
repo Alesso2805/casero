@@ -22,14 +22,34 @@ from casero.admin.application.complaints import (
 )
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.identity.api import email_events as email_events_api
+from casero.identity.api import sessions as sessions_api
 from casero.identity.api import unsubscribe as unsubscribe_api
 from casero.identity.application.email_suppressions import (
     RecordEmailEvent,
     SnsMessageVerifier,
     SuppressionStore,
 )
+from casero.identity.application.sessions import (
+    AuthenticateSession,
+    Credentials,
+    LogIn,
+    LoginThrottle,
+    LogOut,
+    PasswordHasher,
+    SessionStore,
+    SessionTokens,
+    Sleeper,
+)
 from casero.identity.application.unsubscribe import Unsubscribe, UnsubscribeTokens, UserEmails
 from casero.identity.infrastructure.email_suppressions import SqlSuppressionStore
+from casero.identity.infrastructure.passwords import Argon2PasswordHasher
+from casero.identity.infrastructure.sessions import (
+    AsyncioSleeper,
+    PostgresLoginThrottle,
+    SecretSessionTokens,
+    SqlCredentials,
+    SqlSessionStore,
+)
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
@@ -47,6 +67,7 @@ from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
+LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 SNS_HTTP_TIMEOUT_SECONDS = 10
 
 
@@ -58,6 +79,7 @@ def create_app(
     settings: ApiSettings | None = None,
     clock: Clock | None = None,
     sns_verifier: SnsMessageVerifier | None = None,
+    sleeper: Sleeper | None = None,
 ) -> FastAPI:
     config = settings or ApiSettings.from_environment()
     app_clock: Clock = clock or SystemClock()
@@ -132,6 +154,44 @@ def create_app(
         return CalculateTax(rule_book, limiter)
 
     app.include_router(calculator_api.create_router(provide_calculate))
+
+    hasher: PasswordHasher = Argon2PasswordHasher()
+    session_tokens: SessionTokens = SecretSessionTokens()
+    login_sleeper: Sleeper = sleeper or AsyncioSleeper()
+
+    async def provide_credentials(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> SqlCredentials:
+        return SqlCredentials(connection)
+
+    async def provide_login(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> LogIn:
+        credentials: Credentials = SqlCredentials(connection)
+        store: SessionStore = SqlSessionStore(connection)
+        throttle: LoginThrottle = PostgresLoginThrottle(
+            connection, config.rate_limit_key, app_clock, LOGIN_ATTEMPTS_PER_IP_PER_HOUR
+        )
+        return LogIn(credentials, hasher, session_tokens, store, throttle, login_sleeper, app_clock)
+
+    async def provide_authenticate(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> AuthenticateSession:
+        store: SessionStore = SqlSessionStore(connection)
+        return AuthenticateSession(session_tokens, store, app_clock)
+
+    async def provide_logout(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> LogOut:
+        store: SessionStore = SqlSessionStore(connection)
+        return LogOut(store, app_clock)
+
+    current_session = sessions_api.session_dependency(provide_authenticate)
+    app.include_router(
+        sessions_api.create_router(
+            provide_login, provide_logout, provide_credentials, current_session
+        )
+    )
 
     @app.get("/api/health")
     def health() -> HealthResponse:

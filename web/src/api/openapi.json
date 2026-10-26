@@ -406,6 +406,51 @@
         "title": "JoinWaitlistRequest",
         "type": "object"
       },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest",
+        "type": "object"
+      },
+      "MeResponse": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_verified": {
+            "title": "Email Verified",
+            "type": "boolean"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "email",
+          "email_verified"
+        ],
+        "title": "MeResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -454,6 +499,52 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/app/me": {
+      "get": {
+        "description": "Who is signed in.",
+        "operationId": "me_api_app_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          }
+        },
+        "summary": "Me"
+      }
+    },
+    "/api/app/session": {
+      "delete": {
+        "description": "End this session.",
+        "operationId": "log_out_api_app_session_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Log Out"
+      }
+    },
+    "/api/app/sessions": {
+      "delete": {
+        "description": "End every session of this user, on every device.",
+        "operationId": "log_out_everywhere_api_app_sessions_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Log Out Everywhere"
+      }
+    },
     "/api/health": {
       "get": {
         "description": "Report that the API process is up.",
@@ -515,6 +606,18 @@
         "summary": "File Complaint"
       }
     },
+    "/api/public/csrf": {
+      "get": {
+        "description": "Set the CSRF cookie that every unsafe request, login included, must echo.",
+        "operationId": "issue_csrf_api_public_csrf_get",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Issue Csrf"
+      }
+    },
     "/api/public/email-events": {
       "post": {
         "description": "Receive SES bounces and complaints through an SNS subscription.",
@@ -536,6 +639,44 @@
           }
         },
         "summary": "Receive Email Event"
+      }
+    },
+    "/api/public/session": {
+      "post": {
+        "description": "Start a session; a new session token replaces any previous one.",
+        "operationId": "log_in_api_public_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Wrong email or password"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many attempts from this client"
+          }
+        },
+        "summary": "Log In"
       }
     },
     "/api/public/tax-calculator": {
