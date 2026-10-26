@@ -34,9 +34,23 @@ from casero.admin.application.complaints import (
     FileComplaint,
 )
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
+from casero.identity.api import account_emails as account_emails_api
 from casero.identity.api import email_events as email_events_api
 from casero.identity.api import sessions as sessions_api
 from casero.identity.api import unsubscribe as unsubscribe_api
+from casero.identity.application.account_emails import (
+    AccountEmailSender,
+    AccountLinks,
+    AccountMailer,
+    AccountUsers,
+    ConfirmEmail,
+    EmailRateLimiter,
+    EmailTokens,
+    EmailTokenStore,
+    RequestPasswordReset,
+    ResetPassword,
+    SendVerification,
+)
 from casero.identity.application.email_suppressions import (
     RecordEmailEvent,
     SnsMessageVerifier,
@@ -56,6 +70,15 @@ from casero.identity.application.sessions import (
 )
 from casero.identity.application.unsubscribe import Unsubscribe, UnsubscribeTokens, UserEmails
 from casero.identity.application.users import CreateUser, UserStore
+from casero.identity.domain.account_emails import (
+    RESET_EMAILS_PER_HOUR,
+    VERIFICATION_EMAILS_PER_HOUR,
+)
+from casero.identity.infrastructure.account_emails import (
+    SecretEmailTokens,
+    SqlAccountUsers,
+    SqlEmailTokenStore,
+)
 from casero.identity.infrastructure.email_suppressions import SqlSuppressionStore
 from casero.identity.infrastructure.passwords import Argon2PasswordHasher
 from casero.identity.infrastructure.sessions import (
@@ -69,6 +92,7 @@ from casero.identity.infrastructure.sessions import (
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
+from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.clock import Clock, SystemClock
@@ -85,6 +109,7 @@ COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
+PASSWORD_RESETS_PER_IP_PER_HOUR = 10
 SNS_HTTP_TIMEOUT_SECONDS = 10
 
 
@@ -97,6 +122,7 @@ def create_app(
     clock: Clock | None = None,
     sns_verifier: SnsMessageVerifier | None = None,
     sleeper: Sleeper | None = None,
+    mailer: AccountMailer | None = None,
 ) -> FastAPI:
     config = settings or ApiSettings.from_environment()
     app_clock: Clock = clock or SystemClock()
@@ -204,6 +230,80 @@ def create_app(
         store: SessionStore = SqlSessionStore(connection)
         return LogOut(store, app_clock)
 
+    current_session = sessions_api.session_dependency(provide_authenticate)
+
+    account_mailer: AccountMailer = mailer or SmtpMailer(config.smtp, app_clock)
+    email_tokens: EmailTokens = SecretEmailTokens()
+    links = AccountLinks(config.public_url)
+
+    def email_sender(connection: AsyncConnection) -> AccountEmailSender:
+        store: EmailTokenStore = SqlEmailTokenStore(connection)
+        suppressions: SuppressionStore = SqlSuppressionStore(connection, config.email_hash_key)
+        return AccountEmailSender(
+            email_tokens, store, suppressions, account_mailer, links, app_clock
+        )
+
+    def send_verification(connection: AsyncConnection) -> SendVerification:
+        users: AccountUsers = SqlAccountUsers(connection)
+        limiter: EmailRateLimiter = PostgresRateLimiter(
+            connection,
+            config.rate_limit_key,
+            app_clock,
+            "verification-email",
+            VERIFICATION_EMAILS_PER_HOUR,
+        )
+        return SendVerification(users, limiter, email_sender(connection))
+
+    async def provide_send_verification(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> SendVerification:
+        return send_verification(connection)
+
+    async def provide_confirm_email(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ConfirmEmail:
+        users: AccountUsers = SqlAccountUsers(connection)
+        store: EmailTokenStore = SqlEmailTokenStore(connection)
+        return ConfirmEmail(users, store, email_tokens, app_clock)
+
+    async def provide_request_reset(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> RequestPasswordReset:
+        users: AccountUsers = SqlAccountUsers(connection)
+        ip_limiter: EmailRateLimiter = PostgresRateLimiter(
+            connection,
+            config.rate_limit_key,
+            app_clock,
+            "password-reset-ip",
+            PASSWORD_RESETS_PER_IP_PER_HOUR,
+        )
+        email_limiter: EmailRateLimiter = PostgresRateLimiter(
+            connection,
+            config.rate_limit_key,
+            app_clock,
+            "password-reset-email",
+            RESET_EMAILS_PER_HOUR,
+        )
+        return RequestPasswordReset(users, ip_limiter, email_limiter, email_sender(connection))
+
+    async def provide_reset_password(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ResetPassword:
+        users: AccountUsers = SqlAccountUsers(connection)
+        store: EmailTokenStore = SqlEmailTokenStore(connection)
+        sessions: SessionStore = SqlSessionStore(connection)
+        return ResetPassword(users, store, email_tokens, hasher, sessions, app_clock)
+
+    app.include_router(
+        account_emails_api.create_router(
+            current_session,
+            provide_send_verification,
+            provide_confirm_email,
+            provide_request_reset,
+            provide_reset_password,
+        )
+    )
+
     async def provide_register(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
     ) -> RegisterLandlord:
@@ -227,15 +327,14 @@ def create_app(
             CreateUser(users, hasher, app_clock),
             records,
             StartSession(session_tokens, store, app_clock),
+            send_verification(connection),
             app_clock,
         )
 
     app.include_router(registration_api.create_router(provide_register))
-
-    current_session = sessions_api.session_dependency(provide_authenticate)
     app.include_router(
         sessions_api.create_router(
-            provide_login, provide_logout, provide_credentials, current_session
+            provide_login, provide_logout, provide_credentials, current_session, app_clock
         )
     )
 

@@ -18,7 +18,9 @@ TOKEN_BYTES = 32
 CREDENTIALS = text(
     "SELECT id, password_hash FROM users WHERE lower(email) = lower(:email) AND deleted_at IS NULL"
 )
-PROFILE = text("SELECT email, email_verified_at FROM users WHERE id = :id AND deleted_at IS NULL")
+PROFILE = text(
+    "SELECT email, email_verified_at, created_at FROM users WHERE id = :id AND deleted_at IS NULL"
+)
 SESSION = text(
     "SELECT id, user_id, created_at, last_seen_at, expires_at, revoked_at FROM sessions"
     " WHERE token_hash = :token_hash"
@@ -41,6 +43,7 @@ REVOKE_ALL = text(
 class UserProfile:
     email: str
     email_verified: bool
+    created_at: datetime
 
 
 class SecretSessionTokens:
@@ -62,7 +65,9 @@ class SqlCredentials:
 
     async def profile(self, user_id: UUID) -> UserProfile | None:
         row = (await self._connection.execute(PROFILE, {"id": user_id})).first()
-        return UserProfile(row.email, row.email_verified_at is not None) if row else None
+        if row is None:
+            return None
+        return UserProfile(row.email, row.email_verified_at is not None, row.created_at)
 
 
 class SqlSessionStore:

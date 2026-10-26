@@ -6,10 +6,13 @@ from datetime import date, datetime, timedelta
 from fastapi.testclient import TestClient
 
 from casero.api import create_app
+from casero.identity.application.account_emails import AccountMailer
 from casero.identity.application.email_suppressions import SnsMessageVerifier
 from casero.identity.application.sessions import Sleeper
+from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings, RegistrationMode
 from casero.shared.kernel.clock import LIMA, Clock
+from casero.shared.kernel.email import Email
 from database import Database
 
 TEST_EMAIL_HASH_KEY = b"test-email-hash-key"
@@ -32,6 +35,14 @@ class FixedClock:
         self._now += delta
 
 
+class RecordingMailer:
+    def __init__(self) -> None:
+        self.sent: list[Email] = []
+
+    async def send(self, email: Email) -> None:
+        self.sent.append(email)
+
+
 def address_for(name: str) -> str:
     return f"198.51.100.{zlib.crc32(name.encode()) % 250 + 1}"
 
@@ -44,6 +55,7 @@ def api_client(
     sns_verifier: SnsMessageVerifier | None = None,
     sleeper: Sleeper | None = None,
     registration_mode: RegistrationMode = "closed",
+    mailer: AccountMailer | None = None,
 ) -> Iterator[TestClient]:
     url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
     settings = ApiSettings(
@@ -54,8 +66,10 @@ def api_client(
         unsubscribe_key=TEST_UNSUBSCRIBE_KEY,
         acceptance_ip_key=TEST_ACCEPTANCE_IP_KEY,
         registration_mode=registration_mode,
+        smtp=SmtpSettings("localhost", 25, "none", None, None, "Casero <no-reply@example.com>"),
+        public_url="https://casero.example",
     )
-    app = create_app(settings, clock, sns_verifier, sleeper)
+    app = create_app(settings, clock, sns_verifier, sleeper, mailer or RecordingMailer())
     # https, because __Host- cookies are Secure and the client only sends them over https.
     with TestClient(app, base_url="https://testserver", client=(address, 50000)) as client:
         yield client

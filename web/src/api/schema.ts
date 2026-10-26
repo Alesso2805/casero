@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/api/app/email-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Verification
+         * @description Send a new email-verification link.
+         */
+        post: operations["send_verification_api_app_email_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/me": {
         parameters: {
             query?: never;
@@ -138,6 +158,66 @@ export interface paths {
          * @description Receive SES bounces and complaints through an SNS subscription.
          */
         post: operations["receive_email_event_api_public_email_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/email-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Email
+         * @description Confirm an email with the token from the verification link.
+         */
+        post: operations["confirm_email_api_public_email_verification_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Reset
+         * @description Email a password-reset link if the address has an account; the answer is the same.
+         */
+        post: operations["request_reset_api_public_password_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/public/password-reset/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Password
+         * @description Set a new password with the token from the reset link and close every session.
+         */
+        post: operations["reset_password_api_public_password_reset_confirm_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -393,6 +473,8 @@ export interface components {
         };
         /** MeResponse */
         MeResponse: {
+            /** Blocked Until Verified */
+            blocked_until_verified: boolean;
             /** Email */
             email: string;
             /** Email Verified */
@@ -402,6 +484,15 @@ export interface components {
              * Format: uuid
              */
             user_id: string;
+            /** Verify By */
+            verify_by: string | null;
+        };
+        /** NewPasswordRequest */
+        NewPasswordRequest: {
+            /** Password */
+            password: string;
+            /** Token */
+            token: string;
         };
         /** RegistrationRequest */
         RegistrationRequest: {
@@ -427,6 +518,19 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** ResetRequest */
+        ResetRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
+        /** TokenRequest */
+        TokenRequest: {
+            /** Token */
+            token: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -449,6 +553,54 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    send_verification_api_app_email_verification_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description The email is already verified */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address bounced or complained; it gets no email */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Three verification emails per hour at most */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The email could not be sent */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     me_api_app_me_get: {
         parameters: {
             query?: never;
@@ -621,6 +773,122 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    confirm_email_api_public_email_verification_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link is invalid, used or expired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_reset_api_public_password_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many requests from this client */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reset_password_api_public_password_reset_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link is invalid, used or expired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

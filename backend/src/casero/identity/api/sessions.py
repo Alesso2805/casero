@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -6,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 
 from casero.identity.application.sessions import AuthenticateSession, LogIn, LogOut
+from casero.identity.domain.account_emails import access_blocked, verify_by
 from casero.identity.domain.sessions import Session
 from casero.identity.infrastructure.sessions import SqlCredentials
 from casero.shared.infrastructure.csrf import issue_csrf_cookie, require_csrf
@@ -14,6 +16,7 @@ from casero.shared.infrastructure.session_cookie import (
     clear_session_cookie,
     set_session_cookie,
 )
+from casero.shared.kernel.clock import Clock
 
 MAX_PASSWORD_LENGTH = 1024
 
@@ -27,6 +30,8 @@ class MeResponse(BaseModel):
     user_id: UUID
     email: str
     email_verified: bool
+    verify_by: datetime | None
+    blocked_until_verified: bool
 
 
 def session_dependency(
@@ -50,6 +55,7 @@ def create_router(
     provide_logout: Callable[..., Awaitable[LogOut]],
     provide_credentials: Callable[..., Awaitable[SqlCredentials]],
     current_session: Callable[..., Awaitable[Session]],
+    clock: Clock,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -120,7 +126,13 @@ def create_router(
         if profile is None:
             raise HTTPException(status_code=401, detail="no_session")
         return MeResponse(
-            user_id=session.user_id, email=profile.email, email_verified=profile.email_verified
+            user_id=session.user_id,
+            email=profile.email,
+            email_verified=profile.email_verified,
+            verify_by=verify_by(profile.created_at, profile.email_verified),
+            blocked_until_verified=access_blocked(
+                profile.created_at, profile.email_verified, clock.now()
+            ),
         )
 
     return router
