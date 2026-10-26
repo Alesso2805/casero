@@ -27,12 +27,18 @@ class BusinessSettings:
 class ApiSettings:
     database_url: str
     rate_limit_key: bytes
+    email_hash_key: bytes
+    ses_events_topic_arn: str
+    unsubscribe_key: bytes
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
         return cls(
             database_url=os.environ["CASERO_APP_DATABASE_URL"],
             rate_limit_key=os.environ["CASERO_RATE_LIMIT_KEY"].encode(),
+            email_hash_key=os.environ["CASERO_EMAIL_HASH_KEY"].encode(),
+            ses_events_topic_arn=os.environ["CASERO_SES_EVENTS_TOPIC_ARN"],
+            unsubscribe_key=os.environ["CASERO_UNSUBSCRIBE_KEY"].encode(),
         )
 
 
@@ -48,6 +54,7 @@ class WorkerSettings:
     smtp: SmtpSettings
     business: BusinessSettings
     complaints_inbox: str
+    email_hash_key: bytes
 
     @property
     def engine_url(self) -> str:
@@ -68,4 +75,5 @@ class WorkerSettings:
             ),
             business=BusinessSettings.from_environment(env),
             complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
+            email_hash_key=env["CASERO_EMAIL_HASH_KEY"].encode(),
         )

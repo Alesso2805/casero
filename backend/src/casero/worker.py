@@ -10,9 +10,11 @@ from casero.admin.application.complaint_emails import (
     ComplaintMailer,
     ComplaintOutbox,
     SendComplaintEmails,
+    SuppressedAddresses,
 )
 from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
+from casero.identity.infrastructure.email_suppressions import SuppressionLookup
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.settings import WorkerSettings
@@ -44,8 +46,9 @@ def business_identity(settings: WorkerSettings) -> BusinessIdentity:
 def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> dict[str, Job]:
     outbox: ComplaintOutbox = SqlComplaintOutbox(engine)
     mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
+    suppressed: SuppressedAddresses = SuppressionLookup(engine, settings.email_hash_key)
     identity = business_identity(settings)
-    return {"complaint_emails": SendComplaintEmails(outbox, mailer, clock, identity)}
+    return {"complaint_emails": SendComplaintEmails(outbox, mailer, suppressed, clock, identity)}
 
 
 async def complaint_copy_text(

@@ -134,6 +134,9 @@ jobs:
       CASERO_WORKER_PASSWORD: ci_worker
       CASERO_ADMIN_PASSWORD: ci_admin
       CASERO_RATE_LIMIT_KEY: ci_rate_limit
+      CASERO_EMAIL_HASH_KEY: ci_email_hash
+      CASERO_SES_EVENTS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:casero-ci
+      CASERO_UNSUBSCRIBE_KEY: ci_unsubscribe
       CASERO_SMTP_HOST: smtp.invalid
       CASERO_SMTP_USERNAME: ci_smtp
       CASERO_SMTP_PASSWORD: ci_smtp

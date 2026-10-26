@@ -167,6 +167,14 @@ class MemoryOutbox:
         self.runs[job, complaint_id] = error_code or "done"
 
 
+class Suppressed:
+    def __init__(self, addresses: frozenset[str] = frozenset()) -> None:
+        self.addresses = addresses
+
+    async def blocks(self, email: str) -> bool:
+        return email in self.addresses
+
+
 class Mailer:
     def __init__(self, outbox: MemoryOutbox, failing: frozenset[str] = frozenset()) -> None:
         self.outbox = outbox
@@ -184,7 +192,7 @@ class Mailer:
 async def test_each_email_is_claimed_before_it_is_sent_and_sent_once() -> None:
     outbox = MemoryOutbox([COMPLAINT])
     mailer = Mailer(outbox)
-    send = SendComplaintEmails(outbox, mailer, FixedClock(), BUSINESS)
+    send = SendComplaintEmails(outbox, mailer, Suppressed(), FixedClock(), BUSINESS)
 
     await send()
     await send()
@@ -204,7 +212,7 @@ async def test_each_email_is_claimed_before_it_is_sent_and_sent_once() -> None:
 async def test_a_failed_copy_is_recorded_reported_and_not_retried() -> None:
     outbox = MemoryOutbox([COMPLAINT])
     mailer = Mailer(outbox, failing=frozenset({"ana@example.com"}))
-    send = SendComplaintEmails(outbox, mailer, FixedClock(), BUSINESS)
+    send = SendComplaintEmails(outbox, mailer, Suppressed(), FixedClock(), BUSINESS)
 
     await send()
     mailer.failing = frozenset()
@@ -214,3 +222,17 @@ async def test_a_failed_copy_is_recorded_reported_and_not_retried() -> None:
     assert notice.to == "reclamos@example.com"
     assert "no se pudo enviar (SMTPRecipientsRefused)" in notice.text
     assert outbox.runs[COPY_JOB, COMPLAINT.id] == "SMTPRecipientsRefused"
+
+
+@pytest.mark.anyio
+async def test_a_suppressed_consumer_gets_no_copy_and_the_owner_is_told() -> None:
+    outbox = MemoryOutbox([COMPLAINT])
+    mailer = Mailer(outbox)
+    suppressed = Suppressed(frozenset({"ana@example.com"}))
+    send = SendComplaintEmails(outbox, mailer, suppressed, FixedClock(), BUSINESS)
+
+    await send()
+
+    [notice] = mailer.sent
+    assert "no se pudo enviar (suppressed)" in notice.text
+    assert outbox.runs[COPY_JOB, COMPLAINT.id] == "suppressed"

@@ -16,6 +16,7 @@ from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.email import Email, MailDeliveryError
 
 COPY_JOB = "complaint_copy"
+SUPPRESSED = "suppressed"
 NOTICE_JOB = "complaint_notice"
 BATCH_SIZE = 20
 
@@ -44,10 +45,15 @@ class ComplaintMailer(Protocol):
     async def send(self, email: Email) -> None: ...
 
 
+class SuppressedAddresses(Protocol):
+    async def blocks(self, email: str) -> bool: ...
+
+
 @dataclass(frozen=True)
 class SendComplaintEmails:
     outbox: ComplaintOutbox
     mailer: ComplaintMailer
+    suppressed: SuppressedAddresses
     clock: Clock
     business: BusinessIdentity
 
@@ -60,6 +66,9 @@ class SendComplaintEmails:
 
     async def _send_once(self, job: str, complaint: Complaint, email: Email) -> None:
         if not await self.outbox.claim(job, complaint.id, self.clock.now()):
+            return
+        if job == COPY_JOB and await self.suppressed.blocks(email.to):
+            await self.outbox.finish(job, complaint.id, self.clock.now(), SUPPRESSED)
             return
         try:
             await self.mailer.send(email)

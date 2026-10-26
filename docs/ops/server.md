@@ -57,6 +57,9 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_WORKER_PASSWORD=...
    CASERO_ADMIN_PASSWORD=...
    CASERO_RATE_LIMIT_KEY=...
+   CASERO_EMAIL_HASH_KEY=...
+   CASERO_UNSUBSCRIBE_KEY=...
+   CASERO_SES_EVENTS_TOPIC_ARN=<ARN del tema SNS de rebotes y quejas>
    CASERO_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
    CASERO_SMTP_USERNAME=<usuario SMTP de SES>
    CASERO_SMTP_PASSWORD=<contraseña SMTP de SES>
@@ -68,7 +71,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_DOMAIN=<dominio>.com
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
    ```
-   El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
+   `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
 
 ## 3. Dominio
 
