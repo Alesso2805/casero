@@ -63,6 +63,7 @@ Fuentes: [preguntas y respuestas de SUNAT 2026](https://personas.sunat.gob.pe/si
 - Incidentes: aviso a la Autoridad en 48 horas, a los afectados sin demora cuando afecte sus derechos y al Centro Nacional de Seguridad Digital si es un incidente digital ([Pérez-Llorca](https://www.perezllorca.com/es-pe/actualidad/articulos/se-aprueba-nuevo-reglamento-de-la-ley-de-proteccion-de-datos-personales/), [La Cámara](https://lacamara.pe/nuevo-reglamento-refuerza-la-proteccion-de-datos-personales/)).
 - Exportación de los datos en formato estructurado y eliminación de la cuenta.
 - Si un arrendador persona natural debe inscribir su propio banco de datos de inquilinos es una consulta pendiente para el abogado.
+- Los borradores de términos (con el anexo de encargo de tratamiento), la política de privacidad de la aplicación y el consentimiento de datos sensibles están en `docs/legal/`, y las preguntas abiertas para el abogado en `docs/legal/lawyer-questions.md`.
 
 **Tu formalización como emprendedor**
 
