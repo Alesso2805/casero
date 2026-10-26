@@ -1,12 +1,13 @@
 import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
 from casero.api import create_app
 from casero.identity.application.email_suppressions import SnsMessageVerifier
+from casero.identity.application.sessions import Sleeper
 from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.clock import LIMA, Clock
 from database import Database
@@ -26,6 +27,9 @@ class FixedClock:
     def today_lima(self) -> date:
         return self._now.astimezone(LIMA).date()
 
+    def advance(self, delta: timedelta) -> None:
+        self._now += delta
+
 
 def address_for(name: str) -> str:
     return f"198.51.100.{zlib.crc32(name.encode()) % 250 + 1}"
@@ -37,6 +41,7 @@ def api_client(
     address: str,
     clock: Clock | None = None,
     sns_verifier: SnsMessageVerifier | None = None,
+    sleeper: Sleeper | None = None,
 ) -> Iterator[TestClient]:
     url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
     settings = ApiSettings(
@@ -46,6 +51,7 @@ def api_client(
         ses_events_topic_arn=TEST_TOPIC_ARN,
         unsubscribe_key=TEST_UNSUBSCRIBE_KEY,
     )
-    app = create_app(settings, clock, sns_verifier)
-    with TestClient(app, client=(address, 50000)) as client:
+    app = create_app(settings, clock, sns_verifier, sleeper)
+    # https, because __Host- cookies are Secure and the client only sends them over https.
+    with TestClient(app, base_url="https://testserver", client=(address, 50000)) as client:
         yield client
