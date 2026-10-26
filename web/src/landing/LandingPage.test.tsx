@@ -20,8 +20,11 @@ describe("landing page", () => {
     expect(await screen.findByRole("heading", { level: 1 })).toBeDefined();
     expect(screen.getByText("S/ 0")).toBeDefined();
     expect(screen.getByText("S/ 19 al mes o S/ 190 al año")).toBeDefined();
-    const book = screen.getByRole("link", { name: "Libro de Reclamaciones" });
-    expect(book.getAttribute("href")).toBe("/libro-de-reclamaciones");
+    const links = screen.getAllByRole("link", { name: "Libro de Reclamaciones" });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/libro-de-reclamaciones",
+      "/libro-de-reclamaciones",
+    ]);
   });
 
   test("asks for a valid email and for consent before sending", async () => {
@@ -76,5 +79,6 @@ describe("privacy page", () => {
       await screen.findByRole("heading", { name: "Política de privacidad de Casero (versión corta)" }),
     ).toBeDefined();
     expect(await screen.findByText(new RegExp(`RUC ${testBusiness.ruc}`))).toBeDefined();
+    expect(screen.getByRole("link", { name: "Libro de Reclamaciones" })).toBeDefined();
   });
 });

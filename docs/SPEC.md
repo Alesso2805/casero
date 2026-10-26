@@ -133,7 +133,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | Almacenamiento S3 | Backblaze B2 (US-East), buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días desde la creación del bucket (`docs/ops/storage-buckets.md`) |
 | Correo | Amazon SES (us-east-1) detrás de una interfaz `Mailer` | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes y quejas por SNS hacia un webhook; Mailpit en local |
 | Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
-| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, sin registrar `/i` ni consultas |
+| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, `X-Robots-Tag: noindex` en las páginas con datos del negocio y en `/api/*`, los datos del negocio desde variables de entorno, redirección de `www`, sin registrar `/i` ni consultas |
 
 **Contextos de acceso a la base**
 
@@ -465,7 +465,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 
 ## Repositorio, convenciones y operación
 
-Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. Los datos del negocio que la web debe mostrar (nombre, RUC y domicilio del responsable) viven en variables de entorno (`CASERO_BUSINESS_*`); el worker los usa en la copia de cada reclamo y la web los lee de `GET /api/public/business` para el Libro de Reclamaciones, la política de privacidad y el aviso de la lista de espera. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
+Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. Los datos del negocio que la web debe mostrar (nombre, RUC y domicilio del responsable) viven en variables de entorno (`CASERO_BUSINESS_*`); el worker los usa en la copia de cada reclamo, y Caddy los sirve en `GET /api/public/business` (con `CASERO_COMPLAINTS_INBOX`), así el Libro de Reclamaciones, la política de privacidad y el aviso de la lista de espera los muestran aunque la API esté caída. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
 
 ```text
 casero/

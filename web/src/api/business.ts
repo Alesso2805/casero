@@ -1,16 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { api } from "./client";
-import type { components } from "./schema";
-
-export type Business = components["schemas"]["BusinessResponse"];
+// Served by Caddy from the server's environment, not by the API (see infra/caddy).
+export interface Business {
+  name: string;
+  ruc: string;
+  address: string;
+  complaints_inbox: string;
+}
 
 async function fetchBusiness(): Promise<Business> {
-  const { data } = await api.GET("/api/public/business");
-  if (!data) {
+  const url = new URL("/api/public/business", globalThis.location.origin);
+  const response = await globalThis.fetch(new Request(url));
+  if (!response.ok) {
     throw new Error("The business identity is unavailable");
   }
-  return data;
+  return (await response.json()) as Business;
 }
 
 export function useBusiness() {

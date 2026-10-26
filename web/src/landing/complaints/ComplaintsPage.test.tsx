@@ -92,6 +92,11 @@ describe("complaints book", () => {
     expect(screen.getAllByText(/000000001-2026/).length).toBeGreaterThan(0);
     expect(screen.getByText(/13\/11\/2026/)).toBeDefined();
     expect(screen.getByText(/23\/10\/2026.*10:05/)).toBeDefined();
+    expect(
+      screen.getByText(
+        "Te enviaremos una copia a ana@example.com en unos minutos. Igual guarda o imprime esta hoja.",
+      ),
+    ).toBeDefined();
     const [request] = api.requestsTo(COMPLAINTS);
     expect(await request?.json()).toEqual({
       full_name: "Ana Quispe Mamani",
@@ -124,6 +129,30 @@ describe("complaints book", () => {
 
     const name = screen.getByLabelText<HTMLInputElement>("Nombre completo");
     expect(name.value).toBe("Ana Quispe Mamani");
+  });
+
+  test("asks to print the sheet and email it when the book fails", async () => {
+    mockApi({ [COMPLAINTS]: 500 });
+    const print = vi.fn();
+    vi.stubGlobal("print", print);
+    await renderPage("/libro-de-reclamaciones");
+
+    await fillRequiredFields();
+    await userEvent.click(screen.getByRole("button", { name: "Revisar antes de enviar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Enviar reclamo" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Imprime o guarda esta hoja y envíala a reclamos@example.com",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Imprimir o guardar como PDF" }));
+    expect(print).toHaveBeenCalledOnce();
+  });
+
+  test("shows the official notice in its footer", async () => {
+    mockApi({});
+    await renderPage("/libro-de-reclamaciones");
+
+    expect(await screen.findByRole("link", { name: "Libro de Reclamaciones" })).toBeDefined();
   });
 
   test("explains when there were too many attempts", async () => {

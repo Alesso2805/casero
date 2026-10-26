@@ -6,6 +6,7 @@ export const testBusiness = {
   name: "Negocio de Prueba",
   ruc: "10000000001",
   address: "Av. Ficticia 100, Lima",
+  complaints_inbox: "reclamos@example.com",
 };
 
 export function json(body: unknown, status = 200): Response {

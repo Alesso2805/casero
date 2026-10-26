@@ -1,14 +1,19 @@
 import { Link } from "@tanstack/react-router";
 
 import { copy } from "./copy";
-import complaintsNotice from "./libro-de-reclamaciones.png";
+import { PublicFooter } from "./PublicFooter";
 import { WaitlistForm } from "./WaitlistForm";
 
 export function LandingPage() {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-12 px-4 py-10">
       <header className="flex flex-col gap-4">
-        <p className="text-lg font-bold text-brand">Casero</p>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-lg font-bold text-brand">Casero</p>
+          <Link to="/libro-de-reclamaciones" className="text-base text-brand underline">
+            {copy.footer.complaints}
+          </Link>
+        </div>
         <h1 className="text-3xl font-bold leading-tight">{copy.hero.title}</h1>
         <p className="text-lg">{copy.hero.lead}</p>
         <p className="rounded-lg bg-amber-50 p-3 text-base text-amber-900">{copy.hero.notice}</p>
@@ -66,20 +71,7 @@ export function LandingPage() {
         <WaitlistForm />
       </section>
 
-      <footer className="flex flex-col gap-2 border-t border-stone-300 pt-6 text-base">
-        <Link to="/libro-de-reclamaciones" className="self-start">
-          <img
-            src={complaintsNotice}
-            alt={copy.footer.complaints}
-            width={160}
-            height={124}
-          />
-        </Link>
-        <Link to="/privacidad" className="text-brand underline">
-          {copy.footer.privacy}
-        </Link>
-        <p>{copy.footer.disclaimer}</p>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

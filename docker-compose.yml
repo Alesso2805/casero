@@ -4,6 +4,12 @@ x-backend: &backend
   build: ./backend
   image: casero-backend:dev
 
+x-business: &business
+  CASERO_BUSINESS_NAME: "[nombre completo]"
+  CASERO_BUSINESS_RUC: "[RUC]"
+  CASERO_BUSINESS_ADDRESS: "[domicilio]"
+  CASERO_COMPLAINTS_INBOX: reclamos@casero.localhost
+
 services:
   postgres:
     image: postgres:17-trixie
@@ -40,9 +46,6 @@ services:
     environment:
       CASERO_APP_DATABASE_URL: postgresql+asyncpg://casero_app:${CASERO_APP_PASSWORD:-casero_app_dev}@postgres:5432/casero
       CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:-rate_limit_dev}
-      CASERO_BUSINESS_NAME: "[nombre completo]"
-      CASERO_BUSINESS_RUC: "[RUC]"
-      CASERO_BUSINESS_ADDRESS: "[domicilio]"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -56,10 +59,7 @@ services:
       CASERO_SMTP_PORT: "1025"
       CASERO_SMTP_SECURITY: none
       CASERO_MAIL_FROM: Casero <no-reply@casero.localhost>
-      CASERO_BUSINESS_NAME: "[nombre completo]"
-      CASERO_BUSINESS_RUC: "[RUC]"
-      CASERO_BUSINESS_ADDRESS: "[domicilio]"
-      CASERO_COMPLAINTS_INBOX: reclamos@casero.localhost
+      <<: *business
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -77,6 +77,7 @@ services:
       - "${CASERO_HTTP_PORT:-80}:80"
       - "${CASERO_HTTPS_PORT:-443}:443"
     environment:
+      <<: *business
       CASERO_LAN_HOST: ${CASERO_LAN_HOST:-lan.localhost}
     volumes:
       - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro

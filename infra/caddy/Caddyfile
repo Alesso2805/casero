@@ -7,7 +7,18 @@
 		max_size 5MB
 	}
 	header Referrer-Policy no-referrer
+	@noindex path /privacidad /privacidad/* /libro-de-reclamaciones /libro-de-reclamaciones/* /api/*
+	header @noindex X-Robots-Tag noindex
 
+	# Served by Caddy from the environment so the complaints book can show who to
+	# write to even when the API is down.
+	handle /api/public/business {
+		header Content-Type "application/json; charset=utf-8"
+		templates {
+			mime application/json
+		}
+		respond `{"name":{{env "CASERO_BUSINESS_NAME" | toJson}},"ruc":{{env "CASERO_BUSINESS_RUC" | toJson}},"address":{{env "CASERO_BUSINESS_ADDRESS" | toJson}},"complaints_inbox":{{env "CASERO_COMPLAINTS_INBOX" | toJson}}}`
+	}
 	handle /admin* {
 		respond 404
 	}

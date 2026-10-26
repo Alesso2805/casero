@@ -11,13 +11,16 @@
 	}
 
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Strict-Transport-Security "max-age=31536000"
 		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		Referrer-Policy no-referrer
 		X-Content-Type-Options nosniff
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
 	}
+
+	@noindex path /privacidad /privacidad/* /libro-de-reclamaciones /libro-de-reclamaciones/* /api/*
+	header @noindex X-Robots-Tag noindex
 
 	@too_large expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 5242880`
 
@@ -28,6 +31,15 @@
 		}
 		handle /api/admin/* {
 			respond 404
+		}
+		# Served by Caddy from the environment so the complaints book can show who to
+		# write to even when the API is down.
+		handle /api/public/business {
+			header Content-Type "application/json; charset=utf-8"
+			templates {
+				mime application/json
+			}
+			respond `{"name":{{env "CASERO_BUSINESS_NAME" | toJson}},"ruc":{{env "CASERO_BUSINESS_RUC" | toJson}},"address":{{env "CASERO_BUSINESS_ADDRESS" | toJson}},"complaints_inbox":{{env "CASERO_COMPLAINTS_INBOX" | toJson}}}`
 		}
 		handle /api/* {
 			reverse_proxy api:8000
@@ -44,4 +56,9 @@
 			file_server
 		}
 	}
+}
+
+www.{$CASERO_DOMAIN} {
+	tls {$CASERO_TLS}
+	redir https://{$CASERO_DOMAIN}{uri} permanent
 }

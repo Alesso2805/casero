@@ -1,29 +1,6 @@
 {
   "components": {
     "schemas": {
-      "BusinessResponse": {
-        "properties": {
-          "address": {
-            "title": "Address",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "ruc": {
-            "title": "Ruc",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "ruc",
-          "address"
-        ],
-        "title": "BusinessResponse",
-        "type": "object"
-      },
       "FileComplaintRequest": {
         "properties": {
           "address": {
@@ -376,25 +353,6 @@
           }
         },
         "summary": "Health"
-      }
-    },
-    "/api/public/business": {
-      "get": {
-        "description": "Identify the business behind Casero for the complaints book and the privacy notices.",
-        "operationId": "get_business_api_public_business_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BusinessResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Business"
       }
     },
     "/api/public/complaints": {
