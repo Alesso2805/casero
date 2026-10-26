@@ -1,6 +1,124 @@
 {
   "components": {
     "schemas": {
+      "CalculatorLine": {
+        "properties": {
+          "base_cents": {
+            "title": "Base Cents",
+            "type": "integer"
+          },
+          "collected_cents": {
+            "title": "Collected Cents",
+            "type": "integer"
+          },
+          "tax_cents": {
+            "title": "Tax Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "collected_cents",
+          "base_cents",
+          "tax_cents"
+        ],
+        "title": "CalculatorLine",
+        "type": "object"
+      },
+      "CalculatorRequest": {
+        "properties": {
+          "collected_cents": {
+            "items": {
+              "maximum": 100000000000.0,
+              "minimum": 0.0,
+              "type": "integer"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Collected Cents",
+            "type": "array"
+          },
+          "period": {
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "title": "Period",
+            "type": "string"
+          },
+          "ruc_group": {
+            "anyOf": [
+              {
+                "enum": [
+                  "0",
+                  "1",
+                  "2-3",
+                  "4-5",
+                  "6-7",
+                  "8-9",
+                  "bc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruc Group"
+          }
+        },
+        "required": [
+          "period",
+          "collected_cents"
+        ],
+        "title": "CalculatorRequest",
+        "type": "object"
+      },
+      "CalculatorResponse": {
+        "properties": {
+          "deduction_bp": {
+            "title": "Deduction Bp",
+            "type": "integer"
+          },
+          "due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due On"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CalculatorLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "rate_bp": {
+            "title": "Rate Bp",
+            "type": "integer"
+          },
+          "total_tax_cents": {
+            "title": "Total Tax Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "period",
+          "rate_bp",
+          "deduction_bp",
+          "lines",
+          "total_tax_cents",
+          "due_on"
+        ],
+        "title": "CalculatorResponse",
+        "type": "object"
+      },
       "FileComplaintRequest": {
         "properties": {
           "address": {
@@ -418,6 +536,51 @@
           }
         },
         "summary": "Receive Email Event"
+      }
+    },
+    "/api/public/tax-calculator": {
+      "post": {
+        "description": "Estimate each renter's monthly SUNAT payment; amounts are not stored.",
+        "operationId": "calculate_api_public_tax_calculator_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculatorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculatorResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "The rules of that year are not loaded"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many requests from this client"
+          }
+        },
+        "summary": "Calculate"
       }
     },
     "/api/public/unsubscribe": {

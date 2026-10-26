@@ -36,9 +36,17 @@ from casero.shared.infrastructure.database import anonymous_transaction, create_
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.clock import Clock, SystemClock
+from casero.tax.api import calculator as calculator_api
+from casero.tax.application.calculator import (
+    CalculateTax,
+    CalculatorRateLimiter,
+    TaxRuleBook,
+)
+from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 
 WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
+CALCULATIONS_PER_HOUR = 30
 SNS_HTTP_TIMEOUT_SECONDS = 10
 
 
@@ -113,6 +121,17 @@ def create_app(
         return Unsubscribe(tokens, users, store, app_clock)
 
     app.include_router(unsubscribe_api.create_router(provide_unsubscribe))
+
+    async def provide_calculate(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> CalculateTax:
+        rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        limiter: CalculatorRateLimiter = PostgresRateLimiter(
+            connection, config.rate_limit_key, app_clock, "calculator", CALCULATIONS_PER_HOUR
+        )
+        return CalculateTax(rule_book, limiter)
+
+    app.include_router(calculator_api.create_router(provide_calculate))
 
     @app.get("/api/health")
     def health() -> HealthResponse:

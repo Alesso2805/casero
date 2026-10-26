@@ -1,10 +1,16 @@
 import hashlib
 import hmac
+from datetime import timedelta
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from casero.shared.kernel.clock import Clock
+
+# Windows are hourly, so dropping those that began 23 hours ago means no hashed IP lives
+# 24 hours, as the privacy policy promises.
+RETENTION = timedelta(hours=23)
+PURGE = text("DELETE FROM rate_limit_buckets WHERE window_start < :cutoff")
 
 HIT = text(
     "INSERT INTO rate_limit_buckets (key_hash, window_start, count)"
@@ -34,3 +40,9 @@ class PostgresRateLimiter:
             HIT, {"key_hash": key_hash, "window_start": window_start}
         )
         return int(result.scalar_one()) <= self._per_hour
+
+
+async def purge_expired_buckets(engine: AsyncEngine, clock: Clock) -> int:
+    async with engine.begin() as connection:
+        result = await connection.execute(PURGE, {"cutoff": clock.now() - RETENTION})
+        return result.rowcount
