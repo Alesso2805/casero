@@ -9,6 +9,7 @@ from casero.identity.application.sessions import (
     LoggedIn,
     LogIn,
     LogOut,
+    StartSession,
     UserCredentials,
 )
 from casero.identity.domain.sessions import (
@@ -44,6 +45,9 @@ class Credentials:
 class Hasher:
     def __init__(self) -> None:
         self.dummy_checks = 0
+
+    async def hash(self, password: str) -> str:
+        return f"hash-of-{password}"
 
     async def verify(self, password_hash: str, password: str) -> bool:
         return password_hash == f"hash-of-{password}"
@@ -123,14 +127,9 @@ def login(
     sleeper: Sleeper | None = None,
     clock: Clock | None = None,
 ) -> LogIn:
+    start = StartSession(Tokens(), store or Store(), clock or Clock())
     return LogIn(
-        Credentials(),
-        hasher or Hasher(),
-        Tokens(),
-        store or Store(),
-        throttle or Throttle(),
-        sleeper or Sleeper(),
-        clock or Clock(),
+        Credentials(), hasher or Hasher(), start, throttle or Throttle(), sleeper or Sleeper()
     )
 
 

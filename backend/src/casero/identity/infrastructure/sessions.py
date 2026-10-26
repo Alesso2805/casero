@@ -122,3 +122,22 @@ class PostgresLoginThrottle:
 class AsyncioSleeper:
     async def sleep(self, seconds: int) -> None:
         await asyncio.sleep(seconds)
+
+
+INSERT_USER = text(
+    "INSERT INTO users (id, email, password_hash, created_at)"
+    " VALUES (:id, :email, :password_hash, :created_at)"
+    " ON CONFLICT ((lower(email))) DO NOTHING RETURNING id"
+)
+
+
+class SqlUserStore:
+    def __init__(self, connection: AsyncConnection) -> None:
+        self._connection = connection
+
+    async def add(self, user_id: UUID, email: str, password_hash: str, now: datetime) -> bool:
+        result = await self._connection.execute(
+            INSERT_USER,
+            {"id": user_id, "email": email, "password_hash": password_hash, "created_at": now},
+        )
+        return result.first() is not None

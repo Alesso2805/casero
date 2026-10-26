@@ -7,11 +7,24 @@ from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
+from casero.accounts.application.registration import (
+    AccountRecords,
+    Invites,
+    LegalVersions,
+    RegisterLandlord,
+    RegistrationRateLimiter,
+)
 from casero.accounts.application.waitlist import (
     JoinWaitlist,
     WaitlistRateLimiter,
     WaitlistRepository,
+)
+from casero.accounts.infrastructure.registration import (
+    SqlAccountRecords,
+    SqlInvites,
+    SqlLegalVersions,
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
 from casero.admin.api import complaints as complaints_api
@@ -39,8 +52,10 @@ from casero.identity.application.sessions import (
     SessionStore,
     SessionTokens,
     Sleeper,
+    StartSession,
 )
 from casero.identity.application.unsubscribe import Unsubscribe, UnsubscribeTokens, UserEmails
+from casero.identity.application.users import CreateUser, UserStore
 from casero.identity.infrastructure.email_suppressions import SqlSuppressionStore
 from casero.identity.infrastructure.passwords import Argon2PasswordHasher
 from casero.identity.infrastructure.sessions import (
@@ -49,6 +64,7 @@ from casero.identity.infrastructure.sessions import (
     SecretSessionTokens,
     SqlCredentials,
     SqlSessionStore,
+    SqlUserStore,
 )
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
@@ -68,6 +84,7 @@ WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
+REGISTRATIONS_PER_IP_PER_HOUR = 10
 SNS_HTTP_TIMEOUT_SECONDS = 10
 
 
@@ -172,7 +189,8 @@ def create_app(
         throttle: LoginThrottle = PostgresLoginThrottle(
             connection, config.rate_limit_key, app_clock, LOGIN_ATTEMPTS_PER_IP_PER_HOUR
         )
-        return LogIn(credentials, hasher, session_tokens, store, throttle, login_sleeper, app_clock)
+        start = StartSession(session_tokens, store, app_clock)
+        return LogIn(credentials, hasher, start, throttle, login_sleeper)
 
     async def provide_authenticate(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
@@ -185,6 +203,34 @@ def create_app(
     ) -> LogOut:
         store: SessionStore = SqlSessionStore(connection)
         return LogOut(store, app_clock)
+
+    async def provide_register(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> RegisterLandlord:
+        limiter: RegistrationRateLimiter = PostgresRateLimiter(
+            connection,
+            config.rate_limit_key,
+            app_clock,
+            "registration",
+            REGISTRATIONS_PER_IP_PER_HOUR,
+        )
+        invites: Invites = SqlInvites(connection)
+        legal: LegalVersions = SqlLegalVersions(connection)
+        users: UserStore = SqlUserStore(connection)
+        records: AccountRecords = SqlAccountRecords(connection, config.acceptance_ip_key)
+        store: SessionStore = SqlSessionStore(connection)
+        return RegisterLandlord(
+            config.registration_mode,
+            limiter,
+            invites,
+            legal,
+            CreateUser(users, hasher, app_clock),
+            records,
+            StartSession(session_tokens, store, app_clock),
+            app_clock,
+        )
+
+    app.include_router(registration_api.create_router(provide_register))
 
     current_session = sessions_api.session_dependency(provide_authenticate)
     app.include_router(
