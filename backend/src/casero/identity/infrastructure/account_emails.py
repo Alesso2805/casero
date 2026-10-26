@@ -12,10 +12,11 @@ from casero.identity.domain.account_emails import TokenPurpose
 TOKEN_BYTES = 32
 
 USER_BY_ID = text(
-    "SELECT id, email, email_verified_at FROM users WHERE id = :id AND deleted_at IS NULL"
+    "SELECT id, email, email_verified_at, created_at FROM users"
+    " WHERE id = :id AND deleted_at IS NULL"
 )
 USER_BY_EMAIL = text(
-    "SELECT id, email, email_verified_at FROM users"
+    "SELECT id, email, email_verified_at, created_at FROM users"
     " WHERE lower(email) = lower(:email) AND deleted_at IS NULL"
 )
 MARK_VERIFIED = text(
@@ -48,7 +49,9 @@ class SqlAccountUsers:
 
     async def _one(self, query: TextClause, params: dict[str, object]) -> AccountUser | None:
         row = (await self._connection.execute(query, params)).first()
-        return AccountUser(row.id, row.email, row.email_verified_at is not None) if row else None
+        if row is None:
+            return None
+        return AccountUser(row.id, row.email, row.email_verified_at is not None, row.created_at)
 
     async def by_id(self, user_id: UUID) -> AccountUser | None:
         return await self._one(USER_BY_ID, {"id": user_id})

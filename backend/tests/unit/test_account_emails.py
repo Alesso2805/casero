@@ -26,7 +26,7 @@ from casero.shared.kernel.email import Email, MailDeliveryError
 pytestmark = pytest.mark.anyio
 
 NOW = datetime(2026, 10, 26, 15, 0, tzinfo=UTC)
-USER = AccountUser(UUID("01a175b4-8f38-727d-a7dc-40a7a7b30003"), "ana@example.com", False)
+USER = AccountUser(UUID("01a175b4-8f38-727d-a7dc-40a7a7b30003"), "ana@example.com", False, NOW)
 
 
 class Clock:
@@ -170,7 +170,7 @@ async def test_a_verification_link_is_valid_for_seven_days() -> None:
 @pytest.mark.parametrize(
     ("user", "limiter", "expected"),
     [
-        (AccountUser(USER.user_id, USER.email, True), Limiter(), "verified"),
+        (AccountUser(USER.user_id, USER.email, True, NOW), Limiter(), "verified"),
         (USER, Limiter(False), "limited"),
     ],
 )
