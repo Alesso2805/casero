@@ -46,14 +46,14 @@ select = ["E", "W", "F", "I", "B", "UP", "SIM", "ERA", "DTZ", "N", "S", "PT", "R
 [tool.mypy]
 python_version = "3.14"
 strict = true
-mypy_path = "src:tests"
+mypy_path = "src:tests:scripts"
 explicit_package_bases = true
 files = ["src", "tests", "scripts", "migrations"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["tests"]
+pythonpath = ["tests", "scripts"]
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 xfail_strict = true
 
