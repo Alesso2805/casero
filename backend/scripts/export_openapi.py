@@ -3,11 +3,16 @@ import sys
 from pathlib import Path
 
 from casero.api import create_app
+from casero.shared.infrastructure.settings import ApiSettings
+
+UNUSED_SETTINGS = ApiSettings(
+    database_url="postgresql+asyncpg://unused@localhost/unused", rate_limit_key=b"unused"
+)
 
 
 def main() -> None:
     target = Path(sys.argv[1])
-    schema = create_app().openapi()
+    schema = create_app(UNUSED_SETTINGS).openapi()
     target.write_text(
         json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
     )
