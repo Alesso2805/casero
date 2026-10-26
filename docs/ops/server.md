@@ -1,15 +1,15 @@
-# Servidor (Google Cloud y DuckDNS)
+# Servidor y dominio (Google Cloud y un dominio .com)
 
 Decisión (25 de octubre de 2026):
 
 - Una VM de Compute Engine **e2-small** (2 vCPU compartidas, 2 GB de RAM) en **us-east1** (Carolina del Sur, EE. UU.), con disco pd-balanced de 20 GB.
 - IP externa estática en el nivel de red **Standard**.
-- Un subdominio de **DuckDNS** para la web.
+- Un dominio **.com** propio para la web y el correo (decisión del 26 de octubre de 2026, que reemplaza a DuckDNS).
 - País que se declara ante la Autoridad: **EE. UU.**
 
 Costo estimado: unos US$ 18 al mes (VM US$ 12.23, disco US$ 2.00, IP US$ 3.65). En el nivel Standard, los primeros 200 GiB de salida al mes son gratis. Si un día falta memoria, se pasa a e2-medium: se detiene la VM, se cambia el tipo y se vuelve a iniciar.
 
-El correo no sale desde DuckDNS, porque no permite los registros que pide Amazon SES. Usa un dominio propio comprado solo para el correo (ver SPEC.md, Proveedores).
+El dominio cuesta unos US$ 10 al año. La web va en el dominio raíz y el correo de SES sale de un subdominio propio (ver SPEC.md, Proveedores).
 
 ## 1. Crear la VM (una vez)
 
@@ -60,21 +60,36 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
    CASERO_SMTP_USERNAME=<usuario SMTP de SES>
    CASERO_SMTP_PASSWORD=<contraseña SMTP de SES>
-   CASERO_MAIL_FROM=Casero <no-reply@<dominio del correo>>
+   CASERO_MAIL_FROM=Casero <no-reply@<dominio>.com>
    CASERO_BUSINESS_NAME=<nombre completo según el RUC>
    CASERO_BUSINESS_RUC=<RUC>
    CASERO_BUSINESS_ADDRESS=<domicilio fiscal>
-   CASERO_COMPLAINTS_INBOX=<correo donde llegan los avisos de reclamos>
-   CASERO_DOMAIN=<subdominio>.duckdns.org
+   CASERO_COMPLAINTS_INBOX=<cuenta de Gmail exclusiva de Casero>
+   CASERO_DOMAIN=<dominio>.com
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
    ```
    El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
 
-## 3. DuckDNS
+## 3. Dominio
 
-1. Entrar a duckdns.org, crear el subdominio y apuntarlo a la IP estática (`gcloud compute addresses describe casero-ip --region=us-east1`).
-2. Guardar el token de DuckDNS en Bitwarden. El servidor no lo necesita, porque la IP es fija.
-3. Antes del primer despliegue, comprobar que la consulta CAA del subdominio no devuelve SERVFAIL (`dig CAA <subdominio>.duckdns.org`). Si lo devuelve, Let's Encrypt no emite el certificado. Caddy intenta además con ZeroSSL, y los registros de Caddy lo muestran en el primer arranque.
+1. Antes de comprarlo, revisar que el nombre esté libre como dominio y como marca (SPEC.md, "Antes de comprar el dominio").
+2. Comprarlo con la **privacidad del WHOIS** activada, para que el registrador no publique tu domicilio. Guardar el acceso en Bitwarden.
+3. Registros DNS:
+
+   | Nombre | Tipo | Valor |
+   | --- | --- | --- |
+   | `@` | A | la IP estática (`gcloud compute addresses describe casero-ip --region=us-east1`) |
+   | `www` | CNAME | `<dominio>.com` (Caddy redirige `www` al dominio raíz) |
+   | `@` | TXT | `v=spf1 -all` (ningún correo sale con el dominio raíz como remitente del sobre) |
+   | `_dmarc` | TXT | `v=DMARC1; p=none; rua=mailto:<cuenta de Gmail de Casero>`; se sube a `p=quarantine` cuando los informes salgan limpios |
+   | 3 × `<token>._domainkey` | CNAME | los tres registros DKIM que da SES al verificar el dominio |
+   | `mail` | MX | `10 feedback-smtp.us-east-1.amazonses.com` (MAIL FROM propio de SES) |
+   | `mail` | TXT | `v=spf1 include:amazonses.com -all` |
+
+   - Sin registro AAAA: la IP estática es solo IPv4.
+   - Si se agrega un registro CAA, debe permitir `letsencrypt.org` y `sectigo.com`, porque Caddy recurre a ZeroSSL cuando Let's Encrypt falla.
+   - HSTS va sin `includeSubDomains` ni `preload`.
+4. Con la web ya en el dominio, pedir a SES el acceso de producción con la URL del dominio. AWS puede tardar hasta 96 horas en responder, así que se hace mientras el abogado revisa los textos.
 
 ## 4. Despliegue automático (GitHub)
 

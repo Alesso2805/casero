@@ -43,6 +43,60 @@ COMMIT;
 
 Si un reclamo vino marcado como queja pero trata del servicio, se atiende como reclamo.
 
+## 4. Si la copia al consumidor no salió
+
+El aviso de cada reclamo dice el estado de la copia. Si dice que no se pudo enviar o que el envío no terminó:
+
+1. Imprimir la copia exacta, la misma que habría enviado el worker:
+   ```sh
+   docker compose --env-file .env --env-file image.env exec worker python -m casero.worker complaint-copy <número>
+   ```
+2. Enviarla desde la cuenta de Gmail de reclamos al correo del consumidor, con el mismo asunto y el mismo texto.
+3. Registrar el envío como `casero_admin`:
+   ```sql
+   INSERT INTO staff_audit_log (id, staff_user_id, actor, action, entity, entity_id, at)
+   SELECT gen_random_uuid(), NULL, 'cli', 'complaint.copy_sent_by_hand', 'complaints', id,
+          '<AAAA-MM-DD HH:MM>-05'
+   FROM complaints WHERE number = '<número>';
+   ```
+
+El worker nunca reintenta un correo (CLAUDE.md, regla 12).
+
+## 5. Revisión semanal
+
+Hasta que lleguen las alertas de Sentry (CS-26), una vez por semana, como `casero_admin`:
+
+```sql
+SELECT c.number, j.job, j.status, j.error_code
+FROM job_runs j JOIN complaints c ON j.run_key = c.id::text
+WHERE j.job IN ('complaint_copy', 'complaint_notice')
+  AND (j.status = 'failed' OR (j.status = 'running' AND j.started_at < now() - interval '10 minutes'));
+
+SELECT c.number FROM complaints c
+WHERE NOT EXISTS (
+    SELECT 1 FROM job_runs j WHERE j.job = 'complaint_notice' AND j.run_key = c.id::text
+);
+```
+
+- **Primera consulta:** muestra los correos que fallaron o que quedaron a medias.
+- **Segunda consulta:** muestra los reclamos sin aviso. Eso pasa si el worker no está corriendo, o si el correo falló antes de que llegara el aviso.
+
+Cada uno se resuelve con el paso 4.
+
+## 6. Si el libro virtual no funcionó
+
+Si la página no pudo registrar un reclamo, le pide al consumidor que imprima la hoja y la envíe a la cuenta de Gmail de reclamos. Cuando llegue uno así:
+
+1. Dentro del día siguiente a que el libro vuelva a funcionar (Reglamento, art. 4-A), registrarlo en `/libro-de-reclamaciones` con los datos y el correo del consumidor, para que le llegue la copia.
+2. Empezar el detalle con: `Recibido por correo el DD/MM/AAAA HH:MM.`
+3. Responder dentro de los 15 días hábiles contados desde que llegó el correo, no desde `due_at`.
+
+Cuando exista `make complaint-register --filed-at` (CS-25), se usará ese comando con la fecha original.
+
+## Libro físico de respaldo
+
+En el domicilio fiscal se guarda un libro físico, comprado o impreso con la herramienta gratuita de INDECOPI. Todo reclamo que se anote ahí se pasa al libro virtual igual que en el paso 6.
+
 ## Conservación
 
 Los reclamos se conservan 2 años desde que se presentan (Reglamento, art. 12). El borrado automático llega con CS-25.
