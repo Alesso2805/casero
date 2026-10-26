@@ -4,7 +4,7 @@ Cada regla tiene un ID estable (AR-NN), el documento que la origina y el test qu
 
 Cada test tiene su meta-test: un ejemplo que viola la regla y que el chequeo debe detectar. Así una regla que deja de verificar nada falla en lugar de pasar en silencio.
 
-Los tests viven en `backend/tests/architecture/`. Los contratos de import-linter están en `backend/pyproject.toml`. Las reglas que necesitan la base de datos (RLS forzada, permisos de cada rol, funciones `SECURITY DEFINER`, ausencia de `DEFAULT now()` en el libro) las agrega CS-03, cada una con su test de catálogo.
+Los tests viven en `backend/tests/architecture/`. Los contratos de import-linter están en `backend/pyproject.toml`. Las reglas desde AR-13 se verifican con tests de catálogo contra un PostgreSQL 17 real (Testcontainers), creado con el mismo script de roles y las mismas migraciones que usa Docker Compose. CS-03 las agrega a medida que existen las tablas: RLS forzada y permisos en su primer PR; ausencia de `DEFAULT now()` y alcance del inquilino en el segundo; funciones `SECURITY DEFINER` en el tercero.
 
 | ID | Regla | Origen | Test |
 | --- | --- | --- | --- |
@@ -20,6 +20,8 @@ Los tests viven en `backend/tests/architecture/`. Los contratos de import-linter
 | AR-10 | WhatsApp solo se usa con enlaces `https://wa.me/`, en el backend y en el frontend | CLAUDE.md (regla 9), ADR-0006 | `test_ar10_*` |
 | AR-11 | Ningún SQL ni migración lee el reloj de la base (`CURRENT_DATE`, `now()`, `func.now()` y similares) | CLAUDE.md (regla 2), ADR-0002 y ADR-0003 | `test_ar11_*` |
 | AR-12 | `set_config` se llama solo con parámetros enlazados, nunca con texto interpolado | CLAUDE.md (regla 3), ADR-0002 | `test_ar12_*` |
+| AR-13 | Toda tabla del esquema `public` tiene RLS habilitada y forzada, salvo la lista cerrada de tablas sin RLS de SPEC.md | CLAUDE.md (regla 3), ADR-0002 | `test_catalog.py::test_ar13_*` |
+| AR-14 | Cada rol tiene exactamente los permisos de la tabla de roles de SPEC.md, por tabla y por columna. Solo `casero_owner` y `casero_backup` tienen `BYPASSRLS`, ningún rol es superusuario, `casero_owner` es dueño de todas las tablas, `casero_backup` solo lee y `PUBLIC` no tiene permisos | CLAUDE.md (regla 3), ADR-0002 | `test_catalog.py::test_ar14_*` |
 
 ## Patrón de puertos (AR-03)
 

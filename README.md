@@ -6,7 +6,15 @@ The specification is in [docs/SPEC.md](docs/SPEC.md) (in Spanish), the backlog i
 
 ## Development
 
-Requirements: [uv](https://docs.astral.sh/uv/), Node 26 and pnpm 12.
+Requirements: Docker, [uv](https://docs.astral.sh/uv/), Node 26 and pnpm 12.
+
+Start everything (PostgreSQL, migrations, API, worker, web, Caddy and Mailpit):
+
+```sh
+docker compose up --build
+```
+
+The app is at http://localhost and the captured emails at http://localhost:8025. To try it from a phone on the local network, set `CASERO_LAN_HOST` to this machine's IP address and open `https://<ip>`. Caddy serves it with its internal certificate.
 
 Backend checks, run from `backend/`:
 
