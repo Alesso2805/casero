@@ -47,12 +47,13 @@ Cada clave tiene solo las capacidades que necesita y está limitada a un bucket.
 | `worker` | vouchers | `listFiles`, `readFiles`, `deleteFiles` | Entorno del worker (purgas) |
 | `backup` | respaldos | `listFiles`, `writeFiles` (sin `deleteFiles`) | Entorno del proceso de respaldo |
 | `restore` | respaldos | `listFiles`, `readFiles` | Solo en Bitwarden |
+| `audit` | todos (sin restricción de bucket) | `listBuckets`, `readBucketEncryption`, `readBucketRetentions`; ninguna sobre archivos | Solo en Bitwarden; la usa `make check-bucket-policy` |
 
 La clave maestra de la cuenta vive solo en Bitwarden y nunca en el servidor. Si el cliente S3 lo necesita, se agrega `listBuckets` a la clave correspondiente; se confirma en CS-04.
 
 ## Verificación
 
-`make check-bucket-policy` (CS-04) compara la configuración real con este documento y falla si algo difiere. Revisa en cada bucket:
+`make check-bucket-policy` compara la configuración real con este documento y falla si algo difiere. Usa la API nativa de B2 (`b2_list_buckets`) con la clave `audit`. Se corre desde tu computadora con `B2_AUDIT_KEY_ID`, `B2_AUDIT_APPLICATION_KEY` y `CASERO_BUCKET_PREFIX` en el entorno. Revisa en cada bucket:
 
 - que sea privado;
 - que tenga versionado y SSE-B2;
@@ -75,7 +76,7 @@ La clave maestra de la cuenta vive solo en Bitwarden y nunca en el servidor. Si 
 4. Solo si la prueba salió bien, crear `<prefijo>-backups` con bloqueo de objetos y retención por defecto de 30 días en compliance.
 5. Crear `<prefijo>-vouchers` sin bloqueo de objetos.
 6. Configurar en ambos el cifrado SSE-B2 y las reglas de ciclo de vida.
-7. Crear las cuatro claves de aplicación y guardarlas en Bitwarden.
+7. Crear las cinco claves de aplicación y guardarlas en Bitwarden.
 8. Ejecutar `make check-bucket-policy`.
 9. Anotar la ejecución en el registro de abajo.
 
