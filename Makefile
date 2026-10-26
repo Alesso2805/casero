@@ -1,4 +1,4 @@
-.PHONY: up down test lint migrate check-bucket-policy
+.PHONY: up down test lint migrate load-tax-config check-bucket-policy
 
 up:
 	docker compose up --detach --build
@@ -16,6 +16,9 @@ lint:
 
 migrate:
 	docker compose run --rm migrate
+
+load-tax-config:
+	docker compose run --rm --build migrate python -m casero.tax.infrastructure.tax_config
 
 check-bucket-policy:
 	cd backend && uv run python scripts/check_bucket_policy.py

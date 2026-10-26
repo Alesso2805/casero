@@ -38,7 +38,7 @@ services:
   migrate:
     <<: *backend
     restart: "no"
-    command: ["alembic", "upgrade", "head"]
+    command: ["sh", "-c", "alembic upgrade head && python -m casero.tax.infrastructure.tax_config"]
     environment:
       CASERO_MIGRATION_DATABASE_URL: postgresql+asyncpg://casero_owner:${CASERO_OWNER_PASSWORD:?}@postgres:5432/casero
     depends_on:

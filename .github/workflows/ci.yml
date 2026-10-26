@@ -149,7 +149,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the production images
         run: |
-          docker build --tag ghcr.io/alesso2805/casero-backend:ci backend
+          docker build --file backend/Dockerfile --tag ghcr.io/alesso2805/casero-backend:ci .
           docker build --file infra/edge/Dockerfile --tag ghcr.io/alesso2805/casero-edge:ci .
       - name: Start the production stack
         run: docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml up --detach
