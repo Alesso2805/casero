@@ -7,11 +7,13 @@ import pytest
 from casero.admin.application.complaint_emails import (
     COPY_JOB,
     NOTICE_JOB,
+    PendingNotice,
     SendComplaintEmails,
 )
 from casero.admin.domain.complaint_emails import (
     NOTICES,
     BusinessIdentity,
+    CopyStatus,
     consumer_copy,
     inbox_notice,
 )
@@ -93,12 +95,29 @@ def test_a_letter_only_complaint_has_no_copy() -> None:
 
 
 def test_the_inbox_notice_carries_no_personal_data() -> None:
-    email = inbox_notice(COMPLAINT, BUSINESS)
+    email = inbox_notice(COMPLAINT, BUSINESS, CopyStatus("sent"))
 
     assert email.to == "reclamos@example.com"
     assert email.subject == "Reclamo N.° 000000007-2026: responder antes del 13/11/2026"
     for personal in ("Ana", "12345678", "ana@example.com", "Arequipa", "Rosa", "cobraron"):
         assert personal not in email.subject + email.text
+
+
+@pytest.mark.parametrize(
+    ("status", "line"),
+    [
+        (CopyStatus("sent"), "Copia al consumidor: enviada."),
+        (
+            CopyStatus("failed", "SMTPRecipientsRefused"),
+            "Copia al consumidor: no se pudo enviar (SMTPRecipientsRefused)."
+            " Envíala tú desde este correo.",
+        ),
+        (CopyStatus("no_email"), "Copia al consumidor: no dejó correo; responde por carta."),
+        (CopyStatus("unfinished"), "Copia al consumidor: el envío no terminó."),
+    ],
+)
+def test_the_inbox_notice_reports_the_copy(status: CopyStatus, line: str) -> None:
+    assert line in inbox_notice(COMPLAINT, BUSINESS, status).text
 
 
 class FixedClock:
@@ -118,8 +137,22 @@ class MemoryOutbox:
     async def without_copy(self, limit: int) -> list[Complaint]:
         return [c for c in self.complaints if c.sheet.email and (COPY_JOB, c.id) not in self.runs]
 
-    async def without_notice(self, limit: int) -> list[Complaint]:
-        return [c for c in self.complaints if (NOTICE_JOB, c.id) not in self.runs]
+    async def without_notice(self, limit: int) -> list[PendingNotice]:
+        return [
+            PendingNotice(c, self.copy_status(c))
+            for c in self.complaints
+            if (NOTICE_JOB, c.id) not in self.runs
+        ]
+
+    def copy_status(self, complaint: Complaint) -> CopyStatus:
+        run = self.runs.get((COPY_JOB, complaint.id))
+        if run is None:
+            return CopyStatus("no_email" if complaint.sheet.email is None else "unfinished")
+        if run == "done":
+            return CopyStatus("sent")
+        if run == "running":
+            return CopyStatus("unfinished")
+        return CopyStatus("failed", run)
 
     async def claim(self, job: str, complaint_id: UUID, now: datetime) -> bool:
         if (job, complaint_id) in self.runs:
@@ -135,15 +168,15 @@ class MemoryOutbox:
 
 
 class Mailer:
-    def __init__(self, outbox: MemoryOutbox, failing: bool = False) -> None:
+    def __init__(self, outbox: MemoryOutbox, failing: frozenset[str] = frozenset()) -> None:
         self.outbox = outbox
         self.failing = failing
         self.sent: list[Email] = []
 
     async def send(self, email: Email) -> None:
         self.outbox.events.append(f"send {email.to}")
-        if self.failing:
-            raise MailDeliveryError("SMTPServerDisconnected")
+        if email.to in self.failing:
+            raise MailDeliveryError("SMTPRecipientsRefused")
         self.sent.append(email)
 
 
@@ -164,17 +197,20 @@ async def test_each_email_is_claimed_before_it_is_sent_and_sent_once() -> None:
         "send reclamos@example.com",
     ]
     assert set(outbox.runs.values()) == {"done"}
+    assert "Copia al consumidor: enviada." in mailer.sent[1].text
 
 
 @pytest.mark.anyio
-async def test_a_failed_email_is_recorded_and_not_retried() -> None:
+async def test_a_failed_copy_is_recorded_reported_and_not_retried() -> None:
     outbox = MemoryOutbox([COMPLAINT])
-    mailer = Mailer(outbox, failing=True)
+    mailer = Mailer(outbox, failing=frozenset({"ana@example.com"}))
     send = SendComplaintEmails(outbox, mailer, FixedClock(), BUSINESS)
 
     await send()
-    mailer.failing = False
+    mailer.failing = frozenset()
     await send()
 
-    assert mailer.sent == []
-    assert set(outbox.runs.values()) == {"SMTPServerDisconnected"}
+    [notice] = mailer.sent
+    assert notice.to == "reclamos@example.com"
+    assert "no se pudo enviar (SMTPRecipientsRefused)" in notice.text
+    assert outbox.runs[COPY_JOB, COMPLAINT.id] == "SMTPRecipientsRefused"

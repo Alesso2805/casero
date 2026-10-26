@@ -24,7 +24,8 @@ There are two constraints:
   - For each one it inserts the `running` row and commits, then sends, then marks the row `done` or `failed`.
   - A failure or a crash between the commit and the send is never retried, so an email never goes out twice.
   - The consumer still has the sheet on screen with a print button, and failed jobs feed the alerts of CS-26.
-- **No personal data in the notice.** The notice to the business inbox carries only the number, the kind, the deadline and the answer channel. The details stay in the database.
+- **No personal data in the notice.** The notice to the business inbox carries only the number, the kind, the deadline, the answer channel and the state of the consumer's copy (sent, failed with its code, not finished, or no email given). The details stay in the database.
+- **Manual fallback.** When a copy fails, `python -m casero.worker complaint-copy <number>` prints the exact copy so the owner sends it from the complaints inbox. The worker itself never retries (rule 12).
 - **Logs.** The worker logs a crashed job by name and exception type only, because exception messages can carry personal data (rule 8).
 
 ## Consequences
