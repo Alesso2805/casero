@@ -19,9 +19,17 @@ type WaitlistValues = z.input<typeof schema>;
 
 type Outcome = "joined" | "limited";
 
-async function joinWaitlist(email: string): Promise<Outcome> {
+type WaitlistSource = "landing" | "calculator";
+
+async function joinWaitlist({
+  email,
+  source,
+}: {
+  email: string;
+  source: WaitlistSource;
+}): Promise<Outcome> {
   const { response } = await api.POST("/api/public/waitlist", {
-    body: { email, consent: true, source: "landing" },
+    body: { email, consent: true, source },
   });
   if (response.status === 202) {
     return "joined";
@@ -32,7 +40,7 @@ async function joinWaitlist(email: string): Promise<Outcome> {
   throw new Error(`Unexpected status ${String(response.status)}`);
 }
 
-export function WaitlistForm() {
+export function WaitlistForm({ source = "landing" }: { source?: WaitlistSource }) {
   const {
     register,
     handleSubmit,
@@ -55,7 +63,7 @@ export function WaitlistForm() {
       className="flex flex-col gap-4"
       onSubmit={(event) => {
         void handleSubmit((values) => {
-          mutation.mutate(values.email);
+          mutation.mutate({ email: values.email, source });
         })(event);
       }}
     >

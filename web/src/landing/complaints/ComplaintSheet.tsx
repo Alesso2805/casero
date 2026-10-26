@@ -24,11 +24,6 @@ export function formatLimaTime(isoDateTime: string): string {
   return limaTime.format(new Date(isoDateTime));
 }
 
-export function formatDay(isoDate: string): string {
-  const [year, month, day] = isoDate.split("-");
-  return `${day ?? ""}/${month ?? ""}/${year ?? ""}`;
-}
-
 function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col sm:flex-row sm:gap-2">

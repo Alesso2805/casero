@@ -4,6 +4,7 @@ export const copy = {
     lead: "Registra tus alquileres una vez. Casero te muestra quién te debe y te arma el mensaje de cobro para WhatsApp. Cada mes te prepara los datos de tus formularios 1683, con el monto y la fecha límite.",
     notice: "Casero está en preparación y abrirá al público en 2027.",
     action: "Avísame cuando abra",
+    calculator: "Calcula cuánto pagas a SUNAT",
   },
   steps: {
     title: "Cómo funciona",
