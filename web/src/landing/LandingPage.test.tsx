@@ -28,11 +28,11 @@ describe("landing page", () => {
     const fetchMock = respondWith(202);
     await renderPage("/");
 
-    await userEvent.type(await screen.findByLabelText("Tu correo"), "no-es-un-correo");
+    await userEvent.type(await screen.findByLabelText("Tu correo electrónico"), "no-es-un-correo");
     await userEvent.click(screen.getByRole("button", { name: "Avisarme" }));
 
-    expect(await screen.findByText("Revisa tu correo, parece que tiene un error.")).toBeDefined();
-    expect(screen.getByText("Para avisarte necesitamos tu permiso.")).toBeDefined();
+    expect(await screen.findByText("Ese correo parece incompleto. Revisa que tenga @ y un punto, por ejemplo: nombre@gmail.com.")).toBeDefined();
+    expect(screen.getByText("Marca la casilla para que podamos escribirte.")).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -40,7 +40,7 @@ describe("landing page", () => {
     const fetchMock = respondWith(202);
     await renderPage("/");
 
-    await userEvent.type(await screen.findByLabelText("Tu correo"), "ana@example.com");
+    await userEvent.type(await screen.findByLabelText("Tu correo electrónico"), "ana@example.com");
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "Avisarme" }));
 
@@ -58,7 +58,7 @@ describe("landing page", () => {
     respondWith(429);
     await renderPage("/");
 
-    await userEvent.type(await screen.findByLabelText("Tu correo"), "ana@example.com");
+    await userEvent.type(await screen.findByLabelText("Tu correo electrónico"), "ana@example.com");
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: "Avisarme" }));
 

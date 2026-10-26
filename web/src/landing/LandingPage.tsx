@@ -10,6 +10,7 @@ export function LandingPage() {
         <p className="text-lg font-bold text-brand">Casero</p>
         <h1 className="text-3xl font-bold leading-tight">{copy.hero.title}</h1>
         <p className="text-lg">{copy.hero.lead}</p>
+        <p className="rounded-lg bg-amber-50 p-3 text-base text-amber-900">{copy.hero.notice}</p>
         <a
           href="#lista-de-espera"
           className="flex min-h-11 items-center justify-center rounded-lg bg-brand px-5 text-base font-semibold text-white hover:bg-brand-dark"
@@ -40,6 +41,7 @@ export function LandingPage() {
         <h2 id="precios" className="text-2xl font-bold">
           {copy.plans.title}
         </h2>
+        <p className="text-base">{copy.plans.note}</p>
         <ul className="flex flex-col gap-4">
           {copy.plans.items.map((plan) => (
             <li key={plan.name} className="rounded-lg border border-stone-300 p-4">

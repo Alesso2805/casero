@@ -92,7 +92,6 @@ export function WaitlistForm() {
             <Link to="/privacidad" className="text-brand underline">
               {text.privacyLink}
             </Link>
-            .
           </label>
         </div>
         {errors.consent && (
