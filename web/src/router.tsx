@@ -64,6 +64,12 @@ const appRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/AppHome"), "AppHome"),
 });
 
+const profileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/mis-datos",
+  component: lazyRouteComponent(() => import("./account/ProfilePage"), "ProfilePage"),
+});
+
 const verifyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/verificar",
@@ -103,6 +109,7 @@ export const routeTree = rootRoute.addChildren([
   registerRoute,
   loginRoute,
   appRoute,
+  profileRoute,
   verifyRoute,
   forgotRoute,
   newPasswordRoute,

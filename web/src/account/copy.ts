@@ -46,6 +46,46 @@ export const accountCopy = {
     resendFailed: "No pudimos enviar el correo. Vuelve a intentarlo en unos minutos.",
     logOut: "Cerrar sesión",
     logOutEverywhere: "Cerrar sesión en todos mis dispositivos",
+    profile: "Mis datos",
+  },
+  profile: {
+    title: "Mis datos",
+    back: "Volver a mi cuenta",
+    paused: "Tu cuenta está pausada hasta que confirmes tu correo.",
+    displayName: "Tu nombre",
+    displayNameHint: "Así te verán tus inquilinos cuando abran su enlace.",
+    taxpayerKind: "¿Quién declara estos alquileres ante SUNAT?",
+    person: "Yo, como persona",
+    estate: "Una sucesión indivisa",
+    estateHint:
+      "La sucesión indivisa tiene su propio RUC. Si además alquilas inmuebles a tu nombre, necesitas otra cuenta de Casero, con otro correo, para declararlos con tu RUC.",
+    ruc: "RUC (puedes completarlo después)",
+    rucPerson: "Son los 11 números de tu RUC.",
+    rucEstate: "Son los 11 números del RUC de la sucesión.",
+    noRuc:
+      "Sin RUC, Casero te dice cuánto pagar a SUNAT, pero no la fecha límite de cada formulario.",
+    goodTaxpayer: "SUNAT me calificó como buen contribuyente",
+    goodTaxpayerHint: "Si no estás seguro, déjalo sin marcar.",
+    goodTaxpayerGroup:
+      "Tus fechas límite son las de los buenos contribuyentes en el cronograma de SUNAT.",
+    digitGroup: (digits: string) =>
+      `Tus fechas límite son las de los RUC que terminan en ${digits} en el cronograma de SUNAT.`,
+    groupDigits: {
+      "0": "0",
+      "1": "1",
+      "2-3": "2 o 3",
+      "4-5": "4 o 5",
+      "6-7": "6 o 7",
+      "8-9": "8 o 9",
+    },
+    dailyDigest: "Quiero un resumen diario por correo",
+    dailyDigestHint:
+      "A las 8:00, solo los días en que tengas algo que hacer. Lo empezaremos a enviar pronto; puedes dejarlo elegido desde ahora.",
+    submit: "Guardar mis datos",
+    sending: "Guardando…",
+    saved: "Listo, guardamos tus datos.",
+    rucLength: "El RUC tiene 11 números, sin espacios ni guiones.",
+    rucInvalid: "Ese RUC no es válido. Revisa los 11 números en tu ficha RUC.",
   },
   verify: {
     title: "Confirmar tu correo",

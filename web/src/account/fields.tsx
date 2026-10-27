@@ -27,14 +27,18 @@ export function TextField({
   id,
   label,
   type = "text",
+  numeric = false,
   autoComplete,
+  hint,
   error,
   registration,
 }: {
   id: string;
   label: string;
   type?: "text" | "email";
+  numeric?: boolean;
   autoComplete?: string;
+  hint?: string;
   error: FieldError | undefined;
   registration: UseFormRegisterReturn;
 }) {
@@ -43,13 +47,18 @@ export function TextField({
       <label htmlFor={id} className="text-base font-medium">
         {label}
       </label>
+      {hint && (
+        <p id={`${id}-hint`} className="text-base text-stone-600">
+          {hint}
+        </p>
+      )}
       <input
         id={id}
         type={type}
-        inputMode={type === "email" ? "email" : undefined}
+        inputMode={type === "email" ? "email" : numeric ? "numeric" : undefined}
         autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy(id, false, Boolean(error))}
+        aria-describedby={describedBy(id, Boolean(hint), Boolean(error))}
         className={inputClass}
         {...registration}
       />
