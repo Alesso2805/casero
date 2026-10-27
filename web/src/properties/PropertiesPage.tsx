@@ -40,6 +40,14 @@ function PropertyCard({ property }: { property: Property }) {
           </li>
         ))}
       </ul>
+      <Link
+        to="/app/inmuebles/$propertyId"
+        params={{ propertyId: property.id }}
+        className="min-h-11 py-2 text-brand underline"
+        aria-label={text.list.detailsOf(property.name)}
+      >
+        {text.list.details}
+      </Link>
     </li>
   );
 }
