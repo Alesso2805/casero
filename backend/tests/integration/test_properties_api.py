@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid7
+from uuid import UUID, uuid7
 
 import asyncpg
 import pytest
@@ -54,6 +54,25 @@ async def owner_execute(database: Database, query: str, *args: object) -> list[a
         return await owner.fetch(query, *args)
     finally:
         await owner.close()
+
+
+async def start_lease(database: Database, unit_id: str) -> UUID:
+    lease_id = uuid7()
+    await owner_execute(
+        database,
+        "WITH unit AS (SELECT account_id FROM units WHERE id = $1::uuid),"
+        " renter AS (INSERT INTO renters (id, account_id, full_name)"
+        " SELECT $2::uuid, account_id, 'Inquilina de prueba' FROM unit RETURNING account_id)"
+        " INSERT INTO leases (id, account_id, unit_id, renter_id, due_day, start_date,"
+        " control_from_period, tax_treatment, created_at)"
+        " SELECT $3::uuid, account_id, $1::uuid, $2::uuid, 5, DATE '2026-10-01', '2026-10',"
+        " 'standard', $4::timestamptz FROM renter",
+        UUID(unit_id),
+        uuid7(),
+        lease_id,
+        NOW,
+    )
+    return lease_id
 
 
 async def audit_actions(database: Database, email: str) -> list[tuple[str, str, list[str]]]:
@@ -143,7 +162,8 @@ async def test_the_declarant_type_locks_once_the_account_has_a_property(
     ) as client:
         register(client, f"{uuid7()}@example.com")
         before = client.get("/api/app/account/profile").json()
-        new_house(client)
+        house = new_house(client)
+        send(client, "POST", f"/api/app/properties/{house['id']}/archive")
         locked = send(
             client, "PUT", "/api/app/account/profile", {**profile, "taxpayer_kind": "estate"}
         )
@@ -231,6 +251,46 @@ async def test_an_estate_account_registers_estate_properties_only(
     assert (to_sole.status_code, to_sole.json()["detail"]) == (422, "ownership_mismatch")
 
 
+async def test_units_with_an_active_lease_stay_in_use(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with api_client(
+        database, address_for(request.node.name), FixedClock(NOW), registration_mode="open"
+    ) as client:
+        register(client, f"{uuid7()}@example.com")
+        house = new_house(client)
+        rented, free = house["units"]
+        lease_id = await start_lease(database, rented["id"])
+        unit_refused = send(client, "POST", f"/api/app/units/{rented['id']}/archive")
+        property_refused = send(client, "POST", f"/api/app/properties/{house['id']}/archive")
+        free_archived = send(client, "POST", f"/api/app/units/{free['id']}/archive")
+        await owner_execute(
+            database, "UPDATE leases SET ended_at = DATE '2026-10-31' WHERE id = $1", lease_id
+        )
+        archived = send(client, "POST", f"/api/app/properties/{house['id']}/archive")
+        again = send(client, "POST", f"/api/app/properties/{house['id']}/archive")
+        edit = send(client, "PUT", f"/api/app/properties/{house['id']}", HOUSE)
+        add = send(
+            client,
+            "POST",
+            f"/api/app/properties/{house['id']}/units",
+            {"name": "Otro", "kind": "room"},
+        )
+
+    assert (unit_refused.status_code, unit_refused.json()["detail"]) == (409, "active_lease")
+    assert (property_refused.status_code, property_refused.json()["detail"]) == (
+        409,
+        "active_lease",
+    )
+    assert free_archived.json()["archived"] is True
+    assert archived.status_code == 200
+    assert archived.json()["archived"] is True
+    assert [unit["archived"] for unit in archived.json()["units"]] == [True, True]
+    assert again.json() == archived.json()
+    assert (edit.status_code, edit.json()["detail"]) == (409, "archived")
+    assert (add.status_code, add.json()["detail"]) == (409, "archived")
+
+
 async def test_each_landlord_sees_and_edits_only_their_own_properties(
     database: Database, request: pytest.FixtureRequest
 ) -> None:
@@ -249,6 +309,7 @@ async def test_each_landlord_sees_and_edits_only_their_own_properties(
         unit_id = house["units"][0]["id"]
         attempts = [
             send(luis, "PUT", f"/api/app/properties/{house['id']}", HOUSE),
+            send(luis, "POST", f"/api/app/properties/{house['id']}/archive"),
             send(
                 luis,
                 "POST",
@@ -256,11 +317,12 @@ async def test_each_landlord_sees_and_edits_only_their_own_properties(
                 {"name": "Intruso", "kind": "room"},
             ),
             send(luis, "PUT", f"/api/app/units/{unit_id}", {"name": "Intruso", "kind": "room"}),
+            send(luis, "POST", f"/api/app/units/{unit_id}/archive"),
         ]
         luis_list = luis.get("/api/app/properties").json()
         ana_list = ana.get("/api/app/properties").json()
 
-    assert [response.status_code for response in attempts] == [404] * 3
+    assert [response.status_code for response in attempts] == [404] * 5
     assert luis_list == []
     assert ana_list == [house]
 

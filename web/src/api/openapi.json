@@ -1399,6 +1399,59 @@
         "summary": "Update Property"
       }
     },
+    "/api/app/properties/{property_id}/archive": {
+      "post": {
+        "description": "Archive the property and its units; repeating it returns the archived property.",
+        "operationId": "archive_property_api_app_properties__property_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "409": {
+            "description": "`active_lease`: one of its units has an active lease"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Property"
+      }
+    },
     "/api/app/properties/{property_id}/units": {
       "post": {
         "description": "Add a unit to a property.",
@@ -1547,6 +1600,59 @@
           }
         },
         "summary": "Update Unit"
+      }
+    },
+    "/api/app/units/{unit_id}/archive": {
+      "post": {
+        "description": "Archive a unit; repeating it returns the archived unit.",
+        "operationId": "archive_unit_api_app_units__unit_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "409": {
+            "description": "`active_lease`: the unit has an active lease"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive Unit"
       }
     },
     "/api/health": {
