@@ -13,6 +13,7 @@ const EMPTY = {
   ruc: null,
   ruc_group: null,
   daily_digest: false,
+  declarant_locked: false,
 };
 
 function setCsrfCookie(value: string | null) {
@@ -98,6 +99,24 @@ describe("profile page", () => {
 
     expect(screen.getByText(/necesitas otra cuenta de Casero/)).toBeDefined();
     expect(screen.getByText("Son los 11 números del RUC de la sucesión.")).toBeDefined();
+  });
+
+  test("keeps the declarant type once the account has properties", async () => {
+    const api = mockApi({
+      "/api/app/account/profile": (request) =>
+        request.method === "GET"
+          ? json({ ...EMPTY, declarant_locked: true })
+          : json({ ...EMPTY, display_name: "Ana Q.", declarant_locked: true }),
+    });
+    await renderPage("/app/mis-datos");
+
+    expect(await screen.findByText(/esta cuenta tiene inmuebles registrados/)).toBeDefined();
+    expect(screen.queryByLabelText("Una sucesión indivisa")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar mis datos" }));
+
+    await screen.findByRole("status");
+    const [, request] = api.requestsTo("/api/app/account/profile");
+    expect(((await request?.json()) as { taxpayer_kind: string }).taxpayer_kind).toBe("person");
   });
 
   test("shows the server's RUC refusal on the field", async () => {

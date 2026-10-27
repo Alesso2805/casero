@@ -70,6 +70,18 @@ const profileRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/ProfilePage"), "ProfilePage"),
 });
 
+const propertiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/inmuebles",
+  component: lazyRouteComponent(() => import("./properties/PropertiesPage"), "PropertiesPage"),
+});
+
+const newPropertyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/inmuebles/nuevo",
+  component: lazyRouteComponent(() => import("./properties/NewPropertyPage"), "NewPropertyPage"),
+});
+
 const verifyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/verificar",
@@ -110,6 +122,8 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute,
   profileRoute,
+  propertiesRoute,
+  newPropertyRoute,
   verifyRoute,
   forgotRoute,
   newPasswordRoute,

@@ -33,7 +33,7 @@ export const accountCopy = {
   },
   home: {
     greeting: "Tu cuenta está lista",
-    soon: "Pronto podrás registrar aquí tus inmuebles, tus inquilinos y sus contratos.",
+    soon: "Pronto podrás registrar aquí a tus inquilinos y sus contratos.",
     verify: (email: string, date: string) =>
       `Confirma tu correo: te enviamos un enlace a ${email}. Tienes hasta el ${date} para confirmarlo.`,
     blocked: (email: string) =>
@@ -47,6 +47,7 @@ export const accountCopy = {
     logOut: "Cerrar sesión",
     logOutEverywhere: "Cerrar sesión en todos mis dispositivos",
     profile: "Mis datos",
+    properties: "Mis inmuebles",
   },
   profile: {
     title: "Mis datos",
@@ -57,6 +58,8 @@ export const accountCopy = {
     taxpayerKind: "¿Quién declara estos alquileres ante SUNAT?",
     person: "Yo, como persona",
     estate: "Una sucesión indivisa",
+    declarantLocked:
+      "Ya no puedes cambiarlo porque esta cuenta tiene inmuebles registrados, aunque estén archivados. Para declarar con otro RUC, crea otra cuenta con otro correo.",
     estateHint:
       "La sucesión indivisa tiene su propio RUC. Si además alquilas inmuebles a tu nombre, necesitas otra cuenta de Casero, con otro correo, para declararlos con tu RUC.",
     ruc: "RUC (puedes completarlo después)",
