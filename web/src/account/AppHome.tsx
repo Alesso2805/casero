@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Navigate, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 
 import { api } from "../api/client";
 import type { components } from "../api/schema";
@@ -92,6 +92,9 @@ export function AppHome() {
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
       <p>{text.home.soon}</p>
+      <Link to="/app/mis-datos" className="text-brand underline">
+        {text.home.profile}
+      </Link>
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
