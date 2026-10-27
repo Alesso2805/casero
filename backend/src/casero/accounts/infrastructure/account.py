@@ -1,9 +1,10 @@
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import TextClause, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.accounts.domain.entitlements import FEATURES, Plan, Subscription
+from casero.accounts.domain.profile import Profile
 from casero.shared.infrastructure.database import set_account_context
 
 MEMBERSHIP = text("SELECT account_id FROM account_members WHERE user_id = :user_id")
@@ -13,6 +14,14 @@ CURRENT_SUBSCRIPTION = text(
 )
 PLAN = text("SELECT code, max_active_leases, features FROM plans WHERE code = :code")
 DISPLAY_NAME = text("SELECT display_name FROM accounts")
+PROFILE = text("SELECT display_name, taxpayer_kind, ruc, ruc_group, daily_digest FROM accounts")
+LOCKED_PROFILE = text(
+    "SELECT display_name, taxpayer_kind, ruc, ruc_group, daily_digest FROM accounts FOR UPDATE"
+)
+SAVE_PROFILE = text(
+    "UPDATE accounts SET display_name = :display_name, taxpayer_kind = :taxpayer_kind,"
+    " ruc = :ruc, ruc_group = :ruc_group, daily_digest = :daily_digest WHERE id = :account_id"
+)
 
 
 class SqlMemberships:
@@ -65,3 +74,35 @@ class SqlAccounts:
     async def display_name(self) -> str:
         name: str = (await self._connection.execute(DISPLAY_NAME)).scalar_one()
         return name
+
+
+class SqlProfiles:
+    """Reads under RLS: only the account in context is visible."""
+
+    def __init__(self, connection: AsyncConnection) -> None:
+        self._connection = connection
+
+    async def _one(self, query: TextClause) -> Profile:
+        row = (await self._connection.execute(query)).one()
+        return Profile(
+            row.display_name, row.taxpayer_kind, row.ruc, row.ruc_group, row.daily_digest
+        )
+
+    async def current(self) -> Profile:
+        return await self._one(PROFILE)
+
+    async def lock_current(self) -> Profile:
+        return await self._one(LOCKED_PROFILE)
+
+    async def save(self, account_id: UUID, profile: Profile) -> None:
+        await self._connection.execute(
+            SAVE_PROFILE,
+            {
+                "account_id": account_id,
+                "display_name": profile.display_name,
+                "taxpayer_kind": profile.taxpayer_kind,
+                "ruc": profile.ruc,
+                "ruc_group": profile.ruc_group,
+                "daily_digest": profile.daily_digest,
+            },
+        )
