@@ -10,6 +10,12 @@ export function parseSolesToCents(text: string): number | null {
   return Number(soles) * CENTS_PER_SOL + Number(decimals.padEnd(2, "0"));
 }
 
+export function solesInput(cents: number): string {
+  const soles = String(Math.trunc(cents / CENTS_PER_SOL));
+  const rest = cents % CENTS_PER_SOL;
+  return rest === 0 ? soles : `${soles}.${String(rest).padStart(2, "0")}`;
+}
+
 export function formatSoles(cents: number): string {
   const soles = Math.trunc(cents / CENTS_PER_SOL);
   const rest = String(cents % CENTS_PER_SOL).padStart(2, "0");

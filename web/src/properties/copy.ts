@@ -6,6 +6,8 @@ export const propertiesCopy = {
     add: "Agregar inmueble",
     units: (count: number) => (count === 1 ? "1 unidad" : `${String(count)} unidades`),
     archived: (count: number) => `Archivados (${String(count)})`,
+    details: "Ver y editar",
+    detailsOf: (name: string) => `Ver y editar ${name}`,
     back: "Volver a mi cuenta",
   },
   form: {
@@ -53,6 +55,29 @@ export const propertiesCopy = {
     submit: "Guardar inmueble",
     sending: "Guardando…",
     cancel: "Volver a mis inmuebles",
+  },
+  edit: {
+    saved: "Listo, guardamos los cambios.",
+    notFound: "No encontramos este inmueble.",
+    archivedNotice: "Este inmueble está archivado.",
+    units: "Unidades",
+    unitName: "Nombre de la unidad",
+    unitKind: "Tipo de unidad",
+    editUnit: (name: string) => `Editar ${name}`,
+    saveUnit: "Guardar unidad",
+    cancel: "Cancelar",
+    archiveUnit: (name: string) => `Archivar ${name}`,
+    confirmArchiveUnit: (name: string) =>
+      `¿Archivar ${name}? Ya no podrás registrar contratos en esta unidad.`,
+    confirm: "Sí, archivar",
+    addUnitTitle: "Agregar una unidad",
+    addUnit: "Agregar unidad",
+    archiveProperty: "Archivar inmueble",
+    confirmArchiveProperty:
+      "¿Archivar este inmueble y todas sus unidades? Seguirá en tu historial, pero ya no podrás registrar contratos en él.",
+    unitActiveLease: "Esta unidad tiene un contrato activo. Termínalo antes de archivarla.",
+    propertyActiveLease:
+      "Una de sus unidades tiene un contrato activo. Termínalo antes de archivar el inmueble.",
   },
   unitKinds: {
     room: "Cuarto",

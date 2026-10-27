@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -13,6 +13,13 @@ const PROFILE = {
   daily_digest: false,
   declarant_locked: false,
 };
+const ROOM = {
+  id: "0195a0b0-0000-7000-8000-000000000002",
+  property_id: "0195a0b0-0000-7000-8000-000000000001",
+  name: "Cuarto 1",
+  kind: "room",
+  archived: false,
+};
 const HOUSE = {
   id: "0195a0b0-0000-7000-8000-000000000001",
   name: "Casa de Surco",
@@ -22,15 +29,7 @@ const HOUSE = {
   autovaluo_cents: null,
   rented_share_pct: 100,
   archived: false,
-  units: [
-    {
-      id: "0195a0b0-0000-7000-8000-000000000002",
-      property_id: "0195a0b0-0000-7000-8000-000000000001",
-      name: "Cuarto 1",
-      kind: "room",
-      archived: false,
-    },
-  ],
+  units: [ROOM],
 };
 
 function setCsrfCookie(value: string | null) {
@@ -149,5 +148,117 @@ describe("new property", () => {
     await screen.findByRole("heading", { name: "Mis inmuebles" });
     const [request] = api.requestsTo("/api/app/properties").filter((r) => r.method === "POST");
     expect(((await request?.json()) as { ownership: string }).ownership).toBe("estate");
+  });
+});
+
+describe("edit property", () => {
+  const unit = ROOM;
+  const editable = { ...HOUSE, autovaluo_cents: 25000050 };
+
+  test("is reached from the list", async () => {
+    mockApi({ "/api/app/properties": () => json([HOUSE]) });
+    await renderPage("/app/inmuebles");
+
+    const link = await screen.findByRole("link", { name: "Ver y editar Casa de Surco" });
+    expect(link.getAttribute("href")).toBe(`/app/inmuebles/${HOUSE.id}`);
+  });
+
+  test("saves the property's details", async () => {
+    const api = mockApi({
+      "/api/app/account/profile": () => json(PROFILE),
+      "/api/app/properties": () => json([editable]),
+      [`/api/app/properties/${HOUSE.id}`]: () => json(editable),
+    });
+    await renderPage(`/app/inmuebles/${HOUSE.id}`);
+
+    const autovaluo = await screen.findByLabelText("Autovalúo en soles (opcional)");
+    expect(autovaluo).toHaveProperty("value", "250000.50");
+    await userEvent.clear(screen.getByLabelText("Nombre del inmueble"));
+    await userEvent.type(screen.getByLabelText("Nombre del inmueble"), "Casa de Barranco");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar inmueble" }));
+
+    expect(await screen.findByRole("status")).toHaveProperty(
+      "textContent",
+      "Listo, guardamos los cambios.",
+    );
+    const [request] = api.requestsTo(`/api/app/properties/${HOUSE.id}`);
+    expect(request?.method).toBe("PUT");
+    expect(await request?.json()).toMatchObject({
+      name: "Casa de Barranco",
+      autovaluo_cents: 25000050,
+    });
+  });
+
+  test("edits and adds units", async () => {
+    const api = mockApi({
+      "/api/app/account/profile": () => json(PROFILE),
+      "/api/app/properties": () => json([HOUSE]),
+      [`/api/app/units/${unit.id}`]: () => json({ ...unit, name: "Cuarto grande" }),
+      [`/api/app/properties/${HOUSE.id}/units`]: () => json(unit, 201),
+    });
+    await renderPage(`/app/inmuebles/${HOUSE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Editar Cuarto 1" }));
+    const name = within(screen.getByRole("list")).getByLabelText("Nombre de la unidad");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Cuarto grande");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar unidad" }));
+    await screen.findByRole("button", { name: "Editar Cuarto 1" });
+
+    const add = screen.getByRole("form", { name: "Agregar una unidad" });
+    await userEvent.type(within(add).getByLabelText("Nombre de la unidad"), "Cochera");
+    await userEvent.selectOptions(within(add).getByLabelText("Tipo de unidad"), "parking");
+    await userEvent.click(within(add).getByRole("button", { name: "Agregar unidad" }));
+
+    await vi.waitFor(() => {
+      expect(api.requestsTo(`/api/app/properties/${HOUSE.id}/units`)).toHaveLength(1);
+    });
+    const [edited] = api.requestsTo(`/api/app/units/${unit.id}`);
+    expect(await edited?.json()).toEqual({ name: "Cuarto grande", kind: "room" });
+    const [added] = api.requestsTo(`/api/app/properties/${HOUSE.id}/units`);
+    expect(await added?.json()).toEqual({ name: "Cochera", kind: "parking" });
+  });
+
+  test("explains why a rented unit can't be archived", async () => {
+    mockApi({
+      "/api/app/account/profile": () => json(PROFILE),
+      "/api/app/properties": () => json([HOUSE]),
+      [`/api/app/units/${unit.id}/archive`]: () => json({ detail: "active_lease" }, 409),
+    });
+    await renderPage(`/app/inmuebles/${HOUSE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Archivar Cuarto 1" }));
+    expect(screen.getByText(/Ya no podrás registrar contratos en esta unidad/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Sí, archivar" }));
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Esta unidad tiene un contrato activo. Termínalo antes de archivarla.",
+    );
+  });
+
+  test("archives the property after confirming", async () => {
+    const api = mockApi({
+      "/api/app/account/profile": () => json(PROFILE),
+      "/api/app/properties": () => json([HOUSE]),
+      [`/api/app/properties/${HOUSE.id}/archive`]: () => json({ ...HOUSE, archived: true }),
+    });
+    await renderPage(`/app/inmuebles/${HOUSE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Archivar inmueble" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, archivar" }));
+
+    expect(await screen.findByRole("heading", { name: "Mis inmuebles" })).toBeDefined();
+    expect(api.requestsTo(`/api/app/properties/${HOUSE.id}/archive`)).toHaveLength(1);
+  });
+
+  test("says when the property doesn't exist", async () => {
+    mockApi({
+      "/api/app/account/profile": () => json(PROFILE),
+      "/api/app/properties": () => json([]),
+    });
+    await renderPage(`/app/inmuebles/${HOUSE.id}`);
+
+    expect(await screen.findByText("No encontramos este inmueble.")).toBeDefined();
   });
 });

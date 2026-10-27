@@ -4,10 +4,11 @@ import { z } from "zod";
 
 import { ErrorText, TextField } from "../account/fields";
 import type { components } from "../api/schema";
-import { parseSolesToCents } from "../landing/money";
+import { parseSolesToCents, solesInput } from "../landing/money";
 import { propertiesCopy as text } from "./copy";
 
-export type Ownership = components["schemas"]["PropertyResponse"]["ownership"];
+export type Property = components["schemas"]["PropertyResponse"];
+export type Ownership = Property["ownership"];
 export type PropertyBody = components["schemas"]["PropertyRequest"];
 
 const PERSON_OWNERSHIPS = ["sole", "co_owned", "conjugal_option", "conjugal_split"] as const;
@@ -78,6 +79,19 @@ export function propertyDefaults(
     autovaluo: "",
     rentedShare: String(MAX_SHARE),
     units,
+  };
+}
+
+export function propertyValues(property: Property): PropertyValues {
+  return {
+    name: property.name,
+    addressLine: property.address_line ?? "",
+    district: property.district ?? "",
+    ownership: property.ownership,
+    conjugalConfirmed: property.ownership === "conjugal_option",
+    autovaluo: property.autovaluo_cents === null ? "" : solesInput(property.autovaluo_cents),
+    rentedShare: String(property.rented_share_pct),
+    units: [],
   };
 }
 
