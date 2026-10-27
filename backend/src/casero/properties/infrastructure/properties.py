@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -28,11 +29,16 @@ UPDATE_PROPERTY = text(
     " ownership = :ownership, autovaluo_cents = :autovaluo_cents,"
     " rented_share_pct = :rented_share_pct WHERE id = :id"
 )
+ARCHIVE_PROPERTY = text("UPDATE properties SET archived_at = :at WHERE id = :id")
+ARCHIVE_UNITS_OF = text(
+    "UPDATE units SET archived_at = :at WHERE property_id = :property_id AND archived_at IS NULL"
+)
 ADD_UNIT = text(
     "INSERT INTO units (id, account_id, property_id, name, kind)"
     " VALUES (:id, :account_id, :property_id, :name, :kind)"
 )
 UPDATE_UNIT = text("UPDATE units SET name = :name, kind = :kind WHERE id = :id")
+ARCHIVE_UNIT = text("UPDATE units SET archived_at = :at WHERE id = :id")
 
 
 def property_details(row: Row[Any]) -> PropertyDetails:
@@ -93,6 +99,10 @@ class SqlPropertyStore:
     async def update(self, property_id: UUID, details: PropertyDetails) -> None:
         await self._connection.execute(UPDATE_PROPERTY, {"id": property_id, **vars(details)})
 
+    async def archive(self, property_id: UUID, at: datetime) -> None:
+        await self._connection.execute(ARCHIVE_PROPERTY, {"id": property_id, "at": at})
+        await self._connection.execute(ARCHIVE_UNITS_OF, {"property_id": property_id, "at": at})
+
     async def lock_unit(self, unit_id: UUID) -> Unit | None:
         row = (await self._connection.execute(LOCK_UNIT, {"id": unit_id})).first()
         return None if row is None else unit(row)
@@ -115,3 +125,6 @@ class SqlPropertyStore:
         await self._connection.execute(
             UPDATE_UNIT, {"id": unit_id, "name": details.name, "kind": details.kind}
         )
+
+    async def archive_unit(self, unit_id: UUID, at: datetime) -> None:
+        await self._connection.execute(ARCHIVE_UNIT, {"id": unit_id, "at": at})

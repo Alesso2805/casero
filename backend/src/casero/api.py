@@ -120,9 +120,13 @@ from casero.identity.infrastructure.sessions import (
 )
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
+from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.properties.api import properties as properties_api
 from casero.properties.application.properties import (
+    ActiveLeases,
     AddUnit,
+    ArchiveProperty,
+    ArchiveUnit,
     CreateProperty,
     ListProperties,
     PropertyStore,
@@ -464,6 +468,14 @@ def create_app(
         audit: AuditLog = SqlAuditLog(connection)
         return UpdateProperty(profiles, store, audit, app_clock)
 
+    async def provide_archive_property(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ArchiveProperty:
+        store: PropertyStore = SqlPropertyStore(connection)
+        leases: ActiveLeases = SqlActiveLeases(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ArchiveProperty(store, leases, audit, app_clock)
+
     async def provide_add_unit(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
     ) -> AddUnit:
@@ -478,14 +490,24 @@ def create_app(
         audit: AuditLog = SqlAuditLog(connection)
         return UpdateUnit(store, audit, app_clock)
 
+    async def provide_archive_unit(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ArchiveUnit:
+        store: PropertyStore = SqlPropertyStore(connection)
+        leases: ActiveLeases = SqlActiveLeases(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ArchiveUnit(store, leases, audit, app_clock)
+
     app.include_router(
         properties_api.create_router(
             current_account,
             provide_list_properties,
             provide_create_property,
             provide_update_property,
+            provide_archive_property,
             provide_add_unit,
             provide_update_unit,
+            provide_archive_unit,
         )
     )
 

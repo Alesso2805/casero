@@ -29,6 +29,10 @@ class PropertyStore(Protocol):
 
     async def update(self, property_id: UUID, details: PropertyDetails) -> None: ...
 
+    async def archive(self, property_id: UUID, at: datetime) -> None:
+        """Archives the property and its units that are still in use."""
+        ...
+
     async def lock_unit(self, unit_id: UUID) -> Unit | None: ...
 
     async def add_unit(
@@ -36,6 +40,16 @@ class PropertyStore(Protocol):
     ) -> None: ...
 
     async def update_unit(self, unit_id: UUID, details: UnitDetails) -> None: ...
+
+    async def archive_unit(self, unit_id: UUID, at: datetime) -> None: ...
+
+
+class ActiveLeases(Protocol):
+    """Implemented by leases (AR-03); callers hold the unit locks so no lease starts meanwhile."""
+
+    async def on_unit(self, unit_id: UUID) -> bool: ...
+
+    async def on_property(self, property_id: UUID) -> bool: ...
 
 
 def audit_entry(
@@ -139,6 +153,34 @@ class UpdateProperty:
 
 
 @dataclass(frozen=True)
+class ArchiveProperty:
+    store: PropertyStore
+    leases: ActiveLeases
+    audit: AuditLog
+    clock: Clock
+
+    async def __call__(
+        self, context: AccountContext, property_id: UUID
+    ) -> Property | Literal["not_found", "active_lease"]:
+        current = await self.store.lock(property_id)
+        if current is None:
+            return "not_found"
+        if current.archived:
+            return current
+        if await self.leases.on_property(property_id):
+            return "active_lease"
+        now = self.clock.now()
+        await self.store.archive(property_id, now)
+        await self.audit.record(
+            audit_entry(
+                context, "property.archived", "properties", property_id, ["archived_at"], now
+            )
+        )
+        units = tuple(replace(unit, archived=True) for unit in current.units)
+        return replace(current, archived=True, units=units)
+
+
+@dataclass(frozen=True)
 class AddUnit:
     store: PropertyStore
     audit: AuditLog
@@ -183,3 +225,28 @@ class UpdateUnit:
                 audit_entry(context, "unit.updated", "units", unit_id, changed, self.clock.now())
             )
         return replace(current, details=details)
+
+
+@dataclass(frozen=True)
+class ArchiveUnit:
+    store: PropertyStore
+    leases: ActiveLeases
+    audit: AuditLog
+    clock: Clock
+
+    async def __call__(
+        self, context: AccountContext, unit_id: UUID
+    ) -> Unit | Literal["not_found", "active_lease"]:
+        current = await self.store.lock_unit(unit_id)
+        if current is None:
+            return "not_found"
+        if current.archived:
+            return current
+        if await self.leases.on_unit(unit_id):
+            return "active_lease"
+        now = self.clock.now()
+        await self.store.archive_unit(unit_id, now)
+        await self.audit.record(
+            audit_entry(context, "unit.archived", "units", unit_id, ["archived_at"], now)
+        )
+        return replace(current, archived=True)

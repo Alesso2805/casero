@@ -8,6 +8,8 @@ from casero.accounts.application.context import AccountContext
 from casero.accounts.domain.profile import Profile, TaxpayerKind
 from casero.properties.application.properties import (
     AddUnit,
+    ArchiveProperty,
+    ArchiveUnit,
     CreateProperty,
     UpdateProperty,
     UpdateUnit,
@@ -88,6 +90,9 @@ class Store:
         self.properties[property_id] = replace(self.properties[property_id], details=details)
         self.writes.append("update")
 
+    async def archive(self, property_id: UUID, at: datetime) -> None:
+        self.writes.append("archive")
+
     async def lock_unit(self, unit_id: UUID) -> Unit | None:
         units = (unit for item in self.properties.values() for unit in item.units)
         return next((unit for unit in units if unit.id == unit_id), None)
@@ -99,6 +104,20 @@ class Store:
 
     async def update_unit(self, unit_id: UUID, details: UnitDetails) -> None:
         self.writes.append("update_unit")
+
+    async def archive_unit(self, unit_id: UUID, at: datetime) -> None:
+        self.writes.append("archive_unit")
+
+
+class Leases:
+    def __init__(self, active: bool) -> None:
+        self.active = active
+
+    async def on_unit(self, unit_id: UUID) -> bool:
+        return self.active
+
+    async def on_property(self, property_id: UUID) -> bool:
+        return self.active
 
 
 class Audit:
@@ -205,6 +224,29 @@ async def test_some_property_edits_are_refused(
     assert store.writes == []
 
 
+async def test_a_property_with_an_active_lease_is_not_archived() -> None:
+    store = Store(house(units=(room(),)))
+    archive = ArchiveProperty(store, Leases(active=True), Audit(), Clock())
+
+    assert await archive(CONTEXT, UUID(int=10)) == "active_lease"
+    assert store.writes == []
+
+
+async def test_archiving_a_property_archives_its_units_once() -> None:
+    store, audit = Store(house(units=(room(),))), Audit()
+    archive = ArchiveProperty(store, Leases(active=False), audit, Clock())
+
+    result = await archive(CONTEXT, UUID(int=10))
+
+    assert isinstance(result, Property)
+    assert (result.archived, [unit.archived for unit in result.units]) == (True, [True])
+    assert audit.summary() == [("property.archived", ("archived_at",))]
+
+    archived = ArchiveProperty(Store(house(archived=True)), Leases(active=True), audit, Clock())
+    assert await archived(CONTEXT, UUID(int=10)) == house(archived=True)
+    assert len(audit.entries) == 1
+
+
 async def test_units_are_not_added_to_an_archived_property() -> None:
     store = Store(house(archived=True))
     add = AddUnit(store, Audit(), Clock())
@@ -219,3 +261,19 @@ async def test_an_archived_unit_is_not_edited() -> None:
 
     assert await update(CONTEXT, UUID(int=20), UnitDetails("Cuarto 2", "room")) == "archived"
     assert store.writes == []
+
+
+async def test_a_unit_with_an_active_lease_is_not_archived() -> None:
+    store = Store(house(units=(room(),)))
+    archive = ArchiveUnit(store, Leases(active=True), Audit(), Clock())
+
+    assert await archive(CONTEXT, UUID(int=20)) == "active_lease"
+    assert store.writes == []
+
+
+async def test_a_free_unit_is_archived() -> None:
+    store, audit = Store(house(units=(room(),))), Audit()
+    archive = ArchiveUnit(store, Leases(active=False), audit, Clock())
+
+    assert await archive(CONTEXT, UUID(int=20)) == room(archived=True)
+    assert audit.summary() == [("unit.archived", ("archived_at",))]

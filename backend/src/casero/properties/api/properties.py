@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 from casero.accounts.application.context import AccountContext
 from casero.properties.application.properties import (
     AddUnit,
+    ArchiveProperty,
+    ArchiveUnit,
     CreateProperty,
     ListProperties,
     UpdateProperty,
@@ -137,8 +139,10 @@ def create_router(
     provide_list: Callable[..., Awaitable[ListProperties]],
     provide_create: Callable[..., Awaitable[CreateProperty]],
     provide_update: Callable[..., Awaitable[UpdateProperty]],
+    provide_archive: Callable[..., Awaitable[ArchiveProperty]],
     provide_add_unit: Callable[..., Awaitable[AddUnit]],
     provide_update_unit: Callable[..., Awaitable[UpdateUnit]],
+    provide_archive_unit: Callable[..., Awaitable[ArchiveUnit]],
 ) -> APIRouter:
     router = APIRouter()
     csrf = [Depends(require_csrf)]
@@ -196,6 +200,25 @@ def create_router(
         return property_response(result)
 
     @router.post(
+        "/api/app/properties/{property_id}/archive",
+        dependencies=csrf,
+        responses={
+            **WRITE_ERRORS,
+            409: {"description": "`active_lease`: one of its units has an active lease"},
+        },
+    )
+    async def archive_property(
+        property_id: UUID,
+        context: Annotated[AccountContext, Depends(current_account)],
+        archive: Annotated[ArchiveProperty, Depends(provide_archive)],
+    ) -> PropertyResponse:
+        """Archive the property and its units; repeating it returns the archived property."""
+        result = await archive(context, property_id)
+        if isinstance(result, str):
+            raise refuse(result)
+        return property_response(result)
+
+    @router.post(
         "/api/app/properties/{property_id}/units",
         status_code=201,
         dependencies=csrf,
@@ -232,6 +255,25 @@ def create_router(
     ) -> UnitResponse:
         """Rename a unit or change its kind."""
         result = await update(context, unit_id, body.details())
+        if isinstance(result, str):
+            raise refuse(result)
+        return unit_response(result)
+
+    @router.post(
+        "/api/app/units/{unit_id}/archive",
+        dependencies=csrf,
+        responses={
+            **WRITE_ERRORS,
+            409: {"description": "`active_lease`: the unit has an active lease"},
+        },
+    )
+    async def archive_unit(
+        unit_id: UUID,
+        context: Annotated[AccountContext, Depends(current_account)],
+        archive: Annotated[ArchiveUnit, Depends(provide_archive_unit)],
+    ) -> UnitResponse:
+        """Archive a unit; repeating it returns the archived unit."""
+        result = await archive(context, unit_id)
         if isinstance(result, str):
             raise refuse(result)
         return unit_response(result)
