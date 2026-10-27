@@ -570,6 +570,113 @@
         "title": "NewPasswordRequest",
         "type": "object"
       },
+      "ProfileRequest": {
+        "properties": {
+          "daily_digest": {
+            "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "display_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "good_taxpayer": {
+            "default": false,
+            "title": "Good Taxpayer",
+            "type": "boolean"
+          },
+          "ruc": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9]{11}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruc"
+          },
+          "taxpayer_kind": {
+            "enum": [
+              "person",
+              "estate"
+            ],
+            "title": "Taxpayer Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "taxpayer_kind",
+          "ruc",
+          "daily_digest"
+        ],
+        "title": "ProfileRequest",
+        "type": "object"
+      },
+      "ProfileResponse": {
+        "properties": {
+          "daily_digest": {
+            "title": "Daily Digest",
+            "type": "boolean"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "ruc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruc"
+          },
+          "ruc_group": {
+            "anyOf": [
+              {
+                "enum": [
+                  "0",
+                  "1",
+                  "2-3",
+                  "4-5",
+                  "6-7",
+                  "8-9",
+                  "bc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruc Group"
+          },
+          "taxpayer_kind": {
+            "enum": [
+              "person",
+              "estate"
+            ],
+            "title": "Taxpayer Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name",
+          "taxpayer_kind",
+          "ruc",
+          "ruc_group",
+          "daily_digest"
+        ],
+        "title": "ProfileResponse",
+        "type": "object"
+      },
       "RegistrationRequest": {
         "properties": {
           "accept_terms_and_privacy": {
@@ -722,6 +829,67 @@
           }
         },
         "summary": "Account"
+      }
+    },
+    "/api/app/account/profile": {
+      "get": {
+        "description": "The landlord's name, declarant type, RUC with its schedule group and email choices.",
+        "operationId": "profile_api_app_account_profile_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "Profile"
+      },
+      "put": {
+        "description": "Replace the profile; the schedule group comes from the RUC's last digit.",
+        "operationId": "update_profile_api_app_account_profile_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "422": {
+            "description": "Invalid data, or `invalid_ruc` when the check digit fails"
+          }
+        },
+        "summary": "Update Profile"
       }
     },
     "/api/app/email-verification": {

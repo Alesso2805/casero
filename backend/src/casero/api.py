@@ -22,6 +22,7 @@ from casero.accounts.application.entitlements import (
     PlanCatalog,
     SubscriptionReader,
 )
+from casero.accounts.application.profile import GetProfile, Profiles, UpdateProfile
 from casero.accounts.application.registration import (
     AccountRecords,
     Invites,
@@ -39,6 +40,7 @@ from casero.accounts.infrastructure.account import (
     SqlAccountScope,
     SqlMemberships,
     SqlPlans,
+    SqlProfiles,
     SqlSubscriptions,
 )
 from casero.accounts.infrastructure.registration import (
@@ -113,10 +115,12 @@ from casero.identity.infrastructure.sessions import (
 )
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
+from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
+from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import Clock, SystemClock
 from casero.tax.api import calculator as calculator_api
 from casero.tax.application.calculator import (
@@ -399,7 +403,27 @@ def create_app(
         names: AccountNames = SqlAccounts(connection)
         return GetAccountSummary(names, entitlements)
 
-    app.include_router(account_api.create_router(current_account, provide_account_summary))
+    async def provide_get_profile(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> GetProfile:
+        profiles: Profiles = SqlProfiles(connection)
+        return GetProfile(profiles)
+
+    async def provide_update_profile(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> UpdateProfile:
+        profiles: Profiles = SqlProfiles(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return UpdateProfile(profiles, audit, app_clock)
+
+    app.include_router(
+        account_api.create_router(
+            current_account,
+            provide_account_summary,
+            provide_get_profile,
+            provide_update_profile,
+        )
+    )
 
     @app.get("/api/health")
     def health() -> HealthResponse:

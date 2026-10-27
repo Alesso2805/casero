@@ -24,6 +24,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/account/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profile
+         * @description The landlord's name, declarant type, RUC with its schedule group and email choices.
+         */
+        get: operations["profile_api_app_account_profile_get"];
+        /**
+         * Update Profile
+         * @description Replace the profile; the schedule group comes from the RUC's last digit.
+         */
+        put: operations["update_profile_api_app_account_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/email-verification": {
         parameters: {
             query?: never;
@@ -536,6 +560,41 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** ProfileRequest */
+        ProfileRequest: {
+            /** Daily Digest */
+            daily_digest: boolean;
+            /** Display Name */
+            display_name: string;
+            /**
+             * Good Taxpayer
+             * @default false
+             */
+            good_taxpayer: boolean;
+            /** Ruc */
+            ruc: string | null;
+            /**
+             * Taxpayer Kind
+             * @enum {string}
+             */
+            taxpayer_kind: "person" | "estate";
+        };
+        /** ProfileResponse */
+        ProfileResponse: {
+            /** Daily Digest */
+            daily_digest: boolean;
+            /** Display Name */
+            display_name: string;
+            /** Ruc */
+            ruc: string | null;
+            /** Ruc Group */
+            ruc_group: ("0" | "1" | "2-3" | "4-5" | "6-7" | "8-9" | "bc") | null;
+            /**
+             * Taxpayer Kind
+             * @enum {string}
+             */
+            taxpayer_kind: "person" | "estate";
+        };
         /** RegistrationRequest */
         RegistrationRequest: {
             /**
@@ -622,6 +681,85 @@ export interface operations {
             };
             /** @description No account, or the email is unverified past its deadline */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    profile_api_app_account_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_profile_api_app_account_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `invalid_ruc` when the check digit fails */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
