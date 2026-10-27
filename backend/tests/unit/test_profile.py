@@ -6,7 +6,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from casero.accounts.application.context import AccountContext
-from casero.accounts.application.profile import ProfileChange, UpdateProfile
+from casero.accounts.application.profile import ProfileChange, ProfileView, UpdateProfile
 from casero.accounts.domain.profile import Profile, RucGroup, is_valid_ruc, ruc_group
 from casero.shared.kernel.audit import AuditEntry
 
@@ -80,6 +80,14 @@ class Profiles:
         self.saved.append(profile)
 
 
+class Holdings:
+    def __init__(self, any_property: bool) -> None:
+        self._any_property = any_property
+
+    async def any_property(self) -> bool:
+        return self._any_property
+
+
 class Audit:
     def __init__(self) -> None:
         self.entries: list[AuditEntry] = []
@@ -99,8 +107,8 @@ def change(**overrides: object) -> ProfileChange:
     return ProfileChange(**{**values, **overrides})  # type: ignore[arg-type]
 
 
-def update_profile(profiles: Profiles, audit: Audit) -> UpdateProfile:
-    return UpdateProfile(profiles, audit, Clock())  # type: ignore[arg-type]
+def update_profile(profiles: Profiles, audit: Audit, any_property: bool = False) -> UpdateProfile:
+    return UpdateProfile(profiles, Holdings(any_property), audit, Clock())  # type: ignore[arg-type]
 
 
 @pytest.mark.anyio
@@ -109,8 +117,9 @@ async def test_saving_a_ruc_derives_its_group_and_audits_only_field_names() -> N
 
     result = await update_profile(profiles, audit)(CONTEXT, change(ruc=SUNAT_RUC))
 
-    assert result == Profile("Ana", "person", SUNAT_RUC, "4-5", False)
-    assert profiles.saved == [result]
+    saved = Profile("Ana", "person", SUNAT_RUC, "4-5", False)
+    assert result == ProfileView(saved, declarant_locked=False)
+    assert profiles.saved == [saved]
     [entry] = audit.entries
     assert (entry.action, entry.changed_fields, entry.at) == (
         "account.profile_updated",
@@ -136,7 +145,7 @@ async def test_saving_the_same_profile_writes_nothing() -> None:
 
     result = await update_profile(profiles, audit)(CONTEXT, change())
 
-    assert result == EMPTY
+    assert result == ProfileView(EMPTY, declarant_locked=False)
     assert (profiles.saved, audit.entries) == ([], [])
 
 
@@ -146,4 +155,29 @@ async def test_without_a_ruc_there_is_no_group_even_for_a_good_taxpayer() -> Non
 
     result = await update_profile(profiles, Audit())(CONTEXT, change(good_taxpayer=True))
 
-    assert result == EMPTY
+    assert result == ProfileView(EMPTY, declarant_locked=False)
+
+
+@pytest.mark.anyio
+async def test_the_declarant_type_is_locked_once_the_account_has_properties() -> None:
+    profiles, audit = Profiles(EMPTY), Audit()
+
+    result = await update_profile(profiles, audit, any_property=True)(
+        CONTEXT, change(taxpayer_kind="estate")
+    )
+
+    assert result == "declarant_locked"
+    assert (profiles.saved, audit.entries) == ([], [])
+
+
+@pytest.mark.anyio
+async def test_the_rest_of_the_profile_stays_editable_with_properties() -> None:
+    profiles = Profiles(EMPTY)
+
+    result = await update_profile(profiles, Audit(), any_property=True)(
+        CONTEXT, change(ruc=SUNAT_RUC)
+    )
+
+    assert result == ProfileView(
+        Profile("Ana", "person", SUNAT_RUC, "4-5", False), declarant_locked=True
+    )

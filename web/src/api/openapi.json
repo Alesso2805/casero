@@ -570,6 +570,95 @@
         "title": "NewPasswordRequest",
         "type": "object"
       },
+      "NewPropertyRequest": {
+        "properties": {
+          "address_line": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line"
+          },
+          "autovaluo_cents": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 10000000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autovaluo Cents"
+          },
+          "conjugal_option_confirmed": {
+            "default": false,
+            "description": "The landlord confirmed the account's RUC is the spouse's who chose the option",
+            "title": "Conjugal Option Confirmed",
+            "type": "boolean"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "ownership": {
+            "enum": [
+              "sole",
+              "co_owned",
+              "conjugal_option",
+              "conjugal_split",
+              "estate"
+            ],
+            "title": "Ownership",
+            "type": "string"
+          },
+          "rented_share_pct": {
+            "default": 100,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rented Share Pct",
+            "type": "integer"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitRequest"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "ownership",
+          "units"
+        ],
+        "title": "NewPropertyRequest",
+        "type": "object"
+      },
       "ProfileRequest": {
         "properties": {
           "daily_digest": {
@@ -623,6 +712,10 @@
             "title": "Daily Digest",
             "type": "boolean"
           },
+          "declarant_locked": {
+            "title": "Declarant Locked",
+            "type": "boolean"
+          },
           "display_name": {
             "title": "Display Name",
             "type": "string"
@@ -672,9 +765,174 @@
           "taxpayer_kind",
           "ruc",
           "ruc_group",
-          "daily_digest"
+          "daily_digest",
+          "declarant_locked"
         ],
         "title": "ProfileResponse",
+        "type": "object"
+      },
+      "PropertyRequest": {
+        "properties": {
+          "address_line": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line"
+          },
+          "autovaluo_cents": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 10000000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autovaluo Cents"
+          },
+          "conjugal_option_confirmed": {
+            "default": false,
+            "description": "The landlord confirmed the account's RUC is the spouse's who chose the option",
+            "title": "Conjugal Option Confirmed",
+            "type": "boolean"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "ownership": {
+            "enum": [
+              "sole",
+              "co_owned",
+              "conjugal_option",
+              "conjugal_split",
+              "estate"
+            ],
+            "title": "Ownership",
+            "type": "string"
+          },
+          "rented_share_pct": {
+            "default": 100,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Rented Share Pct",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "ownership"
+        ],
+        "title": "PropertyRequest",
+        "type": "object"
+      },
+      "PropertyResponse": {
+        "properties": {
+          "address_line": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address Line"
+          },
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "autovaluo_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autovaluo Cents"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ownership": {
+            "enum": [
+              "sole",
+              "co_owned",
+              "conjugal_option",
+              "conjugal_split",
+              "estate"
+            ],
+            "title": "Ownership",
+            "type": "string"
+          },
+          "rented_share_pct": {
+            "title": "Rented Share Pct",
+            "type": "integer"
+          },
+          "units": {
+            "items": {
+              "$ref": "#/components/schemas/UnitResponse"
+            },
+            "title": "Units",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address_line",
+          "district",
+          "ownership",
+          "autovaluo_cents",
+          "rented_share_pct",
+          "archived",
+          "units"
+        ],
+        "title": "PropertyResponse",
         "type": "object"
       },
       "RegistrationRequest": {
@@ -758,6 +1016,77 @@
         "title": "TokenRequest",
         "type": "object"
       },
+      "UnitRequest": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "room",
+              "mini_apartment",
+              "apartment",
+              "shop",
+              "parking",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind"
+        ],
+        "title": "UnitRequest",
+        "type": "object"
+      },
+      "UnitResponse": {
+        "properties": {
+          "archived": {
+            "title": "Archived",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "room",
+              "mini_apartment",
+              "apartment",
+              "shop",
+              "parking",
+              "other"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "property_id": {
+            "format": "uuid",
+            "title": "Property Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "property_id",
+          "name",
+          "kind",
+          "archived"
+        ],
+        "title": "UnitResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -833,7 +1162,7 @@
     },
     "/api/app/account/profile": {
       "get": {
-        "description": "The landlord's name, declarant type, RUC with its schedule group and email choices.",
+        "description": "The landlord's name, declarant type, RUC with its schedule group and email choices.\n\n`declarant_locked` is true once the account has properties, archived ones included.",
         "operationId": "profile_api_app_account_profile_get",
         "responses": {
           "200": {
@@ -884,6 +1213,9 @@
           },
           "403": {
             "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "409": {
+            "description": "`declarant_locked`: the account has properties"
           },
           "422": {
             "description": "Invalid data, or `invalid_ruc` when the check digit fails"
@@ -943,6 +1275,193 @@
         "summary": "Me"
       }
     },
+    "/api/app/properties": {
+      "get": {
+        "description": "Every property of the account with its units, archived ones included.",
+        "operationId": "list_properties_api_app_properties_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PropertyResponse"
+                  },
+                  "title": "Response List Properties Api App Properties Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "List Properties"
+      },
+      "post": {
+        "description": "Register a property with its first units.\n\n`estate` ownership is allowed only, and always, in an estate account.",
+        "operationId": "create_property_api_app_properties_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPropertyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "422": {
+            "description": "Invalid data, or `ownership_mismatch` with the declarant"
+          }
+        },
+        "summary": "Create Property"
+      }
+    },
+    "/api/app/properties/{property_id}": {
+      "put": {
+        "description": "Replace the property's details; its units are edited one by one.",
+        "operationId": "update_property_api_app_properties__property_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PropertyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PropertyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "409": {
+            "description": "`archived`: archived properties can't be edited"
+          },
+          "422": {
+            "description": "Invalid data, or `ownership_mismatch` with the declarant"
+          }
+        },
+        "summary": "Update Property"
+      }
+    },
+    "/api/app/properties/{property_id}/units": {
+      "post": {
+        "description": "Add a unit to a property.",
+        "operationId": "add_unit_api_app_properties__property_id__units_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "property_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Property Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "409": {
+            "description": "`archived`: the property is archived"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Unit"
+      }
+    },
     "/api/app/session": {
       "delete": {
         "description": "End this session.",
@@ -965,6 +1484,69 @@
           }
         },
         "summary": "Log Out Everywhere"
+      }
+    },
+    "/api/app/units/{unit_id}": {
+      "put": {
+        "description": "Rename a unit or change its kind.",
+        "operationId": "update_unit_api_app_units__unit_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "unit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Unit Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such property or unit in this account"
+          },
+          "409": {
+            "description": "`archived`: archived units can't be edited"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Unit"
       }
     },
     "/api/health": {

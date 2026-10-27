@@ -17,12 +17,25 @@ class Profiles(Protocol):
     async def save(self, account_id: UUID, profile: Profile) -> None: ...
 
 
+class PropertyHoldings(Protocol):
+    """Implemented by properties (AR-03); archived properties count too."""
+
+    async def any_property(self) -> bool: ...
+
+
+@dataclass(frozen=True)
+class ProfileView:
+    profile: Profile
+    declarant_locked: bool
+
+
 @dataclass(frozen=True)
 class GetProfile:
     profiles: Profiles
+    holdings: PropertyHoldings
 
-    async def __call__(self) -> Profile:
-        return await self.profiles.current()
+    async def __call__(self) -> ProfileView:
+        return ProfileView(await self.profiles.current(), await self.holdings.any_property())
 
 
 @dataclass(frozen=True)
@@ -37,12 +50,13 @@ class ProfileChange:
 @dataclass(frozen=True)
 class UpdateProfile:
     profiles: Profiles
+    holdings: PropertyHoldings
     audit: AuditLog
     clock: Clock
 
     async def __call__(
         self, context: AccountContext, change: ProfileChange
-    ) -> Profile | Literal["invalid_ruc"]:
+    ) -> ProfileView | Literal["invalid_ruc", "declarant_locked"]:
         if change.ruc is not None and not is_valid_ruc(change.ruc):
             return "invalid_ruc"
         updated = Profile(
@@ -53,6 +67,9 @@ class UpdateProfile:
             daily_digest=change.daily_digest,
         )
         previous = await self.profiles.lock_current()
+        locked = await self.holdings.any_property()
+        if locked and previous.taxpayer_kind != updated.taxpayer_kind:
+            return "declarant_locked"
         changed = previous.changed_fields(updated)
         if changed:
             await self.profiles.save(context.account_id, updated)
@@ -68,4 +85,4 @@ class UpdateProfile:
                     at=self.clock.now(),
                 )
             )
-        return updated
+        return ProfileView(updated, locked)

@@ -76,6 +76,7 @@ async def test_a_new_account_has_an_empty_tax_profile(
         "ruc": None,
         "ruc_group": None,
         "daily_digest": False,
+        "declarant_locked": False,
     }
 
 
@@ -101,6 +102,7 @@ async def test_the_landlord_saves_a_ruc_and_gets_its_schedule_group(
         "ruc": SUNAT_RUC,
         "ruc_group": "bc",
         "daily_digest": True,
+        "declarant_locked": False,
     }
     assert account["display_name"] == "Ana Quispe"
     assert await audit_entries(database, email) == [
