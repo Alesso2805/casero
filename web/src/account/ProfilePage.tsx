@@ -35,7 +35,7 @@ const schema = z.object({
 
 type ProfileValues = z.input<typeof schema>;
 
-async function fetchProfile(): Promise<Loaded> {
+export async function fetchProfile(): Promise<Loaded> {
   const { data, response } = await api.GET("/api/app/account/profile");
   if (data) {
     return { kind: "profile", profile: data };
@@ -134,20 +134,28 @@ function ProfileForm({ profile }: { profile: Profile }) {
         error={errors.displayName}
         registration={field("displayName")}
       />
-      <fieldset className="flex flex-col gap-3">
-        <legend className="mb-2 text-base font-medium">{text.profile.taxpayerKind}</legend>
-        <label className="flex min-h-11 items-center gap-3">
-          <input type="radio" value="person" className="size-6" {...field("taxpayerKind")} />
-          {text.profile.person}
-        </label>
-        <label className="flex min-h-11 items-center gap-3">
-          <input type="radio" value="estate" className="size-6" {...field("taxpayerKind")} />
-          {text.profile.estate}
-        </label>
-        {taxpayerKind === "estate" && (
-          <p className="text-base text-stone-600">{text.profile.estateHint}</p>
-        )}
-      </fieldset>
+      {profile.declarant_locked ? (
+        <div className="flex flex-col gap-1">
+          <p className="text-base font-medium">{text.profile.taxpayerKind}</p>
+          <p>{taxpayerKind === "estate" ? text.profile.estate : text.profile.person}</p>
+          <p className="text-base text-stone-600">{text.profile.declarantLocked}</p>
+        </div>
+      ) : (
+        <fieldset className="flex flex-col gap-3">
+          <legend className="mb-2 text-base font-medium">{text.profile.taxpayerKind}</legend>
+          <label className="flex min-h-11 items-center gap-3">
+            <input type="radio" value="person" className="size-6" {...field("taxpayerKind")} />
+            {text.profile.person}
+          </label>
+          <label className="flex min-h-11 items-center gap-3">
+            <input type="radio" value="estate" className="size-6" {...field("taxpayerKind")} />
+            {text.profile.estate}
+          </label>
+          {taxpayerKind === "estate" && (
+            <p className="text-base text-stone-600">{text.profile.estateHint}</p>
+          )}
+        </fieldset>
+      )}
       <TextField
         id="ruc"
         label={text.profile.ruc}
