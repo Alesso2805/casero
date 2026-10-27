@@ -3,12 +3,25 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 import httpx2
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.accounts.api import account as account_api
 from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
+from casero.accounts.application.account import AccountNames, GetAccountSummary
+from casero.accounts.application.context import (
+    AccountContext,
+    AccountScope,
+    Memberships,
+    OpenAccount,
+)
+from casero.accounts.application.entitlements import (
+    GetEntitlements,
+    PlanCatalog,
+    SubscriptionReader,
+)
 from casero.accounts.application.registration import (
     AccountRecords,
     Invites,
@@ -20,6 +33,13 @@ from casero.accounts.application.waitlist import (
     JoinWaitlist,
     WaitlistRateLimiter,
     WaitlistRepository,
+)
+from casero.accounts.infrastructure.account import (
+    SqlAccounts,
+    SqlAccountScope,
+    SqlMemberships,
+    SqlPlans,
+    SqlSubscriptions,
 )
 from casero.accounts.infrastructure.registration import (
     SqlAccountRecords,
@@ -39,6 +59,7 @@ from casero.identity.api import email_events as email_events_api
 from casero.identity.api import sessions as sessions_api
 from casero.identity.api import unsubscribe as unsubscribe_api
 from casero.identity.application.account_emails import (
+    AccessGate,
     AccountEmailSender,
     AccountLinks,
     AccountMailer,
@@ -74,6 +95,7 @@ from casero.identity.domain.account_emails import (
     RESET_EMAILS_PER_HOUR,
     VERIFICATION_EMAILS_PER_HOUR,
 )
+from casero.identity.domain.sessions import Session
 from casero.identity.infrastructure.account_emails import (
     SecretEmailTokens,
     SqlAccountUsers,
@@ -337,6 +359,47 @@ def create_app(
             provide_login, provide_logout, provide_credentials, current_session, app_clock
         )
     )
+
+    async def provide_open_account(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> OpenAccount:
+        memberships: Memberships = SqlMemberships(connection)
+        scope: AccountScope = SqlAccountScope(connection)
+        return OpenAccount(memberships, scope)
+
+    async def provide_access_gate(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> AccessGate:
+        users: AccountUsers = SqlAccountUsers(connection)
+        return AccessGate(users, app_clock)
+
+    async def current_account(
+        session: Annotated[Session, Depends(current_session)],
+        gate: Annotated[AccessGate, Depends(provide_access_gate)],
+        open_account: Annotated[OpenAccount, Depends(provide_open_account)],
+    ) -> AccountContext:
+        if await gate.blocked(session.user_id):
+            raise HTTPException(status_code=403, detail="email_unverified")
+        context = await open_account(session.user_id)
+        if context is None:
+            raise HTTPException(status_code=403, detail="no_account")
+        return context
+
+    async def provide_entitlements(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> GetEntitlements:
+        subscriptions: SubscriptionReader = SqlSubscriptions(connection)
+        plans: PlanCatalog = SqlPlans(connection)
+        return GetEntitlements(subscriptions, plans, app_clock)
+
+    async def provide_account_summary(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> GetAccountSummary:
+        names: AccountNames = SqlAccounts(connection)
+        return GetAccountSummary(names, entitlements)
+
+    app.include_router(account_api.create_router(current_account, provide_account_summary))
 
     @app.get("/api/health")
     def health() -> HealthResponse:

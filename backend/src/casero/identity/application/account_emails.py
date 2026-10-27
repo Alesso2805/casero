@@ -9,6 +9,7 @@ from casero.identity.domain.account_emails import (
     RESET_LIFETIME,
     VERIFICATION_LIFETIME,
     TokenPurpose,
+    access_blocked,
     password_reset_email,
     verification_email,
 )
@@ -24,6 +25,7 @@ class AccountUser:
     user_id: UUID
     email: str
     email_verified: bool
+    created_at: datetime
 
 
 class AccountUsers(Protocol):
@@ -182,3 +184,17 @@ class ResetPassword:
         await self.users.mark_verified(user_id, now)
         await self.sessions.revoke_all(user_id, now)
         return "done"
+
+
+@dataclass(frozen=True)
+class AccessGate:
+    """Unverified accounts lose access to their data UNVERIFIED_GRACE after registering."""
+
+    users: AccountUsers
+    clock: Clock
+
+    async def blocked(self, user_id: UUID) -> bool:
+        user = await self.users.by_id(user_id)
+        return user is None or access_blocked(
+            user.created_at, user.email_verified, self.clock.now()
+        )

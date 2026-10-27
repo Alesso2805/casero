@@ -1,6 +1,85 @@
 {
   "components": {
     "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "features": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "propertyNames": {
+              "enum": [
+                "whatsapp_links",
+                "tenant_portal",
+                "tax_module",
+                "tax_reminders",
+                "receipts_pdf",
+                "accountant_export",
+                "data_export"
+              ]
+            },
+            "title": "Features",
+            "type": "object"
+          },
+          "max_active_leases": {
+            "title": "Max Active Leases",
+            "type": "integer"
+          },
+          "plan_code": {
+            "title": "Plan Code",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "trial",
+              "active",
+              "grace",
+              "free"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "trial_ends_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trial Ends At"
+          }
+        },
+        "required": [
+          "display_name",
+          "plan_code",
+          "status",
+          "trial_ends_at",
+          "ends_at",
+          "max_active_leases",
+          "features"
+        ],
+        "title": "AccountResponse",
+        "type": "object"
+      },
       "CalculatorLine": {
         "properties": {
           "base_cents": {
@@ -620,6 +699,31 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/app/account": {
+      "get": {
+        "description": "The account in context with its plan, subscription status and features.",
+        "operationId": "account_api_app_account_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "Account"
+      }
+    },
     "/api/app/email-verification": {
       "post": {
         "description": "Send a new email-verification link.",
