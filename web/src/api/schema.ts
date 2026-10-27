@@ -34,6 +34,8 @@ export interface paths {
         /**
          * Profile
          * @description The landlord's name, declarant type, RUC with its schedule group and email choices.
+         *
+         *     `declarant_locked` is true once the account has properties, archived ones included.
          */
         get: operations["profile_api_app_account_profile_get"];
         /**
@@ -88,6 +90,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/properties": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Properties
+         * @description Every property of the account with its units, archived ones included.
+         */
+        get: operations["list_properties_api_app_properties_get"];
+        put?: never;
+        /**
+         * Create Property
+         * @description Register a property with its first units.
+         *
+         *     `estate` ownership is allowed only, and always, in an estate account.
+         */
+        post: operations["create_property_api_app_properties_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/properties/{property_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Property
+         * @description Replace the property's details; its units are edited one by one.
+         */
+        put: operations["update_property_api_app_properties__property_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/properties/{property_id}/units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Unit
+         * @description Add a unit to a property.
+         */
+        post: operations["add_unit_api_app_properties__property_id__units_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/session": {
         parameters: {
             query?: never;
@@ -123,6 +191,26 @@ export interface paths {
          * @description End every session of this user, on every device.
          */
         delete: operations["log_out_everywhere_api_app_sessions_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/units/{unit_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Unit
+         * @description Rename a unit or change its kind.
+         */
+        put: operations["update_unit_api_app_units__unit_id__put"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -560,6 +648,35 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** NewPropertyRequest */
+        NewPropertyRequest: {
+            /** Address Line */
+            address_line?: string | null;
+            /** Autovaluo Cents */
+            autovaluo_cents?: number | null;
+            /**
+             * Conjugal Option Confirmed
+             * @description The landlord confirmed the account's RUC is the spouse's who chose the option
+             * @default false
+             */
+            conjugal_option_confirmed: boolean;
+            /** District */
+            district?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Ownership
+             * @enum {string}
+             */
+            ownership: "sole" | "co_owned" | "conjugal_option" | "conjugal_split" | "estate";
+            /**
+             * Rented Share Pct
+             * @default 100
+             */
+            rented_share_pct: number;
+            /** Units */
+            units: components["schemas"]["UnitRequest"][];
+        };
         /** ProfileRequest */
         ProfileRequest: {
             /** Daily Digest */
@@ -583,6 +700,8 @@ export interface components {
         ProfileResponse: {
             /** Daily Digest */
             daily_digest: boolean;
+            /** Declarant Locked */
+            declarant_locked: boolean;
             /** Display Name */
             display_name: string;
             /** Ruc */
@@ -594,6 +713,60 @@ export interface components {
              * @enum {string}
              */
             taxpayer_kind: "person" | "estate";
+        };
+        /** PropertyRequest */
+        PropertyRequest: {
+            /** Address Line */
+            address_line?: string | null;
+            /** Autovaluo Cents */
+            autovaluo_cents?: number | null;
+            /**
+             * Conjugal Option Confirmed
+             * @description The landlord confirmed the account's RUC is the spouse's who chose the option
+             * @default false
+             */
+            conjugal_option_confirmed: boolean;
+            /** District */
+            district?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Ownership
+             * @enum {string}
+             */
+            ownership: "sole" | "co_owned" | "conjugal_option" | "conjugal_split" | "estate";
+            /**
+             * Rented Share Pct
+             * @default 100
+             */
+            rented_share_pct: number;
+        };
+        /** PropertyResponse */
+        PropertyResponse: {
+            /** Address Line */
+            address_line: string | null;
+            /** Archived */
+            archived: boolean;
+            /** Autovaluo Cents */
+            autovaluo_cents: number | null;
+            /** District */
+            district: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Ownership
+             * @enum {string}
+             */
+            ownership: "sole" | "co_owned" | "conjugal_option" | "conjugal_split" | "estate";
+            /** Rented Share Pct */
+            rented_share_pct: number;
+            /** Units */
+            units: components["schemas"]["UnitResponse"][];
         };
         /** RegistrationRequest */
         RegistrationRequest: {
@@ -631,6 +804,38 @@ export interface components {
         TokenRequest: {
             /** Token */
             token: string;
+        };
+        /** UnitRequest */
+        UnitRequest: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "room" | "mini_apartment" | "apartment" | "shop" | "parking" | "other";
+            /** Name */
+            name: string;
+        };
+        /** UnitResponse */
+        UnitResponse: {
+            /** Archived */
+            archived: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "room" | "mini_apartment" | "apartment" | "shop" | "parking" | "other";
+            /** Name */
+            name: string;
+            /**
+             * Property Id
+             * Format: uuid
+             */
+            property_id: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -758,6 +963,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description `declarant_locked`: the account has properties */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Invalid data, or `invalid_ruc` when the check digit fails */
             422: {
                 headers: {
@@ -842,6 +1054,216 @@ export interface operations {
             };
         };
     };
+    list_properties_api_app_properties_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_property_api_app_properties_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPropertyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such property or unit in this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `ownership_mismatch` with the declarant */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_property_api_app_properties__property_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PropertyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PropertyResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such property or unit in this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `archived`: archived properties can't be edited */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `ownership_mismatch` with the declarant */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    add_unit_api_app_properties__property_id__units_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                property_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such property or unit in this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `archived`: the property is archived */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     log_out_api_app_session_delete: {
         parameters: {
             query?: never;
@@ -875,6 +1297,69 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    update_unit_api_app_units__unit_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                unit_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UnitRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnitResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such property or unit in this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `archived`: archived units can't be edited */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

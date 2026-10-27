@@ -22,7 +22,12 @@ from casero.accounts.application.entitlements import (
     PlanCatalog,
     SubscriptionReader,
 )
-from casero.accounts.application.profile import GetProfile, Profiles, UpdateProfile
+from casero.accounts.application.profile import (
+    GetProfile,
+    Profiles,
+    PropertyHoldings,
+    UpdateProfile,
+)
 from casero.accounts.application.registration import (
     AccountRecords,
     Invites,
@@ -115,6 +120,16 @@ from casero.identity.infrastructure.sessions import (
 )
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
+from casero.properties.api import properties as properties_api
+from casero.properties.application.properties import (
+    AddUnit,
+    CreateProperty,
+    ListProperties,
+    PropertyStore,
+    UpdateProperty,
+    UpdateUnit,
+)
+from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
 from casero.shared.infrastructure.mail import SmtpMailer
@@ -407,14 +422,16 @@ def create_app(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
     ) -> GetProfile:
         profiles: Profiles = SqlProfiles(connection)
-        return GetProfile(profiles)
+        holdings: PropertyHoldings = SqlPropertyStore(connection)
+        return GetProfile(profiles, holdings)
 
     async def provide_update_profile(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
     ) -> UpdateProfile:
         profiles: Profiles = SqlProfiles(connection)
+        holdings: PropertyHoldings = SqlPropertyStore(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return UpdateProfile(profiles, audit, app_clock)
+        return UpdateProfile(profiles, holdings, audit, app_clock)
 
     app.include_router(
         account_api.create_router(
@@ -422,6 +439,53 @@ def create_app(
             provide_account_summary,
             provide_get_profile,
             provide_update_profile,
+        )
+    )
+
+    async def provide_list_properties(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ListProperties:
+        store: PropertyStore = SqlPropertyStore(connection)
+        return ListProperties(store)
+
+    async def provide_create_property(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> CreateProperty:
+        profiles: Profiles = SqlProfiles(connection)
+        store: PropertyStore = SqlPropertyStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return CreateProperty(profiles, store, audit, app_clock)
+
+    async def provide_update_property(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> UpdateProperty:
+        profiles: Profiles = SqlProfiles(connection)
+        store: PropertyStore = SqlPropertyStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return UpdateProperty(profiles, store, audit, app_clock)
+
+    async def provide_add_unit(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> AddUnit:
+        store: PropertyStore = SqlPropertyStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return AddUnit(store, audit, app_clock)
+
+    async def provide_update_unit(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> UpdateUnit:
+        store: PropertyStore = SqlPropertyStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return UpdateUnit(store, audit, app_clock)
+
+    app.include_router(
+        properties_api.create_router(
+            current_account,
+            provide_list_properties,
+            provide_create_property,
+            provide_update_property,
+            provide_add_unit,
+            provide_update_unit,
         )
     )
 

@@ -8,9 +8,14 @@ from pydantic import BaseModel, StringConstraints
 from casero.accounts.api.registration import DisplayName
 from casero.accounts.application.account import GetAccountSummary
 from casero.accounts.application.context import AccountContext
-from casero.accounts.application.profile import GetProfile, ProfileChange, UpdateProfile
+from casero.accounts.application.profile import (
+    GetProfile,
+    ProfileChange,
+    ProfileView,
+    UpdateProfile,
+)
 from casero.accounts.domain.entitlements import FEATURES, Feature, SubscriptionStatus
-from casero.accounts.domain.profile import Profile, RucGroup, TaxpayerKind
+from casero.accounts.domain.profile import RucGroup, TaxpayerKind
 from casero.shared.infrastructure.csrf import require_csrf
 
 Ruc = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[0-9]{11}$")]
@@ -46,15 +51,18 @@ class ProfileResponse(BaseModel):
     ruc: str | None
     ruc_group: RucGroup | None
     daily_digest: bool
+    declarant_locked: bool
 
 
-def profile_response(profile: Profile) -> ProfileResponse:
+def profile_response(view: ProfileView) -> ProfileResponse:
+    profile = view.profile
     return ProfileResponse(
         display_name=profile.display_name,
         taxpayer_kind=profile.taxpayer_kind,
         ruc=profile.ruc,
         ruc_group=profile.ruc_group,
         daily_digest=profile.daily_digest,
+        declarant_locked=view.declarant_locked,
     )
 
 
@@ -90,7 +98,10 @@ def create_router(
         _: Annotated[AccountContext, Depends(current_account)],
         get_profile: Annotated[GetProfile, Depends(provide_get_profile)],
     ) -> ProfileResponse:
-        """The landlord's name, declarant type, RUC with its schedule group and email choices."""
+        """The landlord's name, declarant type, RUC with its schedule group and email choices.
+
+        `declarant_locked` is true once the account has properties, archived ones included.
+        """
         return profile_response(await get_profile())
 
     @router.put(
@@ -99,6 +110,7 @@ def create_router(
         responses={
             **ACCOUNT_ERRORS,
             403: {"description": "No account, unverified email past its deadline, or `csrf`"},
+            409: {"description": "`declarant_locked`: the account has properties"},
             422: {"description": "Invalid data, or `invalid_ruc` when the check digit fails"},
         },
     )
@@ -119,7 +131,9 @@ def create_router(
             ),
         )
         if result == "invalid_ruc":
-            raise HTTPException(status_code=422, detail="invalid_ruc")
+            raise HTTPException(status_code=422, detail=result)
+        if result == "declarant_locked":
+            raise HTTPException(status_code=409, detail=result)
         return profile_response(result)
 
     return router
