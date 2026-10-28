@@ -75,6 +75,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_COMPLAINTS_INBOX=<cuenta de Gmail exclusiva de Casero>
    CASERO_DOMAIN=<dominio>.com
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
+   # Respaldos: COMPOSE_PROFILES=backup y las variables de backups.md
    ```
    `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). Tampoco `CASERO_DOC_HMAC_KEY`: agrupa las declaraciones y los pagos a SUNAT de solo inserción (ADR-0007). Las claves de 32 bytes se generan con `python -c "import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`; para rotar el cifrado se agrega otra clave a `CASERO_ENCRYPTION_KEYS` (`k1:...,k2:...`), se activa y, cuando un trabajo vuelve a cifrar las columnas, se retira la anterior. El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
 
@@ -122,6 +123,8 @@ Para volver a una versión anterior, se ejecuta en `/opt/casero`:
 printf 'IMAGE_TAG=<sha>\n' > image.env
 docker compose --env-file .env --env-file image.env up --detach
 ```
+
+Solo sirve si entre las dos versiones no hubo una migración: el migrador anterior no conoce la revisión nueva y la app no arranca. Si la hubo, se corrige hacia adelante o se restaura un respaldo (`backups.md`).
 
 ## Registro
 
