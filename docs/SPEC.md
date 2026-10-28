@@ -69,7 +69,7 @@ Fuentes: [preguntas y respuestas de SUNAT 2026](https://personas.sunat.gob.pe/si
 
 - RUC como persona natural con negocio y régimen tributario elegido con un contador antes de la preventa. Para el primer año conviene evaluar el Nuevo RUS (cuota fija con IGV incluido, solo boletas, tope de S/ 96,000 al año), con paso a RER o Régimen MYPE si te acercas al tope o un cliente necesita factura; el contador confirma que la actividad no está excluida ([comparativo de regímenes](https://tramitesperu.com/comparadores/regimenes-tributarios/)).
 - Boletas electrónicas desde el sistema gratuito de SUNAT mientras el volumen sea bajo.
-- Libro de Reclamaciones virtual enlazado desde la página de inicio, con la Hoja de Reclamación del Anexo I, copia automática al correo del consumidor, opción de imprimirla y respuesta en un máximo de 15 días hábiles improrrogables por el medio que eligió el consumidor (correo o carta). Solo son obligatorios el nombre, el documento, el correo o el domicilio y el detalle; el teléfono y las casillas de aceptación no se pueden exigir. Se conserva al menos 2 años ([D.S. N.° 011-2011-PCM](https://www.inei.gob.pe/media/libro_reclamaciones/DS011_2011_PCM.pdf), modificado por el [D.S. N.° 006-2014-PCM](https://busquedas.elperuano.pe/dispositivo/NL/1041477-1) y el [D.S. N.° 101-2022-PCM](https://busquedas.elperuano.pe/dispositivo/NL/2095978-1); [Anexo I vigente](https://cdn.www.gob.pe/uploads/document/file/3510113/Anexo%20I%20DS%20N%20101-2022-PCM_.pdf.pdf)). No hay que reportar al SIREC: solo lo exige a proveedores con ingresos desde 3,000 UIT. Se guarda además un libro físico de respaldo en el domicilio fiscal: las preguntas frecuentes de INDECOPI lo piden aunque el art. 4-A lo liga a los establecimientos, y cuesta poco. Si el libro virtual falla, la página pide imprimir la hoja y enviarla al correo de reclamos; ese reclamo se registra dentro del día siguiente a que el libro vuelva a funcionar y su plazo cuenta desde que llegó el correo (`docs/ops/complaints.md`). Se publica el domicilio fiscal; las páginas con datos del negocio llevan `X-Robots-Tag: noindex`. Consulta para el abogado: si, al ser la web el establecimiento (art. 3.2), basta con su dirección web en la hoja. Hay un proyecto de reglamento nuevo en consulta desde julio de 2026; se revisa cuando se publique.
+- Libro de Reclamaciones virtual enlazado desde la página de inicio, con la Hoja de Reclamación del Anexo I, copia automática al correo del consumidor, opción de imprimirla y respuesta en un máximo de 15 días hábiles improrrogables por el medio que eligió el consumidor (correo o carta). Solo son obligatorios el nombre, el documento, el correo o el domicilio y el detalle; el teléfono y las casillas de aceptación no se pueden exigir. Se conserva al menos 2 años ([D.S. N.° 011-2011-PCM](https://www.inei.gob.pe/media/libro_reclamaciones/DS011_2011_PCM.pdf), modificado por el [D.S. N.° 006-2014-PCM](https://busquedas.elperuano.pe/dispositivo/NL/1041477-1) y el [D.S. N.° 101-2022-PCM](https://busquedas.elperuano.pe/dispositivo/NL/2095978-1); [Anexo I vigente](https://cdn.www.gob.pe/uploads/document/file/3510113/Anexo%20I%20DS%20N%20101-2022-PCM_.pdf.pdf)). No hay que reportar al SIREC: solo lo exige a proveedores con ingresos desde 3,000 UIT. Se guarda además un libro físico de respaldo en el domicilio fiscal: las preguntas frecuentes de INDECOPI lo piden aunque el art. 4-A lo liga a los establecimientos, y cuesta poco. Si el libro virtual falla, la página pide imprimir la hoja y enviarla al correo de reclamos; ese reclamo se registra dentro del día siguiente a que el libro vuelva a funcionar y su plazo cuenta desde que llegó el correo (`docs/ops/complaints.md`). Se publica el domicilio fiscal; las páginas que lo muestran (`/privacidad`, `/legal` y `/libro-de-reclamaciones`) llevan `X-Robots-Tag: noindex`. Consulta para el abogado: si, al ser la web el establecimiento (art. 3.2), basta con su dirección web en la hoja. Hay un proyecto de reglamento nuevo en consulta desde julio de 2026; se revisa cuando se publique.
 - Términos y condiciones que digan claramente que Casero es una herramienta de registro y cálculo, no asesoría tributaria ni legal, y que Casero no entrega información a terceros salvo ante un requerimiento legal obligatorio.
 
 > Nota: esta especificación no es asesoría legal ni tributaria. Las reglas vienen de fuentes públicas consultadas en octubre de 2026 y deben confirmarse con un contador y un abogado antes de cobrar.
@@ -134,7 +134,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | Almacenamiento S3 | Backblaze B2 (US-East), buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días desde la creación del bucket (`docs/ops/storage-buckets.md`) |
 | Correo | Amazon SES (us-east-1) detrás de una interfaz `Mailer` | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes y quejas por SNS hacia un webhook; Mailpit en local |
 | Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
-| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, `X-Robots-Tag: noindex` en las páginas con datos del negocio, en `/baja` y en `/api/*`, los datos del negocio desde variables de entorno, redirección de `www`, sin registrar `/i` ni consultas |
+| Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, `X-Robots-Tag: noindex` en las páginas que muestran el domicilio del negocio, en `/baja` y en `/api/*`, los datos del negocio desde variables de entorno, redirección de `www`, sin registrar `/i` ni consultas |
 
 **Contextos de acceso a la base**
 
@@ -179,7 +179,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | --- | --- | --- |
 | Servidor | Google Cloud Compute Engine e2-small (2 GB) en us-east1, con IP estática en el nivel Standard (`docs/ops/server.md`) | EE. UU. |
 | Dominio | Un dominio .com propio para la web y el correo de SES (DKIM, MAIL FROM y DMARC), con privacidad del WHOIS; el registrador solo resuelve el nombre y no trata datos personales (`docs/ops/server.md`) | — |
-| Correo de reclamos | Una cuenta de Gmail exclusiva de Casero (`CASERO_COMPLAINTS_INBOX`): recibe los avisos de reclamos, es el Reply-To de cada copia y el respaldo si el libro virtual falla | EE. UU. |
+| Correo de reclamos y de privacidad | Una cuenta de Gmail exclusiva de Casero: `CASERO_COMPLAINTS_INBOX` recibe los avisos de reclamos, es el Reply-To de cada copia y el respaldo si el libro virtual falla; `CASERO_PRIVACY_INBOX` es el canal para ejercer los derechos sobre los datos personales y puede ser la misma cuenta | EE. UU. |
 | Vouchers y respaldos | Backblaze B2, región US-East, con un bucket para cada uso (`docs/ops/storage-buckets.md`) | EE. UU. |
 | Correo | Amazon SES, región us-east-1; rebotes y quejas por SNS | EE. UU. |
 | Seguimiento de errores | Sentry, plan gratuito, región EE. UU. | EE. UU. |
@@ -201,7 +201,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 | Cambio de renta | Se registra en `lease_rent_changes` con el monto nuevo y el período desde el que aplica (el siguiente que no se haya generado); los cargos ya generados no cambian y se corrigen con `rent_correction` si hace falta |
 | Último mes | Se cobra completo todo período cuyo primer día sea anterior o igual al fin del contrato. Un crédito proporcional se registra a mano como ajuste |
 | Tratamiento tributario | `standard` (persona natural), `company_tenant` (inquilino empresa) o `unsupported` (casos fuera del MVP). Solo los dos primeros entran a las declaraciones |
-| Titularidad | En el inmueble: `sole` (único dueño), `co_owned` (un copropietario declara y paga el total), `conjugal_option` (un cónyuge declara todo por la sociedad conyugal, opción ejercida con el pago de enero), `conjugal_split` (cada cónyuge declara su mitad) o `estate` (sucesión indivisa). `conjugal_split` fuerza `unsupported` en sus contratos y la app explica por qué |
+| Titularidad | En el inmueble: `sole` (único dueño), `co_owned` (un copropietario declara y paga el total), `conjugal_option` (un cónyuge declara todo por la sociedad conyugal, opción ejercida con el pago de enero), `conjugal_split` (cada cónyuge declara su mitad) o `estate` (sucesión indivisa). `conjugal_split` fuerza `unsupported` en sus contratos y la app explica por qué; la titularidad no cambia hacia o desde `conjugal_split` mientras el inmueble tenga un contrato activo |
 | Un declarante por cuenta | Las declaraciones salen con el RUC de la cuenta, así que una cuenta es un solo declarante (`accounts.taxpayer_kind` ∈ person, estate). En una cuenta `estate` todos los inmuebles son `estate`; en una cuenta `person`, `estate` no se puede elegir y la app explica que la sucesión necesita su propia cuenta con su RUC. El tipo de declarante solo cambia mientras la cuenta no tiene inmuebles, archivados incluidos. Al elegir `conjugal_option`, la app pide confirmar que el RUC de la cuenta es el del cónyuge que ejerció la opción |
 
 **Cargos**
@@ -383,7 +383,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 
 | Fase | Fechas | Objetivo | Historias, en orden | Pts |
 | --- | --- | --- | --- | --- |
-| Validación | 2 nov – 22 nov 2026 | Formalización, privacidad, 20 entrevistas, prototipo y 5 preventas | — | — |
+| Validación | 2 nov – 22 nov 2026 | Formalización, privacidad y validación del negocio (`casero-business`) | — | — |
 | Sprint 0 | 23 nov – 6 dic | ADR y monorepo con CI y arquitectura verificable | CS-01, 02 | 5 |
 | Sprint 1 | 7 dic – 20 dic | Base segura y publicada con correo y buckets configurados | CS-03, 04 | 8 |
 | Sprint 2 | 21 dic – 3 ene 2027 | Cuentas seguras por invitación (sprint corto por las fiestas) | CS-05 | 5 |
@@ -417,12 +417,12 @@ Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del
 
 **Puertas de decisión**
 
-- **Fin de la validación (22 nov):** se empieza el sprint 0 solo si hay 5 preventas (al menos 3 de personas sin relación previa), RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas. Si las preventas vienen solo de arrendadores sin RUC, Casero se reposiciona como herramienta de cobros y el impuesto queda como complemento.
+- **Fin de la validación (22 nov):** se sigue solo si se cumple la puerta de validación del negocio (`casero-business`), con RUC activo y la solicitud de inscripción del banco de datos presentada ante la Autoridad (la inscripción debe estar resuelta antes de la beta), y si ya decidiste qué otro proyecto pausas.
 - **Fin del sprint 1 (20 dic):** con la velocidad medida de S0 y S1. Si es de 10 puntos o más, el plan se comprime (beta a fines de marzo, lanzamiento a mediados de mayo). Si es menor de 5, se recorta el alcance de la beta antes de seguir.
-- **Fin del sprint 10 (25 abr):** la beta empieza solo si el aislamiento entre cuentas, las páginas legales, la inscripción del banco de datos, los respaldos con restauración probada y la prueba de punta a punta de CS-21 están en verde, y si un contador validó los casos del impuesto. Si no, se devuelve la preventa a quien la pida (la promesa es beta antes del 31 de mayo de 2027).
+- **Fin del sprint 10 (25 abr):** la beta empieza solo si el aislamiento entre cuentas, las páginas legales, la inscripción del banco de datos, los respaldos con restauración probada y la prueba de punta a punta de CS-21 están en verde, y si un contador validó los casos del impuesto. Si no, aplican los términos de la preventa (`casero-business`).
 - **Antes de publicar la landing:** el domicilio fiscal revisado en Consulta RUC; el dominio .com con la web y el correo; SES en producción y un correo de prueba recibido en una dirección no verificada en SES; la política de privacidad completa y revisada por el abogado; la solicitud ante la Autoridad presentada; y el libro físico de respaldo en el domicilio fiscal.
 - **Antes del lanzamiento (sprint 14):** se revisa la cuota de envío de SES (correos al día y por segundo) frente al volumen de la beta y su proyección a 200 cuentas. Si no alcanza, se pide el aumento a AWS con tiempo.
-- **Un mes después del lanzamiento (21 jul):** si la activación es menor al 40 %, se prioriza la bienvenida y el panel antes que funciones nuevas.
+- **Un mes después del lanzamiento (21 jul):** la puerta de activación de `casero-business` decide si se prioriza la bienvenida y el panel antes que funciones nuevas.
 
 **Si el ritmo es menor.** Antes de mover la beta, se recorta CS-31: se reduce a anular y corregir cargos (sin crédito proporcional). Antes de mover el lanzamiento: CS-17 (resumen diario), CS-33 (push), CS-19 (vouchers; el inquilino envía la foto por WhatsApp), CS-15 (la garantía se anota como nota del contrato) y CS-10 (la bienvenida se reemplaza por los formularios normales). Nunca se recortan el aislamiento entre cuentas, las páginas legales, los respaldos ni la exactitud del impuesto.
 
@@ -471,7 +471,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 
 ## Repositorio, convenciones y operación
 
-Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. Los datos del negocio que la web debe mostrar (nombre, RUC y domicilio del responsable) viven en variables de entorno (`CASERO_BUSINESS_*`); el worker los usa en la copia de cada reclamo, y Caddy los sirve en `GET /api/public/business` (con `CASERO_COMPLAINTS_INBOX`), así el Libro de Reclamaciones, la política de privacidad y el aviso de la lista de espera los muestran aunque la API esté caída. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
+Un monorepo público desde el inicio de la implementación, con todos los derechos reservados (sin licencia abierta). Nunca contiene secretos, datos personales reales ni información de negocio. Los datos del negocio que la web debe mostrar (nombre, RUC y domicilio del responsable) viven en variables de entorno (`CASERO_BUSINESS_*`); el worker los usa en la copia de cada reclamo, y Caddy los sirve en `GET /api/public/business` (con `CASERO_COMPLAINTS_INBOX` y `CASERO_PRIVACY_INBOX`), así el Libro de Reclamaciones, la política de privacidad y el aviso de la lista de espera los muestran aunque la API esté caída. El plan de negocio vive en el repositorio privado `Alesso2805/casero-business`, y GitHub tiene activados el escaneo de secretos y la protección de push.
 
 ```text
 casero/
@@ -495,19 +495,25 @@ casero/
 │   ├── tests/
 │   │   ├── unit/
 │   │   ├── integration/       # Testcontainers
-│   │   └── architecture/      # reglas AR y test del catálogo
+│   │   ├── architecture/      # reglas AR y test del catálogo
+│   │   ├── deployment/        # pruebas del borde con el Caddyfile de producción
+│   │   └── smoke/             # pruebas de humo por flujo
+│   ├── scripts/               # exportación del contrato OpenAPI
 │   └── pyproject.toml
 ├── web/
-│   ├── src/app/               # arrendador
-│   ├── src/tenant/            # portal del inquilino
-│   ├── src/admin/             # panel interno
+│   ├── src/account/           # registro, sesión y datos del arrendador
+│   ├── src/properties/        # inmuebles y unidades; cada módulo del arrendador en su carpeta
+│   ├── src/tenant/            # portal del inquilino (CS-18)
+│   ├── src/admin/             # panel interno (CS-24)
+│   ├── src/test/              # ayudas de Vitest
 │   ├── src/landing/           # landing y calculadora pública
 │   ├── src/api/               # tipos generados con openapi-typescript
 │   └── e2e/                   # Playwright
 ├── infra/
 │   ├── postgres/init/         # roles casero_owner, casero_backup, casero_app, casero_worker, casero_admin
 │   ├── seed/tax/              # 2026.yaml, 2027.yaml con su fuente
-│   ├── caddy/Caddyfile
+│   ├── caddy/                 # Caddyfile (local) y Caddyfile.prod
+│   ├── edge/                  # imagen de Caddy con la web compilada
 │   └── deploy/                # despliegue y respaldos
 ├── docs/
 │   ├── SPEC.md
@@ -517,7 +523,7 @@ casero/
 │   ├── legal/                 # términos, privacidad, consentimiento, oficial de datos
 │   └── ops/                   # respaldos, claves, incidentes, carga anual del cronograma
 ├── docker-compose.yml
-├── Makefile                   # up, down, test, lint, migrate, seed, load-tax-config, create-staff, invite, grant-founder, complaint-respond, check-bucket-policy
+├── Makefile                   # up, down, test, lint, migrate, load-tax-config, invite, check-bucket-policy; luego create-staff, grant-founder y complaint-respond
 ├── CLAUDE.md
 └── README.md
 ```
@@ -575,9 +581,8 @@ Esta especificación pasó por cuatro rondas de revisión con dos agentes indepe
 
 | Tema | Decisión |
 | --- | --- |
-| Segmento | Arrendador con RUC o que quiere formalizarse; reposicionar como herramienta de cobros si las preventas vienen solo de informales |
+| Segmento | Arrendador con RUC o que quiere formalizarse; el reposicionamiento según la validación vive en `casero-business` |
 | Planes | Gratis (1 contrato) y Casero (S/ 19 al mes o S/ 190 al año, 10 contratos); sin Plus en el MVP |
-| Preventa | S/ 190 por un año más 6 meses; al menos 3 de 5 sin relación previa; devolución si no hay beta antes del 31 de mayo de 2027 |
 | Historial 2026 y resumen anual | No se importa historial; el resumen anual (CS-22) es posterior al lanzamiento |
 | Recordatorio por WhatsApp | Primera historia después del lanzamiento (CS-30); se adelanta si en la beta se abren menos de la mitad de los correos |
 | Exceso de plan | El arrendador elige qué contratos conservan WhatsApp y portal |

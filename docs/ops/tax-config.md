@@ -24,7 +24,7 @@ Mientras falte el cronograma de un año, Casero muestra "fecha por confirmar" y 
 
 ## Pendiente con el contador
 
-- **Redondeo de la base.** Casero redondea a soles enteros la base y luego el tributo, como en los ejemplos del SPEC (450.50 + 100.50 → base 551, tributo 28). La R.S. N.° 025-2000/SUNAT solo exige enteros en el tributo de las declaraciones por internet, y con 549.50 cobrados los dos métodos dan 28 y 27. El contador confirma el método antes de la beta. Si cambia, se cambia `rounding` en el YAML.
+- **Redondeo de la base.** Casero redondea a soles enteros la base y luego el tributo, como en los ejemplos del SPEC (450.50 + 100.50 → base 551, tributo 28). La R.S. N.° 025-2000/SUNAT solo exige enteros en el tributo de las declaraciones por internet, y con 549.50 cobrados los dos métodos dan 28 y 27. El contador confirma el método antes de la beta. Hoy solo existe `half_up_sol`: otro método necesita código en `tax/domain`, una migración que lo admita en `tax_rule_sets.rounding` y un ADR, y recién entonces se cambia `rounding` en el YAML.
 
 ## Registro
 
