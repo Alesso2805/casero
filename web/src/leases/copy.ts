@@ -100,6 +100,8 @@ export const leasesCopy = {
     voided: "Anulado",
     record: "Registrar pago",
     back: "Volver a mis contratos",
+    loading: "Cargando…",
+    missing: "No encontramos este contrato. Revisa tu lista de contratos.",
     details: "Ver cobros",
     detailsOf: (name: string) => `Ver cobros de ${name}`,
   },

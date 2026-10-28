@@ -80,6 +80,7 @@ describe("leases list", () => {
     await renderPage("/app/contratos");
 
     expect(await screen.findByRole("heading", { name: "Ana Quispe" })).toBeDefined();
+    expect(document.title).toBe("Mis contratos · Casero");
     expect(screen.getByText("Cuarto 1 · Casa de Surco")).toBeDefined();
     expect(screen.getByText("S/ 800.00 al mes")).toBeDefined();
     expect(screen.getByText("Paga el día 5 de cada mes")).toBeDefined();
@@ -441,11 +442,13 @@ describe("lease page", () => {
     await renderPage(`/app/contratos/${LEASE.id}`);
 
     await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Monto recibido en soles"));
     await userEvent.type(screen.getByLabelText("Monto recibido en soles"), "500.50");
     await userEvent.selectOptions(screen.getByLabelText("¿Cómo te pagó?"), "Efectivo");
     await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
 
-    expect(await screen.findByText("Listo, guardamos el pago.")).toBeDefined();
+    const saved = await screen.findByText("Listo, guardamos el pago.");
+    expect(document.activeElement).toBe(saved.parentElement);
     expect(screen.getByText(/Para alquileres desde S\/ 2,000.00 la ley exige/)).toBeDefined();
     expect(screen.queryByText(/anterior al mes desde el que llevas el control/)).toBeNull();
     const [request] = api.requestsTo(PAYMENTS_PATH);
@@ -586,6 +589,13 @@ describe("lease page", () => {
     const [request] = api.requestsTo(VOID_PATH);
     expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
     expect(await request?.json()).toEqual({ reason: "Lo registré dos veces" });
+  });
+
+  test("says when the lease does not exist", async () => {
+    mockLease({ [STATEMENT_PATH]: () => json({ detail: "lease_not_found" }, 404) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText(/No encontramos este contrato/)).toBeDefined();
   });
 
   test("sends visitors without a session to log in", async () => {

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { api } from "../api/client";
 import { PublicFooter } from "../landing/PublicFooter";
 import { accountCopy as text } from "./copy";
-import { PasswordField, primaryButton, TextField } from "./fields";
+import { PasswordField, primaryButton, TextField, textLink } from "./fields";
 
 const schema = z.object({
   email: z.email({ error: text.errors.email }),
@@ -92,7 +92,7 @@ export function LoginPage() {
           {mutation.isPending ? text.login.sending : text.login.submit}
         </button>
       </form>
-      <Link to="/recuperar" className="text-brand underline">
+      <Link to="/recuperar" className={textLink}>
         {text.login.forgot}
       </Link>
       <p>{text.login.noAccount}</p>

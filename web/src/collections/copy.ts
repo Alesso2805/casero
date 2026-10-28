@@ -1,5 +1,6 @@
 export const collectionsCopy = {
   title: "Quién te debe",
+  loading: "Cargando tus cobros…",
   dueByMonthEnd: (amount: string) => `Por cobrar hasta fin de mes: ${amount}`,
   overdueTotal: (amount: string) => `De eso, ${amount} ya está atrasado.`,
   groups: {

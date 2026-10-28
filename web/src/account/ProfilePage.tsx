@@ -7,7 +7,7 @@ import { z } from "zod";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { accountCopy as text } from "./copy";
-import { primaryButton, TextField } from "./fields";
+import { primaryButton, TextField, textLink } from "./fields";
 import { hasRucShape, isValidRuc, rucGroup } from "./ruc";
 
 type Profile = components["schemas"]["ProfileResponse"];
@@ -231,7 +231,7 @@ export function ProfilePage() {
           {text.errors.failure}
         </p>
       )}
-      <Link to="/app" className="text-brand underline">
+      <Link to="/app" className={textLink}>
         {text.profile.back}
       </Link>
     </div>

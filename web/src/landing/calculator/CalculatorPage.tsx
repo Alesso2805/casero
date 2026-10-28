@@ -12,6 +12,7 @@ import { formatSoles, parseSolesToCents } from "../money";
 import { PublicFooter } from "../PublicFooter";
 import { WaitlistForm } from "../WaitlistForm";
 import { calculatorCopy as text } from "./copy";
+import { textLink } from "../../account/fields";
 
 type CalculatorResponse = components["schemas"]["CalculatorResponse"];
 type RucGroup = NonNullable<components["schemas"]["CalculatorRequest"]["ruc_group"]>;
@@ -171,7 +172,7 @@ export function CalculatorPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
-      <Link to="/" className="text-brand underline">
+      <Link to="/" className={textLink}>
         {landingCopy.privacyBack}
       </Link>
       <header className="flex flex-col gap-3">

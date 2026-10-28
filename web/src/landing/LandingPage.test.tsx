@@ -18,6 +18,7 @@ describe("landing page", () => {
     await renderPage("/");
 
     expect(await screen.findByRole("heading", { level: 1 })).toBeDefined();
+    expect(document.title).toBe("Casero");
     expect(screen.getByText("S/ 0")).toBeDefined();
     expect(screen.getByText("S/ 19 al mes o S/ 190 al año")).toBeDefined();
     const links = screen.getAllByRole("link", { name: "Libro de Reclamaciones" });

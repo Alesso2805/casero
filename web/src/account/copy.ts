@@ -33,6 +33,8 @@ export const accountCopy = {
   },
   home: {
     greeting: "Inicio",
+    loading: "Cargando…",
+    failure: "No pudimos cargar tu cuenta. Vuelve a intentarlo en unos minutos.",
     verify: (email: string, date: string) =>
       `Confirma tu correo: te enviamos un enlace a ${email}. Tienes hasta el ${date} para confirmarlo.`,
     blocked: (email: string) =>

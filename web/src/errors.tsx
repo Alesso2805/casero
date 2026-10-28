@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { textLink } from "./account/fields";
 
 const MAX_REPORTS_PER_PAGE = 5;
 const FRAME = /(https?:\/\/[^\s()]+|\/[^\s()]+):(\d+):(\d+)/;
@@ -82,7 +83,7 @@ export function NotFoundPage() {
     <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{errorsCopy.notFound.title}</h1>
       <p>{errorsCopy.notFound.detail}</p>
-      <Link to="/" className="text-brand underline">
+      <Link to="/" className={textLink}>
         {errorsCopy.notFound.home}
       </Link>
     </div>

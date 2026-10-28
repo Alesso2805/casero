@@ -6,6 +6,7 @@ import terms from "../../../docs/legal/terms.md?raw";
 import { copy } from "./copy";
 import { LegalArticle } from "./LegalArticle";
 import { PublicFooter } from "./PublicFooter";
+import { textLink } from "../account/fields";
 
 // The paths match legal_documents.url; every version is 0.1 for now.
 const DOCUMENTS: Record<string, string> = {
@@ -19,7 +20,7 @@ export function LegalDocumentPage() {
   const source = document ? DOCUMENTS[document] : undefined;
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
-      <Link to="/" className="text-brand underline">
+      <Link to="/" className={textLink}>
         {copy.privacyBack}
       </Link>
       {source ? <LegalArticle source={source} /> : <p role="alert">{copy.legalNotFound}</p>}

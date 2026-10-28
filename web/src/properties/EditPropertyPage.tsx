@@ -6,7 +6,7 @@ import { useForm, type FieldErrors, type UseFormRegister } from "react-hook-form
 import type { z } from "zod";
 
 import { fetchProfile } from "../account/ProfilePage";
-import { ErrorText, primaryButton, secondaryButton } from "../account/fields";
+import { ErrorText, primaryButton, secondaryButton, textLink } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { propertiesCopy as text } from "./copy";
@@ -443,7 +443,7 @@ export function EditPropertyPage() {
       {ready && property && (
         <PropertyEditor key={property.id} property={property} estateAccount={estateAccount} />
       )}
-      <Link to="/app/inmuebles" className="text-brand underline">
+      <Link to="/app/inmuebles" className={textLink}>
         {text.form.cancel}
       </Link>
     </div>

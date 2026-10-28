@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
 import { formatSoles } from "../landing/money";
-import { primaryButton } from "../account/fields";
+import { primaryButton, textLink } from "../account/fields";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 
@@ -133,7 +133,7 @@ export function LeasesPage() {
           )}
         </>
       )}
-      <Link to="/app" className="text-brand underline">
+      <Link to="/app" className={textLink}>
         {text.list.back}
       </Link>
     </div>
