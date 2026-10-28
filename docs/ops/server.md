@@ -80,7 +80,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_WORKER_HEARTBEAT_URL=<URL del heartbeat «Worker» de Better Stack (backups.md); vacío lo apaga>
    # Respaldos: COMPOSE_PROFILES=backup y las variables de backups.md
    ```
-   `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). Tampoco `CASERO_DOC_HMAC_KEY`: agrupa las declaraciones y los pagos a SUNAT de solo inserción (ADR-0007). Las claves de 32 bytes se generan con `python -c "import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`; para rotar el cifrado se agrega otra clave a `CASERO_ENCRYPTION_KEYS` (`k1:...,k2:...`), se activa y, cuando un trabajo vuelve a cifrar las columnas, se retira la anterior. El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio. El proyecto de Sentry se crea en la región de EE. UU., con «Data Scrubber» y «Use Default Scrubbers» activados como segunda capa (ADR-0011). Se deja la regla de alerta por defecto, que avisa por correo de cada problema nuevo: cada evento es un problema distinto, así que llega el primero de cada tipo (`api.unhandled_error`, `web.unhandled_error`, `worker.job_crashed`, `worker.account_job_failed`, `worker.lock_held_elsewhere`, `worker.job_stuck`, `worker.jobs_failed`, `complaint_email.failed`, `complaint_email.stuck` y `tax.schedule_missing`).
+   `CASERO_RATE_LIMIT_KEY`, `CASERO_EMAIL_HASH_KEY`, `CASERO_UNSUBSCRIBE_KEY` y `CASERO_ACCEPTANCE_IP_KEY` deben tener al menos 32 caracteres: la API y el worker no arrancan con una más corta. `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). Tampoco `CASERO_DOC_HMAC_KEY`: agrupa las declaraciones y los pagos a SUNAT de solo inserción (ADR-0007). Las claves de 32 bytes se generan con `python -c "import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`; para rotar el cifrado se agrega otra clave a `CASERO_ENCRYPTION_KEYS` (`k1:...,k2:...`), se activa y, cuando un trabajo vuelve a cifrar las columnas, se retira la anterior. El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio. El proyecto de Sentry se crea en la región de EE. UU., con «Data Scrubber» y «Use Default Scrubbers» activados como segunda capa (ADR-0011). Se deja la regla de alerta por defecto, que avisa por correo de cada problema nuevo: cada evento es un problema distinto, así que llega el primero de cada tipo (`api.unhandled_error`, `web.unhandled_error`, `worker.job_crashed`, `worker.account_job_failed`, `worker.lock_held_elsewhere`, `worker.job_stuck`, `worker.jobs_failed`, `complaint_email.failed`, `complaint_email.stuck` y `tax.schedule_missing`).
 
 ## 3. Dominio
 
@@ -128,6 +128,22 @@ docker compose --env-file .env --env-file image.env up --detach
 ```
 
 Solo sirve si entre las dos versiones no hubo una migración: el migrador anterior no conoce la revisión nueva y la app no arranca. Si la hubo, se corrige hacia adelante o se restaura un respaldo (`backups.md`).
+
+## 5. Beta por invitación
+
+El registro está cerrado por defecto (`REGISTRATION_MODE=closed`). Para la beta privada:
+
+1. Cambiar en `/opt/casero/.env` a `REGISTRATION_MODE=invite` y volver a levantar:
+   ```sh
+   docker compose --env-file .env --env-file image.env up --detach
+   ```
+2. Crear una invitación de un solo uso por fundador (vence en 14 días y queda en `staff_audit_log`):
+   ```sh
+   docker compose --env-file .env --env-file image.env run --rm migrate python -m casero.accounts.infrastructure.invites <correo>
+   ```
+3. Enviar el enlace que imprime al fundador por un canal privado (WhatsApp o correo). Solo sirve para registrarse con ese correo; si se pierde o vence, se crea otro.
+
+El lanzamiento (CS-27) cambia a `REGISTRATION_MODE=open`.
 
 ## Registro
 

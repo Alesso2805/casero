@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid7
+from uuid import UUID, uuid7
 
 import asyncpg
 import pytest
@@ -82,7 +82,7 @@ async def test_a_renter_is_stored_with_the_document_encrypted(
         "SELECT account_id, doc_enc, doc_hmac, doc_last4 FROM renters WHERE id = $1::uuid",
         renter["id"],
     )
-    context = field_context("renters", "doc_enc", row["account_id"])
+    context = field_context("renters", "doc_enc", row["account_id"], UUID(renter["id"]))
     assert DNI not in row["doc_enc"]
     assert TEST_FIELD_CIPHER.decrypt(row["doc_enc"], context) == DNI
     assert row["doc_hmac"] == TEST_DOCUMENT_HASHER.digest("dni", DNI)
