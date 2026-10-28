@@ -10,10 +10,10 @@ import sys
 from datetime import datetime
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from casero.accounts.domain.registration import INVITE_LIFETIME
 from casero.accounts.infrastructure.registration import invite_token_hash
+from casero.shared.infrastructure.database import create_engine
 from casero.shared.kernel.clock import SystemClock
 from casero.shared.kernel.ids import new_id
 
@@ -32,7 +32,7 @@ AUDIT = text(
 async def create_invite(database_url: str, email: str, public_url: str, now: datetime) -> str:
     token = secrets.token_urlsafe(TOKEN_BYTES)
     invite_id = new_id()
-    engine = create_async_engine(database_url)
+    engine = create_engine(database_url)
     try:
         async with engine.begin() as connection:
             await connection.execute(

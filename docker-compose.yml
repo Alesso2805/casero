@@ -21,6 +21,7 @@ x-business: &business
 services:
   postgres:
     image: postgres:17-trixie
+    command: ["postgres", "-c", "log_error_verbosity=terse", "-c", "log_min_error_statement=panic"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}

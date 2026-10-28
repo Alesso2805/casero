@@ -23,7 +23,17 @@ services:
   postgres:
     image: postgres:17-trixie
     restart: unless-stopped
-    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=50"]
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - max_connections=50
+      # Error details quote the offending values, personal data included (rule 8).
+      - -c
+      - log_error_verbosity=terse
+      - -c
+      - log_min_error_statement=panic
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}

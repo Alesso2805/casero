@@ -175,6 +175,17 @@ jobs:
         run: |
           uv sync --locked
           uv run pytest tests/deployment
+      - name: Check that edge errors leave no request data in the logs
+        run: |
+          compose="docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml"
+          $compose stop api
+          status=$(curl --silent --insecure --output /dev/null --write-out '%{http_code}' \
+            --header 'X-Tenant-Token: ci-edge-log-probe' 'https://localhost/api/tenant/probe?q=ci-edge-log-probe')
+          test "$status" = 502
+          if $compose logs edge | grep --extended-regexp 'ci-edge-log-probe|remote_ip|client_ip'; then
+            echo "The edge logged request data from a failed request"
+            exit 1
+          fi
       - name: Stop the stack
         if: always()
         run: docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml down --volumes
