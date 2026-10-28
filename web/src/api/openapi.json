@@ -330,6 +330,34 @@
         "title": "ClientError",
         "type": "object"
       },
+      "CollectionsResponse": {
+        "properties": {
+          "due_by_month_end_cents": {
+            "description": "Still owed on charges due by the last day of this month in Lima, overdue ones included",
+            "title": "Due By Month End Cents",
+            "type": "integer"
+          },
+          "leases": {
+            "description": "Most urgent first",
+            "items": {
+              "$ref": "#/components/schemas/LeaseCollectionResponse"
+            },
+            "title": "Leases",
+            "type": "array"
+          },
+          "overdue_cents": {
+            "title": "Overdue Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "due_by_month_end_cents",
+          "overdue_cents",
+          "leases"
+        ],
+        "title": "CollectionsResponse",
+        "type": "object"
+      },
       "DocumentRequest": {
         "properties": {
           "doc_type": {
@@ -641,6 +669,72 @@
           "consent"
         ],
         "title": "JoinWaitlistRequest",
+        "type": "object"
+      },
+      "LeaseCollectionResponse": {
+        "properties": {
+          "balance_cents": {
+            "title": "Balance Cents",
+            "type": "integer"
+          },
+          "ended": {
+            "description": "Ended leases are listed only while they still owe",
+            "title": "Ended",
+            "type": "boolean"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "next_due_cents": {
+            "title": "Next Due Cents",
+            "type": "integer"
+          },
+          "next_due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The next charge not yet overdue, if any",
+            "title": "Next Due On"
+          },
+          "overdue_cents": {
+            "title": "Overdue Cents",
+            "type": "integer"
+          },
+          "overdue_days": {
+            "description": "Days since the oldest overdue charge was due",
+            "title": "Overdue Days",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "overdue",
+              "due_today",
+              "due_soon",
+              "up_to_date"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lease_id",
+          "ended",
+          "status",
+          "overdue_days",
+          "overdue_cents",
+          "next_due_on",
+          "next_due_cents",
+          "balance_cents"
+        ],
+        "title": "LeaseCollectionResponse",
         "type": "object"
       },
       "LeaseRequest": {
@@ -1913,6 +2007,31 @@
           }
         },
         "summary": "Update Profile"
+      }
+    },
+    "/api/app/collections": {
+      "get": {
+        "description": "Who owes what today, for the collections panel.",
+        "operationId": "collections_api_app_collections_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "Collections"
       }
     },
     "/api/app/email-verification": {
