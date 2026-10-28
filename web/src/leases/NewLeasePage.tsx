@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
-import { type FieldError, type UseFormRegisterReturn, useForm, useWatch } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { ErrorText, primaryButton, TextField } from "../account/fields";
+import { ErrorText, primaryButton, SelectField, TextField } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { parseSolesToCents } from "../landing/money";
@@ -141,46 +141,6 @@ async function createLease(leaseId: string, renterId: string, values: LeaseValue
     return "saved";
   }
   return LEASE_ERRORS[detailOf(error)] ?? { field: "form", message: text.errors.failure };
-}
-
-function SelectField({
-  id,
-  label,
-  hint,
-  error,
-  registration,
-  children,
-}: {
-  id: string;
-  label: string;
-  hint?: string;
-  error: FieldError | undefined;
-  registration: UseFormRegisterReturn;
-  children: ReactNode;
-}) {
-  const described = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean);
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium">
-        {label}
-      </label>
-      {hint && (
-        <p id={`${id}-hint`} className="text-base text-stone-600">
-          {hint}
-        </p>
-      )}
-      <select
-        id={id}
-        className="min-h-11 w-full rounded-lg border border-stone-400 bg-white px-3 text-base"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={described.length ? described.join(" ") : undefined}
-        {...registration}
-      >
-        {children}
-      </select>
-      <ErrorText id={id} error={error} />
-    </div>
-  );
 }
 
 function freeUnits(properties: Property[], leases: Lease[]) {
@@ -391,7 +351,7 @@ function NewLeaseForm({
         id="rent"
         label={text.form.rent}
         hint={text.form.rentHint}
-        numeric
+        decimal
         autoComplete="off"
         error={errors.rent}
         registration={register("rent")}
@@ -471,7 +431,7 @@ function NewLeaseForm({
           id="pre-2026"
           label={text.form.pre2026}
           hint={text.form.pre2026Hint}
-          numeric
+          decimal
           autoComplete="off"
           error={errors.pre2026}
           registration={register("pre2026")}
@@ -482,7 +442,7 @@ function NewLeaseForm({
           id="from-2026"
           label={text.form.from2026}
           hint={text.form.from2026Hint}
-          numeric
+          decimal
           autoComplete="off"
           error={errors.from2026}
           registration={register("from2026")}

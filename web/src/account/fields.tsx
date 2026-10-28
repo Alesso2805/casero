@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 import { accountCopy as text } from "./copy";
@@ -28,6 +28,7 @@ export function TextField({
   label,
   type = "text",
   numeric = false,
+  decimal = false,
   autoComplete,
   hint,
   error,
@@ -37,6 +38,7 @@ export function TextField({
   label: string;
   type?: "text" | "email" | "date";
   numeric?: boolean;
+  decimal?: boolean;
   autoComplete?: string;
   hint?: string;
   error: FieldError | undefined;
@@ -55,7 +57,7 @@ export function TextField({
       <input
         id={id}
         type={type}
-        inputMode={type === "email" ? "email" : numeric ? "numeric" : undefined}
+        inputMode={type === "email" ? "email" : decimal ? "decimal" : numeric ? "numeric" : undefined}
         autoComplete={autoComplete}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, Boolean(hint), Boolean(error))}
@@ -112,6 +114,45 @@ export function PasswordField({
           {visible ? text.fields.hide : text.fields.show}
         </button>
       </div>
+      <ErrorText id={id} error={error} />
+    </div>
+  );
+}
+
+export function SelectField({
+  id,
+  label,
+  hint,
+  error,
+  registration,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  error: FieldError | undefined;
+  registration: UseFormRegisterReturn;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-base font-medium">
+        {label}
+      </label>
+      {hint && (
+        <p id={`${id}-hint`} className="text-base text-stone-600">
+          {hint}
+        </p>
+      )}
+      <select
+        id={id}
+        className="min-h-11 w-full rounded-lg border border-stone-400 bg-white px-3 text-base"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy(id, Boolean(hint), Boolean(error))}
+        {...registration}
+      >
+        {children}
+      </select>
       <ErrorText id={id} error={error} />
     </div>
   );

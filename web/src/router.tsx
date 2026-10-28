@@ -101,6 +101,12 @@ const newLeaseRoute = createRoute({
   component: lazyRouteComponent(() => import("./leases/NewLeasePage"), "NewLeasePage"),
 });
 
+const leaseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/contratos/$leaseId",
+  component: lazyRouteComponent(() => import("./leases/LeasePage"), "LeasePage"),
+});
+
 const verifyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/verificar",
@@ -146,6 +152,7 @@ export const routeTree = rootRoute.addChildren([
   propertyRoute,
   leasesRoute,
   newLeaseRoute,
+  leaseRoute,
   verifyRoute,
   forgotRoute,
   newPasswordRoute,

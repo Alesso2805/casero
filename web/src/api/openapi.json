@@ -243,6 +243,18 @@
             ],
             "title": "Period"
           },
+          "pre_2026": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on prior debt: from 2025 or before, or not",
+            "title": "Pre 2026"
+          },
           "status": {
             "anyOf": [
               {
@@ -271,6 +283,7 @@
           "id",
           "kind",
           "period",
+          "pre_2026",
           "amount_cents",
           "due_date",
           "outstanding_cents",
