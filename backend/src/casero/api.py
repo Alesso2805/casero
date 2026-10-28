@@ -120,7 +120,15 @@ from casero.identity.infrastructure.sessions import (
 )
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
+from casero.leases.api import renters as renters_api
+from casero.leases.application.renters import (
+    CreateRenter,
+    ListRenters,
+    RenterStore,
+    UpdateRenter,
+)
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
+from casero.leases.infrastructure.renters import SqlRenterStore
 from casero.properties.api import properties as properties_api
 from casero.properties.application.properties import (
     ActiveLeases,
@@ -511,6 +519,33 @@ def create_app(
             provide_add_unit,
             provide_update_unit,
             provide_archive_unit,
+        )
+    )
+
+    def renter_store(connection: AsyncConnection) -> RenterStore:
+        store: RenterStore = SqlRenterStore(connection, config.field_cipher, config.document_hasher)
+        return store
+
+    async def provide_list_renters(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ListRenters:
+        return ListRenters(renter_store(connection))
+
+    async def provide_create_renter(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> CreateRenter:
+        audit: AuditLog = SqlAuditLog(connection)
+        return CreateRenter(renter_store(connection), audit, app_clock)
+
+    async def provide_update_renter(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> UpdateRenter:
+        audit: AuditLog = SqlAuditLog(connection)
+        return UpdateRenter(renter_store(connection), audit, app_clock)
+
+    app.include_router(
+        renters_api.create_router(
+            current_account, provide_list_renters, provide_create_renter, provide_update_renter
         )
     )
 
