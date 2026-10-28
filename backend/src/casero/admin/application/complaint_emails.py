@@ -73,7 +73,7 @@ class SendComplaintEmails:
         try:
             await self.mailer.send(email)
         except MailDeliveryError as error:
-            log.warning("complaint_email.failed", job=job, complaint_id=str(complaint.id))
+            log.error("complaint_email.failed", job=job, complaint_id=str(complaint.id))
             await self.outbox.finish(job, complaint.id, self.clock.now(), error.code)
             return
         await self.outbox.finish(job, complaint.id, self.clock.now(), None)

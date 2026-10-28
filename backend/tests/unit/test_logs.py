@@ -34,7 +34,14 @@ def test_unhandled_errors_answer_500_and_log_only_their_type() -> None:
         response = client.get("/boom")
 
     assert (response.status_code, response.json()) == (500, {"detail": "internal_error"})
-    assert logs == [{"event": "api.unhandled_error", "error": "RuntimeError", "log_level": "error"}]
+    assert logs == [
+        {
+            "event": "api.unhandled_error",
+            "error": "RuntimeError",
+            "reported": True,
+            "log_level": "error",
+        }
+    ]
     assert PERSONAL_VALUE not in repr(logs)
 
 

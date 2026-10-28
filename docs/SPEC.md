@@ -133,7 +133,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | PostgreSQL 17 | RLS por cuenta | Datos, libro de cobros de solo inserción, configuración tributaria por año, auditoría |
 | Almacenamiento S3 | Backblaze B2 (US-East), buckets privados | Vouchers con versionado y expiración de versiones antiguas a los 30 días; respaldos cifrados con bloqueo de objetos de 30 días desde la creación del bucket (`docs/ops/storage-buckets.md`) |
 | Correo | Amazon SES (us-east-1) detrás de una interfaz `Mailer` | Verificación, recuperación, recordatorios de impuesto y resúmenes; rebotes y quejas por SNS hacia un webhook; Mailpit en local |
-| Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales |
+| Seguimiento de errores | Sentry (plan gratuito, región EE. UU.) | Excepciones de API, worker y frontend, con filtro que elimina datos personales; el navegador no carga el SDK y envía solo el tipo, la ruta y el lugar del código a `/api/public/client-errors` (ADR-0011) |
 | Caddy | Proxy | HTTPS, cabeceras de seguridad, límite de 5 MB por petición, 404 para `/admin` y `/api/admin/*` en el dominio público, `X-Robots-Tag: noindex` en las páginas que muestran el domicilio del negocio, en `/baja` y en `/api/*`, los datos del negocio desde variables de entorno, redirección de `www`, sin registrar `/i` ni consultas |
 
 **Contextos de acceso a la base**

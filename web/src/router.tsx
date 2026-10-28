@@ -6,6 +6,7 @@ import {
   Outlet,
 } from "@tanstack/react-router";
 
+import { ErrorPage, NotFoundPage } from "./errors";
 import { LandingPage } from "./landing/LandingPage";
 
 const rootRoute = createRootRoute({ component: Outlet });
@@ -152,7 +153,11 @@ export const routeTree = rootRoute.addChildren([
   legalVersionRoute,
 ]);
 
-export const router = createRouter({ routeTree });
+export const router = createRouter({
+  routeTree,
+  defaultErrorComponent: ErrorPage,
+  defaultNotFoundComponent: NotFoundPage,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {

@@ -149,8 +149,10 @@ from casero.properties.application.properties import (
     UpdateUnit,
 )
 from casero.properties.infrastructure.properties import SqlPropertyStore
+from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
+from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.logs import ErrorShield, configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
@@ -168,6 +170,7 @@ from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
+CLIENT_ERRORS_PER_HOUR = 30
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
 PASSWORD_RESETS_PER_IP_PER_HOUR = 10
@@ -187,6 +190,7 @@ def create_app(
 ) -> FastAPI:
     configure_logging()
     config = settings or ApiSettings.from_environment()
+    init_error_tracking(config.sentry_dsn, config.sentry_environment)
     app_clock: Clock = clock or SystemClock()
     engine = create_engine(config.database_url)
     http = httpx2.AsyncClient(timeout=SNS_HTTP_TIMEOUT_SECONDS)
@@ -260,6 +264,15 @@ def create_app(
         return CalculateTax(rule_book, limiter)
 
     app.include_router(calculator_api.create_router(provide_calculate))
+
+    async def provide_client_error_limiter(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> client_errors_api.RateLimiter:
+        return PostgresRateLimiter(
+            connection, config.rate_limit_key, app_clock, "client-errors", CLIENT_ERRORS_PER_HOUR
+        )
+
+    app.include_router(client_errors_api.create_router(provide_client_error_limiter))
 
     hasher: PasswordHasher = Argon2PasswordHasher()
     session_tokens: SessionTokens = SecretSessionTokens()

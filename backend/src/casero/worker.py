@@ -25,6 +25,7 @@ from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.infrastructure.rent_charges import SqlRentCharges
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import create_engine
+from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.jobs import AccountWork, DailyAccountJob
 from casero.shared.infrastructure.logs import configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
@@ -140,6 +141,7 @@ async def serve(
 
 async def run() -> None:
     settings = WorkerSettings.from_environment()
+    init_error_tracking(settings.sentry_dsn, settings.sentry_environment)
     clock: Clock = SystemClock()
     lock = await asyncpg.connect(settings.database_url)
     engine = create_engine(settings.engine_url)

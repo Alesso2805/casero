@@ -198,6 +198,42 @@
         "title": "CalculatorResponse",
         "type": "object"
       },
+      "ClientError": {
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.$ -]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "route": {
+            "maxLength": 200,
+            "pattern": "^/[^?#\\s]*$",
+            "title": "Route",
+            "type": "string"
+          },
+          "where": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "pattern": "^[^?#\\s]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Where"
+          }
+        },
+        "required": [
+          "name",
+          "route"
+        ],
+        "title": "ClientError",
+        "type": "object"
+      },
       "DocumentRequest": {
         "properties": {
           "doc_type": {
@@ -2197,6 +2233,41 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/public/client-errors": {
+      "post": {
+        "description": "Report a browser error by its type, route and code location (ADR-0011).",
+        "operationId": "report_client_error_api_public_client_errors_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClientError"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "Too many reports from this client"
+          }
+        },
+        "summary": "Report Client Error"
       }
     },
     "/api/public/complaints": {

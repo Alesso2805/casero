@@ -39,6 +39,8 @@ class ApiSettings:
     public_url: str
     field_cipher: FieldCipher
     document_hasher: DocumentHasher
+    sentry_dsn: str | None = None
+    sentry_environment: str = "production"
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -57,6 +59,8 @@ class ApiSettings:
                 os.environ["CASERO_ENCRYPTION_ACTIVE_KEY"],
             ),
             document_hasher=DocumentHasher(b64decode(os.environ["CASERO_DOC_HMAC_KEY"])),
+            sentry_dsn=os.environ.get("SENTRY_DSN") or None,
+            sentry_environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         )
 
 
@@ -90,6 +94,8 @@ class WorkerSettings:
     business: BusinessSettings
     complaints_inbox: str
     email_hash_key: bytes
+    sentry_dsn: str | None = None
+    sentry_environment: str = "production"
 
     @property
     def engine_url(self) -> str:
@@ -104,4 +110,6 @@ class WorkerSettings:
             business=BusinessSettings.from_environment(env),
             complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
             email_hash_key=env["CASERO_EMAIL_HASH_KEY"].encode(),
+            sentry_dsn=env.get("SENTRY_DSN") or None,
+            sentry_environment=env.get("SENTRY_ENVIRONMENT", "production"),
         )

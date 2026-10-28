@@ -3,6 +3,8 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from structlog.typing import EventDict, WrappedLogger
 
+from casero.shared.infrastructure.error_tracking import REPORTED, forward_errors, report_exception
+
 # A safety net for rule 8 (ADR-0007): code must not log these, and if it does they are dropped.
 PERSONAL_KEYS = frozenset(
     {
@@ -36,6 +38,7 @@ def configure_logging() -> None:
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
             drop_personal_fields,
+            forward_errors,
             structlog.processors.JSONRenderer(),
         ]
     )
@@ -65,7 +68,8 @@ class ErrorShield:
         try:
             await self.app(scope, receive, tracked)
         except Exception as error:
-            log.error("api.unhandled_error", error=type(error).__name__)
+            report_exception(error)
+            log.error("api.unhandled_error", error=type(error).__name__, **{REPORTED: True})
             if not started:
                 response = JSONResponse({"detail": "internal_error"}, status_code=500)
                 await response(scope, receive, send)

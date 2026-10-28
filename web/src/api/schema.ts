@@ -347,6 +347,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/client-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Client Error
+         * @description Report a browser error by its type, route and code location (ADR-0011).
+         */
+        post: operations["report_client_error_api_public_client_errors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/complaints": {
         parameters: {
             query?: never;
@@ -625,6 +645,15 @@ export interface components {
             rate_bp: number;
             /** Total Tax Cents */
             total_tax_cents: number;
+        };
+        /** ClientError */
+        ClientError: {
+            /** Name */
+            name: string;
+            /** Route */
+            route: string;
+            /** Where */
+            where?: string | null;
         };
         /** DocumentRequest */
         DocumentRequest: {
@@ -1978,6 +2007,44 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    report_client_error_api_public_client_errors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClientError"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many reports from this client */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
