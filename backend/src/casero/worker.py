@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import signal
 import sys
 from collections.abc import Awaitable, Callable, Mapping
 
@@ -93,20 +95,37 @@ async def run_jobs(jobs: Mapping[str, Job]) -> None:
             log.error("worker.job_crashed", job=name, error=type(error).__name__)
 
 
+async def serve(
+    jobs: Mapping[str, Job], lock: asyncpg.Connection, stop: asyncio.Event, tick_seconds: int
+) -> None:
+    """Runs the jobs every tick until `stop` is set.
+
+    A dropped lock connection releases the advisory lock, so the worker raises and lets the
+    container restart instead of running beside another worker (rule 12).
+    """
+    while not stop.is_set():
+        await lock.fetchval("SELECT 1")
+        await run_jobs(jobs)
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), tick_seconds)
+
+
 async def run() -> None:
     settings = WorkerSettings.from_environment()
     clock: Clock = SystemClock()
     lock = await asyncpg.connect(settings.database_url)
     engine = create_engine(settings.engine_url)
+    stop = asyncio.Event()
+    with contextlib.suppress(NotImplementedError):
+        asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
     try:
         if not await acquire_worker_lock(lock):
             log.info("worker.lock_held_elsewhere")
             return
         jobs = build_jobs(settings, engine, clock)
         log.info("worker.started", jobs=sorted(jobs))
-        while True:
-            await run_jobs(jobs)
-            await asyncio.sleep(TICK_SECONDS)
+        await serve(jobs, lock, stop, TICK_SECONDS)
+        log.info("worker.stopped")
     finally:
         await engine.dispose()
         await lock.close()

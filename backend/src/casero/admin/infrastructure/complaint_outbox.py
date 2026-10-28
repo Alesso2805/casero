@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from casero.admin.application.complaint_emails import COPY_JOB, NOTICE_JOB, PendingNotice
 from casero.admin.domain.complaint_emails import CopyStatus
 from casero.admin.domain.complaints import Complaint, ComplaintSheet, Guardian
+from casero.shared.infrastructure.jobs import claim_once, finish_run
 
 WITHOUT_COPY = text(
     "SELECT c.* FROM complaints c"
@@ -26,17 +27,6 @@ WITHOUT_NOTICE = text(
 )
 
 BY_NUMBER = text("SELECT c.* FROM complaints c WHERE c.number = :number")
-
-CLAIM = text(
-    "INSERT INTO job_runs (job, run_key, account_id, status, attempts, started_at)"
-    " VALUES (:job, :run_key, NULL, 'running', 1, :now)"
-    " ON CONFLICT DO NOTHING"
-)
-
-FINISH = text(
-    "UPDATE job_runs SET status = :status, finished_at = :now, error_code = :error_code"
-    " WHERE job = :job AND run_key = :run_key AND account_id IS NULL"
-)
 
 
 def copy_status_from_row(row: Any) -> CopyStatus:
@@ -109,22 +99,10 @@ class SqlComplaintOutbox:
 
     async def claim(self, job: str, complaint_id: UUID, now: datetime) -> bool:
         async with self._engine.begin() as connection:
-            result = await connection.execute(
-                CLAIM, {"job": job, "run_key": str(complaint_id), "now": now}
-            )
-            return result.rowcount == 1
+            return await claim_once(connection, job, str(complaint_id), None, now)
 
     async def finish(
         self, job: str, complaint_id: UUID, now: datetime, error_code: str | None
     ) -> None:
         async with self._engine.begin() as connection:
-            await connection.execute(
-                FINISH,
-                {
-                    "job": job,
-                    "run_key": str(complaint_id),
-                    "now": now,
-                    "status": "failed" if error_code else "done",
-                    "error_code": error_code,
-                },
-            )
+            await finish_run(connection, job, str(complaint_id), None, now, error_code)
