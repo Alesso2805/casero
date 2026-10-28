@@ -99,6 +99,7 @@ services:
       CASERO_COMPLAINTS_INBOX: ${CASERO_COMPLAINTS_INBOX:?}
       SENTRY_DSN: ${SENTRY_DSN:-}
       CASERO_ALERTS_INBOX: ${CASERO_ALERTS_INBOX:-}
+      CASERO_WORKER_HEARTBEAT_URL: ${CASERO_WORKER_HEARTBEAT_URL:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

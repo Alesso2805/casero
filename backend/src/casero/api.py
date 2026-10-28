@@ -162,7 +162,11 @@ from casero.properties.application.properties import (
 from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
-from casero.shared.infrastructure.database import anonymous_transaction, create_engine
+from casero.shared.infrastructure.database import (
+    anonymous_transaction,
+    create_engine,
+    database_answers,
+)
 from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.logs import ErrorShield, configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
@@ -648,9 +652,11 @@ def create_app(
 
     app.include_router(collections_api.create_router(current_account, provide_collections))
 
-    @app.get("/api/health")
-    def health() -> HealthResponse:
-        """Report that the API process is up."""
+    @app.get("/api/health", responses={503: {"description": "`database_unavailable`"}})
+    async def health() -> HealthResponse:
+        """Report that the API process is up and the database answers."""
+        if not await database_answers(engine):
+            raise HTTPException(status_code=503, detail="database_unavailable")
         return HealthResponse(status="ok")
 
     return app

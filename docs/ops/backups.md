@@ -23,7 +23,8 @@ El servicio está apagado hasta que actives el perfil `backup` y completes las v
 2. En Better Stack (plan gratuito), crear:
    - un monitor de disponibilidad de `https://<dominio>/api/health` cada 3 minutos;
    - un heartbeat "Respaldos" con período de 6 horas y gracia de 1 hora;
-   - un heartbeat "Disco" con el mismo período.
+   - un heartbeat "Disco" con el mismo período;
+   - un heartbeat "Worker" con período de 5 minutos y gracia de 5 minutos: el worker lo envía cada minuto que todas sus tareas corren sin caerse, así que avisa si se detiene, se cuelga o pierde la base. Su URL va en `CASERO_WORKER_HEARTBEAT_URL` (`server.md`).
 3. Agregar al `.env` del servidor (`/opt/casero/.env`):
    ```
    COMPOSE_PROFILES=backup

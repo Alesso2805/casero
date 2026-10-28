@@ -146,6 +146,10 @@ class Lock:
         return 1
 
 
+async def no_heartbeat() -> None:
+    return None
+
+
 async def test_the_worker_stops_when_asked_and_fails_without_its_lock() -> None:
     stop = asyncio.Event()
     ticks: list[int] = []
@@ -155,8 +159,29 @@ async def test_the_worker_stops_when_asked_and_fails_without_its_lock() -> None:
         if len(ticks) == 2:
             stop.set()
 
-    await serve({"job": job}, Lock(), stop, 0)  # type: ignore[arg-type]
+    await serve({"job": job}, Lock(), stop, 0, no_heartbeat)  # type: ignore[arg-type]
 
     assert ticks == [0, 1]
     with pytest.raises(asyncpg.ConnectionDoesNotExistError):
-        await serve({"job": job}, Lock(alive=False), asyncio.Event(), 0)  # type: ignore[arg-type]
+        await serve({"job": job}, Lock(alive=False), asyncio.Event(), 0, no_heartbeat)  # type: ignore[arg-type]
+
+
+async def test_the_heartbeat_follows_only_ticks_without_a_crash() -> None:
+    stop = asyncio.Event()
+    beats: list[int] = []
+    ticks = 0
+
+    async def job() -> None:
+        nonlocal ticks
+        ticks += 1
+        if ticks == 2:
+            raise RuntimeError
+        if ticks == 3:
+            stop.set()
+
+    async def heartbeat() -> None:
+        beats.append(ticks)
+
+    await serve({"job": job}, Lock(), stop, 0, heartbeat)  # type: ignore[arg-type]
+
+    assert beats == [1, 3]

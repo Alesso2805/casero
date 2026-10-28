@@ -36,6 +36,7 @@ async def test_the_worker_reads_stuck_emails_schedules_and_failures(
     database: Database, worker_engine: AsyncEngine
 ) -> None:
     stuck, fresh, failed_job = str(uuid7()), str(uuid7()), f"test-{uuid7()}"
+    cut_off, running = f"test-cut-{uuid7()}", f"test-running-{uuid7()}"
     await owner(
         database,
         "INSERT INTO job_runs (job, run_key, status, attempts, started_at) VALUES"
@@ -52,14 +53,27 @@ async def test_the_worker_reads_stuck_emails_schedules_and_failures(
         failed_job,
         NOW - timedelta(hours=1),
     )
+    await owner(
+        database,
+        "INSERT INTO job_runs (job, run_key, status, attempts, started_at) VALUES"
+        " ($1, '2026-10-28', 'running', 1, $2), ($3, '2026-10-28', 'running', 1, $4)",
+        cut_off,
+        NOW - timedelta(minutes=45),
+        running,
+        NOW - timedelta(minutes=5),
+    )
     readings = SqlOpsReadings(worker_engine)
 
     stuck_runs = await readings.stuck_email_runs(NOW - timedelta(minutes=10))
     failures = await readings.failed_runs_since(NOW - timedelta(days=1))
+    stuck_jobs = await readings.stuck_job_runs(NOW - timedelta(minutes=30))
 
     assert ("complaint_copy", stuck) in stuck_runs
     assert ("complaint_copy", fresh) not in stuck_runs
     assert failures[failed_job] == 1
+    assert cut_off in stuck_jobs
+    assert running not in stuck_jobs
+    assert "complaint_copy" not in stuck_jobs
     assert await readings.schedule_rows(2026) == 84
     assert await readings.schedule_rows(2031) == 0
 

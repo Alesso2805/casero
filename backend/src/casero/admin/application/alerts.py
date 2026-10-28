@@ -8,6 +8,8 @@ from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.email import Email
 
 STUCK_AFTER = timedelta(minutes=10)
+# One account's data job takes seconds; a run this old was cut off (a restart mid-run).
+JOB_STUCK_AFTER = timedelta(minutes=30)
 FAILURE_WINDOW = timedelta(days=1)
 MONTHS = 12
 RUC_GROUPS = 7
@@ -29,6 +31,10 @@ class Alert:
 class OpsReadings(Protocol):
     async def stuck_email_runs(self, started_before: datetime) -> list[tuple[str, str]]:
         """Complaint email runs still `running`, as (job, run_key)."""
+        ...
+
+    async def stuck_job_runs(self, started_before: datetime) -> list[str]:
+        """Other jobs with runs still `running`: each counts as an attempt (rule 12)."""
         ...
 
     async def schedule_rows(self, year: int) -> int: ...
@@ -82,11 +88,26 @@ class RaiseAlerts:
                 subject="Casero: un correo de reclamo sigue sin enviarse",
                 text=(
                     f"La tarea {job} lleva más de 10 minutos en curso. Revisa el worker y, si "
-                    "hace falta, reenvía la copia con make complaint-copy (docs/ops/complaints.md)."
+                    "hace falta, envía la copia a mano como indica docs/ops/complaints.md "
+                    "(sección 4)."
                 ),
                 tags={"job": job},
             )
             for job, run_key in await self.readings.stuck_email_runs(now - STUCK_AFTER)
+        ]
+        pending += [
+            Alert(
+                key=f"stuck-job:{job}:{today}",
+                event="worker.job_stuck",
+                subject="Casero: una tarea del worker quedó a medias",
+                text=(
+                    f"La tarea {job} lleva más de 30 minutos en curso: el worker se detuvo a la "
+                    "mitad. Cada corte cuenta como un intento, y tras 3 en el día esa cuenta "
+                    "espera hasta mañana. Revisa los registros del worker y Sentry."
+                ),
+                tags={"job": job},
+            )
+            for job in await self.readings.stuck_job_runs(now - JOB_STUCK_AFTER)
         ]
         for year in schedule_years(today):
             if await self.readings.schedule_rows(year) < MONTHS * RUC_GROUPS:
@@ -97,7 +118,7 @@ class RaiseAlerts:
                         subject=f"Casero: falta el cronograma de SUNAT de {year}",
                         text=(
                             f"El cronograma de vencimientos de {year} no está completo. Agrega "
-                            "el YAML del año y cárgalo con make load-tax-config "
+                            "el YAML del año y despliega: el migrador lo carga al arrancar "
                             "(docs/ops/tax-config.md)."
                         ),
                         tags={"year": str(year)},

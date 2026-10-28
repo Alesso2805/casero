@@ -97,6 +97,7 @@ class WorkerSettings:
     sentry_dsn: str | None = None
     sentry_environment: str = "production"
     alerts_inbox: str | None = None
+    heartbeat_url: str | None = None
 
     @property
     def engine_url(self) -> str:
@@ -114,4 +115,5 @@ class WorkerSettings:
             sentry_dsn=env.get("SENTRY_DSN") or None,
             sentry_environment=env.get("SENTRY_ENVIRONMENT", "production"),
             alerts_inbox=env.get("CASERO_ALERTS_INBOX") or None,
+            heartbeat_url=env.get("CASERO_WORKER_HEARTBEAT_URL") or None,
         )
