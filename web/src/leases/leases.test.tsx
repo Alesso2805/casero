@@ -287,3 +287,230 @@ describe("new lease", () => {
     expect(screen.getByRole("link", { name: "Registrar un inmueble" })).toBeDefined();
   });
 });
+
+describe("lease page", () => {
+  const STATEMENT_PATH = `/api/app/leases/${LEASE.id}/statement`;
+  const PAYMENTS_PATH = `/api/app/leases/${LEASE.id}/payments`;
+  const PAYMENT_ID = "0195a0b0-0000-7000-8000-000000000040";
+  const VOID_PATH = `/api/app/payments/${PAYMENT_ID}/void`;
+  const rent = { kind: "rent", pre_2026: null, voided: false, partial: false, amount_cents: 80000 };
+  const PAYMENT = {
+    id: PAYMENT_ID,
+    lease_id: LEASE.id,
+    amount_cents: 170000,
+    received_on: "2026-10-10",
+    method: "yape",
+    note: "Primera parte",
+    voided: false,
+  };
+  const STATEMENT = {
+    lease_id: LEASE.id,
+    balance_cents: 110000,
+    credit_cents: 0,
+    up_to_date: false,
+    charges: [
+      {
+        ...rent,
+        id: "0195a0b0-0000-7000-8000-000000000030",
+        kind: "opening_balance",
+        period: null,
+        pre_2026: true,
+        amount_cents: 120000,
+        due_date: "2025-12-31",
+        outstanding_cents: 0,
+        status: "paid",
+      },
+      {
+        ...rent,
+        id: "0195a0b0-0000-7000-8000-000000000031",
+        period: "2026-09",
+        due_date: "2026-09-05",
+        outstanding_cents: 30000,
+        status: "overdue",
+        partial: true,
+      },
+      {
+        ...rent,
+        id: "0195a0b0-0000-7000-8000-000000000032",
+        period: "2026-10",
+        due_date: "2026-10-05",
+        outstanding_cents: 0,
+        status: null,
+        voided: true,
+      },
+      {
+        ...rent,
+        id: "0195a0b0-0000-7000-8000-000000000033",
+        kind: "rent_correction",
+        period: "2026-10",
+        due_date: "2026-10-29",
+        outstanding_cents: 80000,
+        status: "due_soon",
+      },
+      {
+        ...rent,
+        id: "0195a0b0-0000-7000-8000-000000000034",
+        kind: "adjustment",
+        period: null,
+        amount_cents: -5000,
+        due_date: "2026-10-20",
+        outstanding_cents: 0,
+        status: null,
+      },
+    ],
+    payments: [PAYMENT],
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-27T15:00:00Z"));
+    setCsrfCookie("csrf-token");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    setCsrfCookie(null);
+  });
+
+  function mockLease(routes: Record<string, (request: Request) => Response> = {}) {
+    return mockApi({
+      "/api/app/leases": () => json([LEASE]),
+      "/api/app/renters": () => json([RENTER]),
+      "/api/app/properties": () => json([PROPERTY]),
+      [STATEMENT_PATH]: () => json(STATEMENT),
+      ...routes,
+    });
+  }
+
+  test("opens from the lease card", async () => {
+    mockLease();
+    await renderPage("/app/contratos");
+
+    await userEvent.click(await screen.findByRole("link", { name: "Ver cobros de Ana Quispe" }));
+
+    expect(await screen.findByText("Te debe S/ 1,100.00")).toBeDefined();
+  });
+
+  test("shows what the renter owes, each charge's status and the payments", async () => {
+    mockLease();
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText("Te debe S/ 1,100.00")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Ana Quispe" })).toBeDefined();
+    expect(screen.getByText("Cuarto 1 · Casa de Surco")).toBeDefined();
+    expect(screen.getByText("Deuda de 2025 o antes")).toBeDefined();
+    expect(screen.getByText("Pagado")).toBeDefined();
+    expect(screen.getByText("Setiembre de 2026")).toBeDefined();
+    expect(screen.getByText("Atrasado 52 días")).toBeDefined();
+    expect(screen.getByText("Pagó S/ 500.00 de S/ 800.00")).toBeDefined();
+    expect(screen.getAllByText("Octubre de 2026")).toHaveLength(2);
+    expect(screen.getByText("Anulado")).toBeDefined();
+    expect(screen.getByText("Vence el 29/10/2026")).toBeDefined();
+    expect(screen.getByText("Descuento")).toBeDefined();
+    expect(screen.getByText("S/ 50.00")).toBeDefined();
+    expect(screen.getByText("Yape · Primera parte")).toBeDefined();
+  });
+
+  test("says when the renter has money in favor", async () => {
+    mockLease({
+      [STATEMENT_PATH]: () =>
+        json({ ...STATEMENT, balance_cents: -2000, credit_cents: 2000, up_to_date: true }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText("Tiene S/ 20.00 a favor")).toBeDefined();
+  });
+
+  test("records a cash payment and warns about banking above the threshold", async () => {
+    const api = mockLease({
+      [PAYMENTS_PATH]: () =>
+        json(
+          {
+            ...PAYMENT,
+            id: "0195a0b0-0000-7000-8000-000000000041",
+            amount_cents: 50050,
+            received_on: "2026-10-27",
+            method: "cash",
+            note: null,
+            bank_threshold_cents: 200000,
+          },
+          201,
+        ),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await userEvent.type(screen.getByLabelText("Monto recibido en soles"), "500.50");
+    await userEvent.selectOptions(screen.getByLabelText("¿Cómo te pagó?"), "Efectivo");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
+
+    expect(await screen.findByText("Listo, guardamos el pago.")).toBeDefined();
+    expect(screen.getByText(/Para alquileres desde S\/ 2,000.00 la ley exige/)).toBeDefined();
+    const [request] = api.requestsTo(PAYMENTS_PATH);
+    expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
+    const body = (await request?.json()) as Record<string, unknown>;
+    expect(body.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/);
+    expect({ ...body, id: "generated" }).toEqual({
+      id: "generated",
+      amount_cents: 50050,
+      received_on: "2026-10-27",
+      method: "cash",
+      note: null,
+    });
+    await vi.waitFor(() => {
+      expect(api.requestsTo(STATEMENT_PATH)).toHaveLength(2);
+    });
+  });
+
+  test("asks how the renter paid and shows a refused date on its field", async () => {
+    const api = mockLease({
+      [PAYMENTS_PATH]: () => json({ detail: "received_before_control" }, 422),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await userEvent.type(screen.getByLabelText("Monto recibido en soles"), "800");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
+
+    expect(await screen.findByText("Completa este dato.")).toBeDefined();
+    expect(api.requestsTo(PAYMENTS_PATH)).toHaveLength(0);
+    await userEvent.selectOptions(screen.getByLabelText("¿Cómo te pagó?"), "Yape");
+    fireEvent.change(screen.getByLabelText(/Fecha en que recibiste el dinero/), {
+      target: { value: "2026-08-31" },
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
+
+    expect(await screen.findByText(/anterior al mes desde el que llevas el control/)).toBeDefined();
+    expect(screen.queryByText("Listo, guardamos el pago.")).toBeNull();
+  });
+
+  test("voids a payment with its reason", async () => {
+    const api = mockLease({ [VOID_PATH]: () => json({ ...PAYMENT, voided: true }) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Anular" }));
+    const confirm = screen.getByRole("button", { name: "Anular pago" });
+    expect(confirm).toHaveProperty("disabled", true);
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "Lo registré dos veces");
+    await userEvent.click(confirm);
+
+    await vi.waitFor(() => {
+      expect(api.requestsTo(STATEMENT_PATH)).toHaveLength(2);
+    });
+    const [request] = api.requestsTo(VOID_PATH);
+    expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
+    expect(await request?.json()).toEqual({ reason: "Lo registré dos veces" });
+  });
+
+  test("sends visitors without a session to log in", async () => {
+    mockApi({
+      "/api/app/leases": 401,
+      "/api/app/renters": 401,
+      "/api/app/properties": 401,
+      [STATEMENT_PATH]: 401,
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByRole("heading", { name: "Ingresa a Casero" })).toBeDefined();
+  });
+});

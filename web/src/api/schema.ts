@@ -732,6 +732,11 @@ export interface components {
             /** Period */
             period: string | null;
             /**
+             * Pre 2026
+             * @description Set on prior debt: from 2025 or before, or not
+             */
+            pre_2026: boolean | null;
+            /**
              * Status
              * @description None for voided charges and credits
              */

@@ -65,6 +65,14 @@ function LeaseCard({ lease, renter, unit }: { lease: Lease; renter: string; unit
         <p className="text-stone-600">{text.list.unsupported}</p>
       )}
       <EndNotice lease={lease} />
+      <Link
+        to="/app/contratos/$leaseId"
+        params={{ leaseId: lease.id }}
+        className="min-h-11 py-2 text-brand underline"
+        aria-label={text.lease.detailsOf(renter)}
+      >
+        {text.lease.details}
+      </Link>
     </li>
   );
 }
