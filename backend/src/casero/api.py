@@ -121,6 +121,7 @@ from casero.identity.infrastructure.sessions import (
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
 from casero.leases.api import renters as renters_api
+from casero.leases.application.leases import LeaseStore, ListLeases
 from casero.leases.application.renters import (
     CreateRenter,
     ListRenters,
@@ -128,7 +129,11 @@ from casero.leases.application.renters import (
     UpdateRenter,
 )
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
+from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterStore
+from casero.ledger.api import leases as leases_api
+from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
+from casero.ledger.infrastructure.opening_balances import SqlOpeningBalances
 from casero.properties.api import properties as properties_api
 from casero.properties.application.properties import (
     ActiveLeases,
@@ -476,8 +481,9 @@ def create_app(
     ) -> UpdateProperty:
         profiles: Profiles = SqlProfiles(connection)
         store: PropertyStore = SqlPropertyStore(connection)
+        leases: ActiveLeases = SqlActiveLeases(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return UpdateProperty(profiles, store, audit, app_clock)
+        return UpdateProperty(profiles, store, leases, audit, app_clock)
 
     async def provide_archive_property(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
@@ -547,6 +553,36 @@ def create_app(
         renters_api.create_router(
             current_account, provide_list_renters, provide_create_renter, provide_update_renter
         )
+    )
+
+    async def provide_list_leases(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> ListLeases:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        return ListLeases(leases, app_clock)
+
+    async def provide_create_lease(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> CreateLease:
+        profiles: Profiles = SqlProfiles(connection)
+        properties: PropertyStore = SqlPropertyStore(connection)
+        leases: LeaseStore = SqlLeaseStore(connection)
+        balances: OpeningBalanceStore = SqlOpeningBalances(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return CreateLease(
+            profiles,
+            entitlements,
+            properties,
+            renter_store(connection),
+            leases,
+            balances,
+            audit,
+            app_clock,
+        )
+
+    app.include_router(
+        leases_api.create_router(current_account, provide_list_leases, provide_create_lease)
     )
 
     @app.get("/api/health")

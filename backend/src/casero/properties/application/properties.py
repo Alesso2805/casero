@@ -7,10 +7,12 @@ from uuid import UUID
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.profile import Profiles
 from casero.properties.domain.properties import (
+    Ownership,
     Property,
     PropertyDetails,
     Unit,
     UnitDetails,
+    changes_split,
     ownership_fits,
 )
 from casero.shared.kernel.audit import AuditEntry, AuditLog
@@ -34,6 +36,8 @@ class PropertyStore(Protocol):
         ...
 
     async def lock_unit(self, unit_id: UUID) -> Unit | None: ...
+
+    async def ownership_of(self, property_id: UUID) -> Ownership: ...
 
     async def add_unit(
         self, account_id: UUID, unit_id: UUID, property_id: UUID, details: UnitDetails
@@ -115,12 +119,13 @@ class CreateProperty:
 class UpdateProperty:
     profiles: Profiles
     store: PropertyStore
+    leases: ActiveLeases
     audit: AuditLog
     clock: Clock
 
     async def __call__(
         self, context: AccountContext, property_id: UUID, details: PropertyDetails
-    ) -> Property | Literal["not_found", "archived", "ownership_mismatch"]:
+    ) -> Property | Literal["not_found", "archived", "ownership_mismatch", "active_lease"]:
         declarant = await self.profiles.lock_current()
         current = await self.store.lock(property_id)
         if current is None:
@@ -129,6 +134,10 @@ class UpdateProperty:
             return "archived"
         if not ownership_fits(details.ownership, declarant.taxpayer_kind == "estate"):
             return "ownership_mismatch"
+        if changes_split(current.details.ownership, details.ownership) and (
+            await self.leases.on_property(property_id)
+        ):
+            return "active_lease"
         changed = current.details.changed_fields(details)
         if changed:
             await self.store.update(property_id, details)

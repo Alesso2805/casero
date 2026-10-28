@@ -6,6 +6,11 @@ Ownership = Literal["sole", "co_owned", "conjugal_option", "conjugal_split", "es
 UnitKind = Literal["room", "mini_apartment", "apartment", "shop", "parking", "other"]
 
 
+def changes_split(before: Ownership, after: Ownership) -> bool:
+    """Leases take their tax treatment from conjugal_split when they start; it can't flip."""
+    return (before == "conjugal_split") != (after == "conjugal_split")
+
+
 def ownership_fits(ownership: Ownership, estate_account: bool) -> bool:
     """An account is one declarant: an estate declares only its own properties, and only it."""
     return (ownership == "estate") == estate_account

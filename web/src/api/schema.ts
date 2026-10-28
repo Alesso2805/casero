@@ -70,6 +70,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/leases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Leases
+         * @description Every lease of the account, ended ones included.
+         */
+        get: operations["list_leases_api_app_leases_get"];
+        put?: never;
+        /**
+         * Create Lease
+         * @description Start a lease with its first rent and up to two prior balances.
+         *
+         *     The id comes from the client, so sending the same request again creates nothing
+         *     (rule 5). A `conjugal_split` property forces the `unsupported` tax treatment.
+         */
+        post: operations["create_lease_api_app_leases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/me": {
         parameters: {
             query?: never;
@@ -709,6 +736,94 @@ export interface components {
              */
             source: "landing" | "calculator";
         };
+        /** LeaseRequest */
+        LeaseRequest: {
+            /** Control From Period */
+            control_from_period: string;
+            /** Due Day */
+            due_day: number;
+            /** End Date */
+            end_date?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Monthly Rent Cents */
+            monthly_rent_cents: number;
+            /** Opening Balance 2026 Cents */
+            opening_balance_2026_cents?: number | null;
+            /** Opening Balance Pre 2026 Cents */
+            opening_balance_pre_2026_cents?: number | null;
+            /**
+             * Renter Id
+             * Format: uuid
+             */
+            renter_id: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * Tax Treatment
+             * @enum {string}
+             */
+            tax_treatment: "standard" | "company_tenant" | "unsupported";
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+        };
+        /** LeaseResponse */
+        LeaseResponse: {
+            /** Control From Period */
+            control_from_period: string;
+            /** Days To End */
+            days_to_end: number | null;
+            /** Due Day */
+            due_day: number;
+            /** End Date */
+            end_date: string | null;
+            /** Ended At */
+            ended_at: string | null;
+            /**
+             * Ending Soon
+             * @description The planned end is 15 days away or less
+             */
+            ending_soon: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Monthly Rent Cents
+             * @description The rent of the current period
+             */
+            monthly_rent_cents: number;
+            /**
+             * Renter Id
+             * Format: uuid
+             */
+            renter_id: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * Tax Treatment
+             * @enum {string}
+             */
+            tax_treatment: "standard" | "company_tenant" | "unsupported";
+            /**
+             * Unit Id
+             * Format: uuid
+             */
+            unit_id: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /**
@@ -1145,6 +1260,106 @@ export interface operations {
             };
         };
     };
+    list_leases_api_app_leases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_lease_api_app_leases_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LeaseRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already created with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `unit_not_found` or `renter_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account (no detail), `plan_limit`, `unit_archived` or `unit_occupied` */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `end_before_start`, `control_period_out_of_range` or `balance_2026_without_months` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     me_api_app_me_get: {
         parameters: {
             query?: never;
@@ -1303,7 +1518,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description `archived`: archived properties can't be edited */
+            /** @description `archived`, or `active_lease` when the ownership would switch to or from conjugal_split under an active lease */
             409: {
                 headers: {
                     [name: string]: unknown;
