@@ -17,6 +17,7 @@ x-business: &business
   CASERO_BUSINESS_RUC: "[RUC]"
   CASERO_BUSINESS_ADDRESS: "[domicilio]"
   CASERO_COMPLAINTS_INBOX: reclamos@casero.localhost
+  CASERO_PRIVACY_INBOX: privacidad@casero.localhost
 
 services:
   postgres:

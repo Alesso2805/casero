@@ -86,6 +86,7 @@ def test_the_edge_serves_the_business_identity_from_its_environment() -> None:
         "ruc": os.environ["CASERO_BUSINESS_RUC"],
         "address": os.environ["CASERO_BUSINESS_ADDRESS"],
         "complaints_inbox": os.environ["CASERO_COMPLAINTS_INBOX"],
+        "privacy_inbox": os.environ["CASERO_PRIVACY_INBOX"],
     }
 
 

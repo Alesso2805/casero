@@ -6,6 +6,7 @@ export interface Business {
   ruc: string;
   address: string;
   complaints_inbox: string;
+  privacy_inbox: string;
 }
 
 async function fetchBusiness(): Promise<Business> {

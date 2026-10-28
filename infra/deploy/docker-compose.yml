@@ -139,6 +139,7 @@ services:
       CASERO_BUSINESS_RUC: ${CASERO_BUSINESS_RUC:?}
       CASERO_BUSINESS_ADDRESS: ${CASERO_BUSINESS_ADDRESS:?}
       CASERO_COMPLAINTS_INBOX: ${CASERO_COMPLAINTS_INBOX:?}
+      CASERO_PRIVACY_INBOX: ${CASERO_PRIVACY_INBOX:?}
     volumes:
       - caddy-data:/data
       - caddy-config:/config

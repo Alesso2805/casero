@@ -1,0 +1,47 @@
+import { expect, test } from "vitest";
+
+import consent from "../../../docs/legal/sensitive-consent.md?raw";
+import privacyShort from "../../../docs/legal/privacy-short.md?raw";
+import privacy from "../../../docs/legal/privacy.md?raw";
+import terms from "../../../docs/legal/terms.md?raw";
+import { testBusiness } from "../test/api";
+import { withBusiness } from "./LegalArticle";
+
+const DOCUMENTS = { terms, privacy, privacyShort, consent };
+
+// Yours to fill in with the lawyer and the accountant. The landing is published only when this
+// list is empty and the draft notices are gone (SPEC, "Antes de publicar la landing").
+const PENDING_BEFORE_PUBLISHING = [
+  "consent: fecha de publicación",
+  "privacy: fecha de publicación",
+  "privacy: nombre del banco de datos",
+  "privacy: código de inscripción",
+  "privacy: ⚑ plazo después de eliminarla",
+  "privacy: plazo que indique el contador; propuesta: 5 años",
+  "privacy: ⚑ base legal",
+  "privacy: ⚑ cláusulas modelo",
+  "privacyShort: fecha de publicación",
+  "privacyShort: número de expediente",
+  "terms: fecha de publicación",
+  "terms: correo de atención",
+  "terms: tipo de comprobante: boleta electrónica",
+  "terms: Devoluciones: lo que defina el abogado, incluida la promesa de la preventa.",
+  "terms: Cláusula de jurisdicción: lo que defina el abogado.",
+];
+
+function placeholders(name: string, text: string): string[] {
+  return [...withBusiness(text, testBusiness).matchAll(/\[([^\]]+)\](?!\()/g)].map(
+    (match) => `${name}: ${match[1] ?? ""}`,
+  );
+}
+
+test("the business data fills its placeholders and only the known pending ones remain", () => {
+  const remaining = Object.entries(DOCUMENTS).flatMap(([name, text]) => placeholders(name, text));
+
+  expect(remaining.sort()).toEqual([...PENDING_BEFORE_PUBLISHING].sort());
+});
+
+test("the privacy contact comes from the server's environment", () => {
+  expect(withBusiness(privacy, testBusiness)).toContain(testBusiness.privacy_inbox);
+  expect(withBusiness(privacyShort, testBusiness)).not.toContain("[correo de privacidad]");
+});

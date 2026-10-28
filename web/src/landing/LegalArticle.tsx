@@ -3,14 +3,15 @@ import remarkGfm from "remark-gfm";
 
 import { useBusiness, type Business } from "../api/business";
 
-function withBusiness(text: string, business: Business | undefined): string {
+export function withBusiness(text: string, business: Business | undefined): string {
   if (!business) {
     return text;
   }
   return text
     .replaceAll("[nombre completo según el RUC]", business.name)
     .replaceAll("[RUC]", business.ruc)
-    .replaceAll("[domicilio]", business.address);
+    .replaceAll("[domicilio]", business.address)
+    .replaceAll("[correo de privacidad]", business.privacy_inbox);
 }
 
 export function LegalArticle({ source }: { source: string }) {
