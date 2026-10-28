@@ -5,21 +5,25 @@ from uuid import UUID
 from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.ledger.application.collections import LeaseBook
 from casero.ledger.application.payments import LeaseLedger, NewPayment, PaymentRecord
 from casero.ledger.domain.allocation import Charge, Payment
 from casero.ledger.domain.charges import RentChange
 from casero.shared.kernel.periods import Period
 
 LEASE = text("SELECT id, control_from_period FROM leases WHERE id = :lease_id")
+LEASES = text("SELECT id, ended_at IS NOT NULL AS ended FROM leases")
 RENT_CHANGES = text(
     "SELECT id, monthly_rent_cents, effective_period, created_at FROM lease_rent_changes"
     " WHERE lease_id = :lease_id"
 )
-CHARGES = text(
-    "SELECT c.id, c.kind, c.amount_cents, c.due_date, c.pre_2026, c.created_at, c.period,"
-    " v.charge_id IS NOT NULL AS voided FROM charges c"
-    " LEFT JOIN charge_voids v ON v.charge_id = c.id WHERE c.lease_id = :lease_id"
+SELECT_CHARGES = (
+    "SELECT c.id, c.lease_id, c.kind, c.amount_cents, c.due_date, c.pre_2026, c.created_at,"
+    " c.period, v.charge_id IS NOT NULL AS voided FROM charges c"
+    " LEFT JOIN charge_voids v ON v.charge_id = c.id"
 )
+CHARGES = text(SELECT_CHARGES + " WHERE c.lease_id = :lease_id")
+ALL_CHARGES = text(SELECT_CHARGES)
 SELECT_PAYMENTS = (
     "SELECT p.id, p.lease_id, p.amount_cents, p.received_on, p.created_at, p.method, p.note,"
     " v.payment_id IS NOT NULL AS voided FROM payments p"
@@ -27,6 +31,7 @@ SELECT_PAYMENTS = (
 )
 PAYMENTS = text(SELECT_PAYMENTS + " WHERE p.lease_id = :lease_id")
 PAYMENT = text(SELECT_PAYMENTS + " WHERE p.id = :payment_id")
+ALL_PAYMENTS = text(SELECT_PAYMENTS)
 ADD_PAYMENT = text(
     "INSERT INTO payments (id, account_id, lease_id, amount_cents, received_on, method, note,"
     " source, created_by, created_at) VALUES (:id, :account_id, :lease_id, :amount_cents,"
@@ -38,6 +43,19 @@ VOID_PAYMENT = text(
     " VALUES (:payment_id, :account_id, :reason, :voided_by, :voided_at)"
     " ON CONFLICT (payment_id) DO NOTHING"
 )
+
+
+def charge(row: Row[Any]) -> Charge:
+    return Charge(
+        row.id,
+        row.kind,
+        row.amount_cents,
+        row.due_date,
+        row.pre_2026,
+        row.created_at,
+        row.voided,
+        Period.parse(row.period) if row.period else None,
+    )
 
 
 def payment_record(row: Row[Any]) -> PaymentRecord:
@@ -62,23 +80,22 @@ class SqlLedger:
             )
             for row in await self._connection.execute(RENT_CHANGES, scope)
         )
-        charges = [
-            Charge(
-                row.id,
-                row.kind,
-                row.amount_cents,
-                row.due_date,
-                row.pre_2026,
-                row.created_at,
-                row.voided,
-                Period.parse(row.period) if row.period else None,
-            )
-            for row in await self._connection.execute(CHARGES, scope)
-        ]
+        charges = [charge(row) for row in await self._connection.execute(CHARGES, scope)]
         payments = [payment_record(row) for row in await self._connection.execute(PAYMENTS, scope)]
         return LeaseLedger(
             lease.id, Period.parse(lease.control_from_period), changes, charges, payments
         )
+
+    async def lease_books(self) -> list[LeaseBook]:
+        books = {
+            row.id: LeaseBook(row.id, row.ended, [], [])
+            for row in await self._connection.execute(LEASES)
+        }
+        for row in await self._connection.execute(ALL_CHARGES):
+            books[row.lease_id].charges.append(charge(row))
+        for row in await self._connection.execute(ALL_PAYMENTS):
+            books[row.lease_id].payments.append(payment_record(row).payment)
+        return list(books.values())
 
     async def payment(self, payment_id: UUID) -> PaymentRecord | None:
         row = (await self._connection.execute(PAYMENT, {"payment_id": payment_id})).first()

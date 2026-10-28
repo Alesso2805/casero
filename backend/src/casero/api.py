@@ -131,9 +131,11 @@ from casero.leases.application.renters import (
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterStore
+from casero.ledger.api import collections as collections_api
 from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
+from casero.ledger.application.collections import CollectionsStore, GetCollections
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
 from casero.ledger.application.payments import (
     CashThresholds,
@@ -637,6 +639,14 @@ def create_app(
             current_account, provide_record_payment, provide_void_payment, provide_statement
         )
     )
+
+    async def provide_collections(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> GetCollections:
+        books: CollectionsStore = SqlLedger(connection)
+        return GetCollections(books, app_clock)
+
+    app.include_router(collections_api.create_router(current_account, provide_collections))
 
     @app.get("/api/health")
     def health() -> HealthResponse:

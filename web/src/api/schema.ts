@@ -50,6 +50,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/collections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Collections
+         * @description Who owes what today, for the collections panel.
+         */
+        get: operations["collections_api_app_collections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/email-verification": {
         parameters: {
             query?: never;
@@ -753,6 +773,21 @@ export interface components {
             /** Where */
             where?: string | null;
         };
+        /** CollectionsResponse */
+        CollectionsResponse: {
+            /**
+             * Due By Month End Cents
+             * @description Still owed on charges due by the last day of this month in Lima, overdue ones included
+             */
+            due_by_month_end_cents: number;
+            /**
+             * Leases
+             * @description Most urgent first
+             */
+            leases: components["schemas"]["LeaseCollectionResponse"][];
+            /** Overdue Cents */
+            overdue_cents: number;
+        };
         /** DocumentRequest */
         DocumentRequest: {
             /**
@@ -862,6 +897,40 @@ export interface components {
              * @enum {string}
              */
             source: "landing" | "calculator";
+        };
+        /** LeaseCollectionResponse */
+        LeaseCollectionResponse: {
+            /** Balance Cents */
+            balance_cents: number;
+            /**
+             * Ended
+             * @description Ended leases are listed only while they still owe
+             */
+            ended: boolean;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Next Due Cents */
+            next_due_cents: number;
+            /**
+             * Next Due On
+             * @description The next charge not yet overdue, if any
+             */
+            next_due_on: string | null;
+            /** Overdue Cents */
+            overdue_cents: number;
+            /**
+             * Overdue Days
+             * @description Days since the oldest overdue charge was due
+             */
+            overdue_days: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "overdue" | "due_today" | "due_soon" | "up_to_date";
         };
         /** LeaseRequest */
         LeaseRequest: {
@@ -1437,6 +1506,40 @@ export interface operations {
             };
             /** @description Invalid data, or `invalid_ruc` when the check digit fails */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    collections_api_app_collections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CollectionsResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

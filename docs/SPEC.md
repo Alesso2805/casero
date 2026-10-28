@@ -87,7 +87,7 @@ El MVP cubre el ciclo mensual completo de un arrendador: registrar sus alquilere
 | Contratos | Corregir y terminar | Anular o corregir un cargo con motivo; cambiar la renta desde el próximo mes; terminar con fecha y crédito opcional | Beta |
 | Cobros | Cargos mensuales | Se generan solos para cada contrato activo; estados atrasado, vence hoy, por vencer, pendiente y pagado | Beta |
 | Cobros | Registrar pagos | Monto, fecha de cobro, medio y nota; pagos parciales y adelantados; saldo a favor; anulación con motivo; aviso de bancarización | Beta |
-| Cobros | Panel | Atrasados primero con días y monto, luego vence hoy y por vencer; total por cobrar del mes | Beta |
+| Cobros | Panel | Atrasados primero con días y monto, luego vence hoy y por vencer; total por cobrar hasta fin de mes (lo pendiente de los cargos que vencen hasta el último día del mes, incluido lo atrasado, que se muestra aparte); también los contratos terminados que aún deben | Beta |
 | Recordatorios | Mensajes de cobro | Botón "Enviar por WhatsApp" con el mensaje listo (amable, vence hoy, atraso), editable; registro de cada envío | Beta |
 | Portal del inquilino | Enlace personal | Saldo e historial en pantalla, aviso de privacidad; el arrendador lo revoca y regenera | Beta |
 | Impuesto | Formularios del mes | Una tarjeta por declaración (documento del inquilino y mes de cobro, sumando sus contratos) con los datos del 1683 listos para copiar, el tributo y el vencimiento; registro del pago con número de orden; qué hacer si el monto cambia después; recordatorio por correo y aviso en la app | Beta |
