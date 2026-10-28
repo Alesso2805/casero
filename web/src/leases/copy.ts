@@ -122,6 +122,10 @@ export const leasesCopy = {
     sending: "Guardando…",
     cancel: "Cancelar",
     saved: "Listo, guardamos el pago.",
+    beforeControl:
+      "La fecha es anterior al mes desde el que llevas el control en Casero. El pago cuenta para el impuesto del mes en que lo cobraste: si ese mes le cobraste otros pagos a este inquilino, regístralos también para que su formulario salga completo.",
+    conflict:
+      "Este pago ya se había guardado con otros datos. Revisa los pagos recibidos: si es un pago distinto, vuelve a guardarlo.",
     bank: (threshold: string) =>
       `Para alquileres desde ${threshold} la ley exige pagar por banco, transferencia o billetera. Sin eso tu inquilino no puede deducir el gasto y te será más difícil probar cuándo cobraste.`,
     void: "Anular",
@@ -145,7 +149,6 @@ export const leasesCopy = {
     controlOutOfRange: "Elige un mes entre el inicio del contrato y el mes actual.",
     balance2026: "Si el control empieza en enero de 2026, no hay deuda de 2026 anterior.",
     receivedInFuture: "La fecha de cobro no puede ser posterior a hoy.",
-    receivedBeforeControl:
-      "Esa fecha es anterior al mes desde el que llevas el control de este contrato.",
+    receivedBefore2026: "La fecha de cobro no puede ser anterior al 1 de enero de 2026.",
   },
 } as const;
