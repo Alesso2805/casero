@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
 import { formatSoles } from "../landing/money";
+import { primaryButton } from "../account/fields";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 
@@ -107,6 +108,12 @@ export function LeasesPage() {
       {ready && (
         <>
           {active.length === 0 && <p>{text.list.empty}</p>}
+          <Link
+            to="/app/contratos/nuevo"
+            className={`${primaryButton} flex items-center justify-center`}
+          >
+            {text.list.add}
+          </Link>
           <ul className="flex flex-col gap-4">{active.map(card)}</ul>
           {ended.length > 0 && (
             <details>

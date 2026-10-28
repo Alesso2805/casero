@@ -35,7 +35,7 @@ export function TextField({
 }: {
   id: string;
   label: string;
-  type?: "text" | "email";
+  type?: "text" | "email" | "date";
   numeric?: boolean;
   autoComplete?: string;
   hint?: string;
