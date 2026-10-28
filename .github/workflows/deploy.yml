@@ -16,6 +16,7 @@ concurrency:
 env:
   BACKEND_IMAGE: ghcr.io/alesso2805/casero-backend
   EDGE_IMAGE: ghcr.io/alesso2805/casero-edge
+  BACKUP_IMAGE: ghcr.io/alesso2805/casero-backup
   IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
 
 jobs:
@@ -48,6 +49,12 @@ jobs:
           file: infra/edge/Dockerfile
           push: true
           tags: ${{ env.EDGE_IMAGE }}:${{ env.IMAGE_TAG }}
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/backup/Dockerfile
+          push: true
+          tags: ${{ env.BACKUP_IMAGE }}:${{ env.IMAGE_TAG }}
 
   server:
     name: Server

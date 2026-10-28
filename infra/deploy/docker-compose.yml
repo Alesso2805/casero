@@ -103,6 +103,27 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Off until the owner sets COMPOSE_PROFILES=backup and the variables in docs/ops/backups.md.
+  backup:
+    image: ${CASERO_BACKUP_IMAGE:-ghcr.io/alesso2805/casero-backup}:${IMAGE_TAG:?}
+    profiles: ["backup"]
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      CASERO_BACKUP_PASSWORD: ${CASERO_BACKUP_PASSWORD:?}
+      CASERO_BACKUP_AGE_RECIPIENT: ${CASERO_BACKUP_AGE_RECIPIENT:-}
+      CASERO_BACKUP_TARGET: ${CASERO_BACKUP_TARGET:-}
+      CASERO_BACKUP_HEARTBEAT_URL: ${CASERO_BACKUP_HEARTBEAT_URL:-}
+      CASERO_DISK_HEARTBEAT_URL: ${CASERO_DISK_HEARTBEAT_URL:-}
+      RCLONE_CONFIG_B2_TYPE: b2
+      RCLONE_CONFIG_B2_ACCOUNT: ${CASERO_BACKUP_B2_KEY_ID:-}
+      RCLONE_CONFIG_B2_KEY: ${CASERO_BACKUP_B2_APP_KEY:-}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   edge:
     image: ${CASERO_EDGE_IMAGE:-ghcr.io/alesso2805/casero-edge}:${IMAGE_TAG:?}
     restart: unless-stopped
