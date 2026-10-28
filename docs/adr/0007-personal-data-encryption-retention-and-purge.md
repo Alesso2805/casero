@@ -20,7 +20,7 @@ The tenant document is required only for leases that enter the tax module, becau
 - Each value is stored as an envelope: `v1:<key_id>:<nonce>:<ciphertext>`.
   - The nonce is 96 random bits.
   - The nonce and the ciphertext (which includes the tag) are base64url.
-  - The associated data binds the value to its table, column and account, so a ciphertext cannot be moved to another row.
+  - The associated data (`table.column:account_id:row_id`) binds the value to its column, account and row, so a ciphertext cannot be moved to another row, not even within the same account.
 - Keys live outside the database:
   - The environment holds the set of keys by id and the id of the active key.
   - The source of truth is Bitwarden.

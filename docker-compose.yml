@@ -57,11 +57,11 @@ services:
     command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]
     environment:
       CASERO_APP_DATABASE_URL: postgresql+asyncpg://casero_app:${CASERO_APP_PASSWORD:-casero_app_dev}@postgres:5432/casero
-      CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:-rate_limit_dev}
-      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:-email_hash_dev}
+      CASERO_RATE_LIMIT_KEY: ${CASERO_RATE_LIMIT_KEY:-rate-limit-key-for-local-development}
+      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:-email-hash-key-for-local-development}
       CASERO_SES_EVENTS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:casero-dev
-      CASERO_UNSUBSCRIBE_KEY: ${CASERO_UNSUBSCRIBE_KEY:-unsubscribe_dev}
-      CASERO_ACCEPTANCE_IP_KEY: ${CASERO_ACCEPTANCE_IP_KEY:-acceptance_ip_dev}
+      CASERO_UNSUBSCRIBE_KEY: ${CASERO_UNSUBSCRIBE_KEY:-unsubscribe-key-for-local-development}
+      CASERO_ACCEPTANCE_IP_KEY: ${CASERO_ACCEPTANCE_IP_KEY:-acceptance-ip-key-for-local-development}
       # Development-only keys of zero and one bytes; production keys live in Bitwarden.
       CASERO_ENCRYPTION_KEYS: ${CASERO_ENCRYPTION_KEYS:-dev:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
       CASERO_ENCRYPTION_ACTIVE_KEY: ${CASERO_ENCRYPTION_ACTIVE_KEY:-dev}
@@ -80,7 +80,7 @@ services:
     command: ["python", "-m", "casero.worker"]
     environment:
       CASERO_WORKER_DATABASE_URL: postgresql://casero_worker:${CASERO_WORKER_PASSWORD:-casero_worker_dev}@postgres:5432/casero
-      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:-email_hash_dev}
+      CASERO_EMAIL_HASH_KEY: ${CASERO_EMAIL_HASH_KEY:-email-hash-key-for-local-development}
       <<: [*mail, *business]
     depends_on:
       migrate:

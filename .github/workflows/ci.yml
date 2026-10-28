@@ -141,11 +141,11 @@ jobs:
       CASERO_APP_PASSWORD: ci_app
       CASERO_WORKER_PASSWORD: ci_worker
       CASERO_ADMIN_PASSWORD: ci_admin
-      CASERO_RATE_LIMIT_KEY: ci_rate_limit
-      CASERO_EMAIL_HASH_KEY: ci_email_hash
+      CASERO_RATE_LIMIT_KEY: rate-limit-key-for-continuous-integration
+      CASERO_EMAIL_HASH_KEY: email-hash-key-for-continuous-integration
       CASERO_SES_EVENTS_TOPIC_ARN: arn:aws:sns:us-east-1:000000000000:casero-ci
-      CASERO_UNSUBSCRIBE_KEY: ci_unsubscribe
-      CASERO_ACCEPTANCE_IP_KEY: ci_acceptance_ip
+      CASERO_UNSUBSCRIBE_KEY: unsubscribe-key-for-continuous-integration
+      CASERO_ACCEPTANCE_IP_KEY: acceptance-ip-key-for-continuous-integration
       CASERO_ENCRYPTION_KEYS: ci:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       CASERO_ENCRYPTION_ACTIVE_KEY: ci
       CASERO_DOC_HMAC_KEY: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE

@@ -12,11 +12,13 @@ from casero.shared.infrastructure.crypto import (
     field_context,
     parse_keys,
 )
+from casero.shared.infrastructure.settings import MIN_SECRET_KEY_BYTES, secret_key
 
 OLD_KEY, NEW_KEY = bytes(32), bytes(range(32))
 CIPHER = FieldCipher({"k1": OLD_KEY}, "k1")
-ANA = field_context("renters", "doc_enc", UUID(int=1))
-LUIS = field_context("renters", "doc_enc", UUID(int=2))
+ANA = field_context("renters", "doc_enc", UUID(int=1), UUID(int=10))
+LUIS = field_context("renters", "doc_enc", UUID(int=2), UUID(int=10))
+ANOTHER_RENTER = field_context("renters", "doc_enc", UUID(int=1), UUID(int=11))
 
 
 @given(st.text(max_size=40))
@@ -37,7 +39,11 @@ def test_the_envelope_carries_version_key_nonce_and_ciphertext() -> None:
 
 @pytest.mark.parametrize(
     "context",
-    [LUIS, field_context("accounts", "deletion_contact_enc", UUID(int=1))],
+    [
+        LUIS,
+        ANOTHER_RENTER,
+        field_context("accounts", "deletion_contact_enc", UUID(int=1), UUID(int=1)),
+    ],
 )
 def test_a_value_does_not_open_in_another_row_or_column(context: str) -> None:
     with pytest.raises(EnvelopeError):
@@ -87,3 +93,16 @@ def test_the_document_hmac_depends_on_the_type_and_the_number() -> None:
 def test_a_short_hmac_key_is_refused() -> None:
     with pytest.raises(ValueError, match="at least"):
         DocumentHasher(bytes(16))
+
+
+@pytest.mark.parametrize(
+    ("value", "valid"), [("x" * MIN_SECRET_KEY_BYTES, True), ("email_hash_dev", False)]
+)
+def test_hmac_keys_from_the_environment_need_32_bytes(value: str, valid: bool) -> None:
+    env = {"CASERO_EMAIL_HASH_KEY": value}
+
+    if valid:
+        assert secret_key(env, "CASERO_EMAIL_HASH_KEY") == value.encode()
+    else:
+        with pytest.raises(ValueError, match="at least 32 bytes"):
+            secret_key(env, "CASERO_EMAIL_HASH_KEY")

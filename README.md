@@ -14,7 +14,7 @@ Start everything (PostgreSQL, migrations, API, worker, web, Caddy and Mailpit):
 docker compose up --build
 ```
 
-The app is at http://localhost and the captured emails at http://localhost:8025. To try it from a phone on the local network, set `CASERO_LAN_HOST` to this machine's IP address and open `https://<ip>`. Caddy serves it with its internal certificate.
+The app is at http://localhost and the captured emails at http://localhost:8025. Local sign-up is by invitation (`REGISTRATION_MODE=invite`): `make invite EMAIL=you@example.com` prints a single-use link to open. To try it from a phone on the local network, set `CASERO_LAN_HOST` to this machine's IP address and open `https://<ip>`. Caddy serves it with its internal certificate.
 
 Backend checks, run from `backend/`:
 
