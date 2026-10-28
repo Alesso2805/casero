@@ -416,7 +416,7 @@ export interface paths {
         };
         /**
          * Health
-         * @description Report that the API process is up.
+         * @description Report that the API process is up and the database answers.
          */
         get: operations["health_api_health_get"];
         put?: never;
@@ -2489,6 +2489,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+            /** @description `database_unavailable` */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

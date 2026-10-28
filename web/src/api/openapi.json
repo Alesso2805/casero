@@ -2834,7 +2834,7 @@
     },
     "/api/health": {
       "get": {
-        "description": "Report that the API process is up.",
+        "description": "Report that the API process is up and the database answers.",
         "operationId": "health_api_health_get",
         "responses": {
           "200": {
@@ -2846,6 +2846,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "503": {
+            "description": "`database_unavailable`"
           }
         },
         "summary": "Health"
