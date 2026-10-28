@@ -73,6 +73,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_BUSINESS_RUC=<RUC>
    CASERO_BUSINESS_ADDRESS=<domicilio fiscal>
    CASERO_COMPLAINTS_INBOX=<cuenta de Gmail exclusiva de Casero>
+   CASERO_PRIVACY_INBOX=<correo para ejercer los derechos sobre los datos personales; puede ser la misma cuenta>
    CASERO_ALERTS_INBOX=<tu correo para las alertas del worker; vacío solo las deja en Sentry>
    CASERO_DOMAIN=<dominio>.com
    CASERO_TLS=<correo para los avisos de Let's Encrypt>

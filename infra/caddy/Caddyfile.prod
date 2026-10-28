@@ -43,7 +43,7 @@
 			templates {
 				mime application/json
 			}
-			respond `{"name":{{env "CASERO_BUSINESS_NAME" | toJson}},"ruc":{{env "CASERO_BUSINESS_RUC" | toJson}},"address":{{env "CASERO_BUSINESS_ADDRESS" | toJson}},"complaints_inbox":{{env "CASERO_COMPLAINTS_INBOX" | toJson}}}`
+			respond `{"name":{{env "CASERO_BUSINESS_NAME" | toJson}},"ruc":{{env "CASERO_BUSINESS_RUC" | toJson}},"address":{{env "CASERO_BUSINESS_ADDRESS" | toJson}},"complaints_inbox":{{env "CASERO_COMPLAINTS_INBOX" | toJson}},"privacy_inbox":{{env "CASERO_PRIVACY_INBOX" | toJson}}}`
 		}
 		handle /api/* {
 			reverse_proxy api:8000
