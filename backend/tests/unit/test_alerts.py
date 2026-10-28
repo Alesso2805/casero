@@ -28,13 +28,18 @@ class Readings:
         stuck: list[tuple[str, str]] | None = None,
         schedules: dict[int, int] | None = None,
         failed: dict[str, int] | None = None,
+        stuck_jobs: list[str] | None = None,
     ) -> None:
         self.stuck = stuck or []
+        self.stuck_jobs = stuck_jobs or []
         self.schedules = schedules or {}
         self.failed = failed or {}
 
     async def stuck_email_runs(self, started_before: datetime) -> list[tuple[str, str]]:
         return self.stuck
+
+    async def stuck_job_runs(self, started_before: datetime) -> list[str]:
+        return self.stuck_jobs
 
     async def schedule_rows(self, year: int) -> int:
         return self.schedules.get(year, COMPLETE_YEAR)
@@ -87,6 +92,20 @@ async def test_a_stuck_complaint_email_alerts_once_by_log_and_email() -> None:
     [email] = mailer.sent
     assert email.to == "dueno@example.com"
     assert "complaint_copy" in email.text
+
+
+async def test_a_job_cut_off_mid_run_alerts_once_a_day() -> None:
+    mailer = Mailer()
+    alerts = raise_alerts(Readings(stuck_jobs=["rent_charges"]), mailer)
+
+    with capture_logs() as logs:
+        await alerts()
+        await alerts()
+
+    assert [(entry["event"], entry["job"]) for entry in logs] == [
+        ("worker.job_stuck", "rent_charges")
+    ]
+    assert "rent_charges" in mailer.sent[0].text
 
 
 async def test_a_missing_schedule_and_failed_jobs_are_reported() -> None:

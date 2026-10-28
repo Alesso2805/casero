@@ -24,7 +24,6 @@ back_up() {
   rclone copyto "$file" "${CASERO_BACKUP_TARGET}/casero-${stamp}.dump.age"
   rm -f "$file"
   echo "backup.uploaded casero-${stamp}.dump.age"
-  ping "${CASERO_BACKUP_HEARTBEAT_URL:-}"
 }
 
 check_disk() {
@@ -38,13 +37,22 @@ check_disk() {
   fi
 }
 
+: "${CASERO_BACKUP_PASSWORD:?missing}" "${CASERO_BACKUP_AGE_RECIPIENT:?missing}"
+: "${CASERO_BACKUP_TARGET:?missing}"
+
 if [[ "${1:-}" == "--once" ]]; then
   back_up
   exit 0
 fi
 
 while true; do
-  back_up || echo "backup.failed" >&2
+  # Bash ignores `set -e` inside a function called before `||`, so each backup runs as its
+  # own process: any failed step fails the whole backup, and only a success pings.
+  if "$0" --once; then
+    ping "${CASERO_BACKUP_HEARTBEAT_URL:-}" || echo "backup.heartbeat_failed" >&2
+  else
+    echo "backup.failed" >&2
+  fi
   check_disk || echo "disk.check_failed" >&2
   sleep "$INTERVAL_SECONDS"
 done

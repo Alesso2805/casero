@@ -1,12 +1,15 @@
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, Request
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 SET_ACCOUNT = text("SELECT set_config('app.account_id', :account_id, true)")
+HEALTH_TIMEOUT_SECONDS = 3
 
 
 def create_engine(database_url: str) -> AsyncEngine:
@@ -30,3 +33,12 @@ Transaction = Annotated[AsyncConnection, Depends(anonymous_transaction, scope="f
 async def set_account_context(connection: AsyncConnection, account_id: UUID) -> None:
     """Scope row-level security to one account until the transaction ends (AR-12)."""
     await connection.execute(SET_ACCOUNT, {"account_id": str(account_id)})
+
+
+async def database_answers(engine: AsyncEngine) -> bool:
+    try:
+        async with asyncio.timeout(HEALTH_TIMEOUT_SECONDS), engine.connect() as connection:
+            await connection.execute(text("SELECT 1"))
+    except OSError, SQLAlchemyError, TimeoutError:
+        return False
+    return True

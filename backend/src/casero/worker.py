@@ -7,6 +7,7 @@ from datetime import date
 from uuid import UUID
 
 import asyncpg
+import httpx2
 import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -38,8 +39,10 @@ from casero.shared.kernel.clock import Clock, SystemClock
 
 WORKER_LOCK_KEY = 7_294_011
 TICK_SECONDS = 60
+HEARTBEAT_TIMEOUT_SECONDS = 10
 
 type Job = Callable[[], Awaitable[None]]
+type Heartbeat = Callable[[], Awaitable[None]]
 
 log = structlog.get_logger()
 
@@ -121,26 +124,50 @@ async def print_complaint_copy(number: str) -> int:
     return 0
 
 
-async def run_jobs(jobs: Mapping[str, Job]) -> None:
+async def run_jobs(jobs: Mapping[str, Job]) -> bool:
+    """True when every job ran without crashing."""
+    healthy = True
     for name, job in jobs.items():
         try:
             await job()
         except Exception as error:
             # Only the type: exception messages can carry personal data (CLAUDE.md, rule 8).
             log.error("worker.job_crashed", job=name, error=type(error).__name__)
+            healthy = False
+    return healthy
+
+
+def heartbeat_to(url: str | None) -> Heartbeat:
+    """Pings the monitor, which alerts when the pings stop (docs/ops/backups.md)."""
+
+    async def beat() -> None:
+        if url is None:
+            return
+        try:
+            async with httpx2.AsyncClient(timeout=HEARTBEAT_TIMEOUT_SECONDS) as client:
+                (await client.get(url)).raise_for_status()
+        except httpx2.HTTPError as error:
+            log.warning("worker.heartbeat_failed", error=type(error).__name__)
+
+    return beat
 
 
 async def serve(
-    jobs: Mapping[str, Job], lock: asyncpg.Connection, stop: asyncio.Event, tick_seconds: int
+    jobs: Mapping[str, Job],
+    lock: asyncpg.Connection,
+    stop: asyncio.Event,
+    tick_seconds: int,
+    heartbeat: Heartbeat,
 ) -> None:
-    """Runs the jobs every tick until `stop` is set.
+    """Runs the jobs every tick until `stop` is set, with a heartbeat after each healthy tick.
 
     A dropped lock connection releases the advisory lock, so the worker raises and lets the
     container restart instead of running beside another worker (rule 12).
     """
     while not stop.is_set():
         await lock.fetchval("SELECT 1")
-        await run_jobs(jobs)
+        if await run_jobs(jobs):
+            await heartbeat()
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(stop.wait(), tick_seconds)
 
@@ -156,11 +183,11 @@ async def run() -> None:
         asyncio.get_running_loop().add_signal_handler(signal.SIGTERM, stop.set)
     try:
         if not await acquire_worker_lock(lock):
-            log.info("worker.lock_held_elsewhere")
+            log.error("worker.lock_held_elsewhere")
             return
         jobs = build_jobs(settings, engine, clock)
         log.info("worker.started", jobs=sorted(jobs))
-        await serve(jobs, lock, stop, TICK_SECONDS)
+        await serve(jobs, lock, stop, TICK_SECONDS, heartbeat_to(settings.heartbeat_url))
         log.info("worker.stopped")
     finally:
         await engine.dispose()

@@ -115,6 +115,14 @@ jobs:
           test "$(docker compose ps --all --format '{{.Service}} {{.State}} {{.ExitCode}}' | grep '^migrate ')" = "migrate exited 0"
           curl --silent --fail http://localhost/ | grep --quiet "<title>Casero</title>"
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost/api/admin/x)" = "404"
+      - name: Check that the worker took its lock and is running
+        run: |
+          for attempt in $(seq 1 30); do
+            if docker compose logs worker | grep --quiet '"worker.started"'; then break; fi
+            sleep 2
+          done
+          docker compose logs worker | grep --quiet '"worker.started"'
+          test "$(docker compose ps --format '{{.Service}} {{.State}}' | grep '^worker ')" = "worker running"
       - name: Stop the stack
         if: always()
         run: docker compose down --volumes
@@ -223,6 +231,18 @@ jobs:
             if [ "$original" != "$restored" ]; then echo "$table: $original != $restored"; exit 1; fi
           done
           test "$(psql --dbname casero_restore --command "SELECT count(*) FROM properties")" -ge 1
+      - name: Check that a failed backup neither uploads nor pings its heartbeat
+        run: |
+          compose="docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml"
+          output="$($compose run --rm --entrypoint timeout \
+            --env CASERO_BACKUP_PASSWORD=wrong-password --env CASERO_BACKUP_AGE_RECIPIENT=age1test \
+            --env CASERO_BACKUP_TARGET=/tmp --env CASERO_BACKUP_HEARTBEAT_URL=http://127.0.0.1:9/ \
+            backup 20 casero-backup 2>&1 || true)"
+          printf '%s\n' "$output"
+          printf '%s\n' "$output" | grep --quiet "backup.failed"
+          if printf '%s\n' "$output" | grep --quiet --extended-regexp "backup.uploaded|backup.heartbeat_failed"; then
+            echo "A failed backup was uploaded or pinged its heartbeat"; exit 1
+          fi
       - name: Stop the stack
         if: always()
         run: docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml down --volumes

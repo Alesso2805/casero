@@ -64,7 +64,7 @@ El worker nunca reintenta un correo (CLAUDE.md, regla 12).
 
 ## 5. Revisión semanal
 
-Hasta que lleguen las alertas de Sentry (CS-26), una vez por semana, como `casero_admin`:
+Las alertas avisan de una copia que falló (`complaint_email.failed`) o que lleva más de 10 minutos sin terminar (`complaint_email.stuck`). Como respaldo, una vez por semana, como `casero_admin`:
 
 ```sql
 SELECT c.number, j.job, j.status, j.error_code
