@@ -19,6 +19,7 @@ from casero.leases.application.leases import (
     view,
 )
 from casero.leases.application.renters import RenterStore
+from casero.ledger.application.charges import EnsureRentCharges
 from casero.properties.application.properties import PropertyStore
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
@@ -81,6 +82,7 @@ class CreateLease:
     renters: RenterStore
     leases: LeaseStore
     balances: OpeningBalanceStore
+    rent_charges: EnsureRentCharges
     audit: AuditLog
     clock: Clock
 
@@ -104,6 +106,7 @@ class CreateLease:
         if not await self.leases.add(context.account_id, new.id, terms, now):
             return "conflict"
         await self._record(context, new, terms, now)
+        await self.rent_charges(context.account_id, today, new.id)
         lease = Lease(new.id, terms, ended_at=None, current_rent_cents=terms.monthly_rent_cents)
         return Created(view(lease, today), replayed=False)
 

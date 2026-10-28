@@ -127,12 +127,14 @@ async def test_a_lease_starts_with_its_first_rent_and_prior_balances(
     charges = await owner(
         database,
         "SELECT kind, amount_cents, pre_2026, period, due_date::text FROM charges"
-        " WHERE lease_id = $1::uuid ORDER BY pre_2026 DESC",
+        " WHERE lease_id = $1::uuid ORDER BY due_date, pre_2026 DESC",
         body["id"],
     )
     assert [tuple(row) for row in charges] == [
         ("opening_balance", 120_000, True, None, "2025-12-31"),
         ("opening_balance", 50_050, False, None, "2026-08-31"),
+        ("rent", 80_000, None, "2026-09", "2026-09-05"),
+        ("rent", 80_000, None, "2026-10", "2026-10-05"),
     ]
 
 
@@ -152,9 +154,11 @@ async def test_sending_the_same_lease_again_creates_nothing(
     assert changed.status_code == 409
     assert other_unit.status_code == 409
     rows = await owner(
-        database, "SELECT count(*) FROM charges WHERE lease_id = $1::uuid", body["id"]
+        database,
+        "SELECT kind, count(*) FROM charges WHERE lease_id = $1::uuid GROUP BY kind ORDER BY kind",
+        body["id"],
     )
-    assert rows[0][0] == 1
+    assert [tuple(row) for row in rows] == [("opening_balance", 1), ("rent", 2)]
 
 
 async def test_an_id_taken_in_another_account_is_a_bare_conflict(

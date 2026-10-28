@@ -132,8 +132,10 @@ from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterStore
 from casero.ledger.api import leases as leases_api
+from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
 from casero.ledger.infrastructure.opening_balances import SqlOpeningBalances
+from casero.ledger.infrastructure.rent_charges import SqlRentCharges
 from casero.properties.api import properties as properties_api
 from casero.properties.application.properties import (
     ActiveLeases,
@@ -569,6 +571,7 @@ def create_app(
         properties: PropertyStore = SqlPropertyStore(connection)
         leases: LeaseStore = SqlLeaseStore(connection)
         balances: OpeningBalanceStore = SqlOpeningBalances(connection)
+        charges: RentChargeStore = SqlRentCharges(connection)
         audit: AuditLog = SqlAuditLog(connection)
         return CreateLease(
             profiles,
@@ -577,6 +580,7 @@ def create_app(
             renter_store(connection),
             leases,
             balances,
+            EnsureRentCharges(charges, app_clock),
             audit,
             app_clock,
         )
