@@ -202,18 +202,20 @@ jobs:
             INSERT INTO properties (id, account_id, name, ownership) VALUES
             ('01950000-0000-7000-8000-0000000000ab', '01950000-0000-7000-8000-0000000000aa', 'Casa', 'sole');"
           key="$(docker run --rm --entrypoint age-keygen "$image" 2> /dev/null)"
-          recipient="$(printf '%s
-' "$key" | sed --quiet 's/^# public key: //p')"
-          printf '%s
-' "$key" > "$RUNNER_TEMP/identity"
+          recipient="$(printf '%s\n' "$key" | sed --quiet 's/^# public key: //p')"
+          printf '%s\n' "$key" > "$RUNNER_TEMP/identity"
           install --mode 777 --directory "$RUNNER_TEMP/backups"
-          $compose run --rm --volume "$RUNNER_TEMP/backups:/backups"             --env CASERO_BACKUP_AGE_RECIPIENT="$recipient" --env CASERO_BACKUP_TARGET=/backups             backup --once
+          $compose run --rm --volume "$RUNNER_TEMP/backups:/backups" \
+            --env CASERO_BACKUP_AGE_RECIPIENT="$recipient" --env CASERO_BACKUP_TARGET=/backups \
+            backup --once
           dump="$(basename "$(ls "$RUNNER_TEMP"/backups/casero-*.dump.age)")"
           if grep --quiet --text "Respaldo" "$RUNNER_TEMP/backups/$dump"; then
             echo "The backup is not encrypted"; exit 1
           fi
           psql --dbname casero --command "CREATE DATABASE casero_restore"
-          docker run --rm --volume "$RUNNER_TEMP:/work" --entrypoint age "$image"             --decrypt --identity /work/identity "/work/backups/$dump"             | $compose exec -T postgres pg_restore --username postgres --dbname casero_restore
+          docker run --rm --volume "$RUNNER_TEMP:/work" --entrypoint age "$image" \
+            --decrypt --identity /work/identity "/work/backups/$dump" \
+            | $compose exec -T postgres pg_restore --username postgres --dbname casero_restore
           for table in $(psql --dbname casero --command "SELECT tablename FROM pg_tables
               WHERE schemaname = 'public' AND tablename <> 'rate_limit_buckets' ORDER BY 1"); do
             original="$(psql --dbname casero --command "SELECT count(*) FROM public.$table")"
