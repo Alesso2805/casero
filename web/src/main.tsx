@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 
 import { listenForErrors } from "./errors";
 import { router } from "./router";
+import { configureValidation } from "./validation";
 
 const container = document.getElementById("root");
 if (container === null) {
@@ -16,6 +17,8 @@ if (container === null) {
 if (import.meta.env.PROD) {
   listenForErrors();
 }
+
+configureValidation();
 
 const queryClient = new QueryClient();
 
