@@ -95,6 +95,9 @@ export function AppHome() {
       <Link to="/app/inmuebles" className="text-brand underline">
         {text.home.properties}
       </Link>
+      <Link to="/app/contratos" className="text-brand underline">
+        {text.home.leases}
+      </Link>
       <Link to="/app/mis-datos" className="text-brand underline">
         {text.home.profile}
       </Link>
