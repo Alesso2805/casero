@@ -138,7 +138,12 @@ from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.collections import CollectionsStore, GetCollections
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
-from casero.ledger.application.manual_charges import ChargeStore, CorrectRent, VoidCharge
+from casero.ledger.application.manual_charges import (
+    AdjustLease,
+    ChargeStore,
+    CorrectRent,
+    VoidCharge,
+)
 from casero.ledger.application.payments import (
     CashThresholds,
     GetStatement,
@@ -644,6 +649,11 @@ def create_app(
         )
     )
 
+    async def provide_adjust_lease(connection: Transaction) -> AdjustLease:
+        charges: ChargeStore = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return AdjustLease(charges, audit, app_clock)
+
     async def provide_correct_rent(connection: Transaction) -> CorrectRent:
         charges: ChargeStore = SqlLedger(connection)
         audit: AuditLog = SqlAuditLog(connection)
@@ -655,7 +665,9 @@ def create_app(
         return VoidCharge(charges, audit, app_clock)
 
     app.include_router(
-        charges_api.create_router(current_account, provide_correct_rent, provide_void_charge)
+        charges_api.create_router(
+            current_account, provide_adjust_lease, provide_correct_rent, provide_void_charge
+        )
     )
 
     async def provide_collections(

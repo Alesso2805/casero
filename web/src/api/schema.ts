@@ -137,6 +137,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/leases/{lease_id}/charges/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Adjust
+         * @description Record a debit or a credit by hand, due today; the id comes from the client.
+         */
+        post: operations["adjust_api_app_leases__lease_id__charges_adjustments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/leases/{lease_id}/charges/corrections": {
         parameters: {
             query?: never;
@@ -732,6 +752,19 @@ export interface components {
             status: "trial" | "active" | "grace" | "free";
             /** Trial Ends At */
             trial_ends_at: string | null;
+        };
+        /** AdjustmentRequest */
+        AdjustmentRequest: {
+            /**
+             * Amount Cents
+             * @description Positive is a debit, negative a credit
+             */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
         };
         /** CalculatorLine */
         CalculatorLine: {
@@ -1837,6 +1870,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    adjust_api_app_leases__lease_id__charges_adjustments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChargeResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

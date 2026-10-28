@@ -80,6 +80,28 @@
         "title": "AccountResponse",
         "type": "object"
       },
+      "AdjustmentRequest": {
+        "properties": {
+          "amount_cents": {
+            "description": "Positive is a debit, negative a credit",
+            "maximum": 100000000000.0,
+            "minimum": -100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount_cents"
+        ],
+        "title": "AdjustmentRequest",
+        "type": "object"
+      },
       "CalculatorLine": {
         "properties": {
           "base_cents": {
@@ -2293,6 +2315,72 @@
           }
         },
         "summary": "Create Lease"
+      }
+    },
+    "/api/app/leases/{lease_id}/charges/adjustments": {
+      "post": {
+        "description": "Record a debit or a credit by hand, due today; the id comes from the client.",
+        "operationId": "adjust_api_app_leases__lease_id__charges_adjustments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChargeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Adjust"
       }
     },
     "/api/app/leases/{lease_id}/charges/corrections": {

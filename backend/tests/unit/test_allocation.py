@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from random import Random
 from uuid import UUID
@@ -116,6 +117,25 @@ def test_insertion_order_within_a_day_does_not_change_any_charge(
     ]
 
     assert allocate(charges, shuffled).outstanding == allocate(charges, payments).outstanding
+
+
+@given(ledgers(), st.randoms())
+def test_the_order_credits_were_entered_on_a_day_does_not_change_any_charge(
+    ledger: tuple[list[Charge], list[Payment]], random: Random
+) -> None:
+    charges, payments = ledger
+    by_day: dict[date, list[datetime]] = {}
+    for c in charges:
+        if c.is_credit:
+            by_day.setdefault(c.created_at.date(), []).append(c.created_at)
+    for stamps in by_day.values():
+        random.shuffle(stamps)
+    shuffled = [
+        replace(c, created_at=by_day[c.created_at.date()].pop()) if c.is_credit else c
+        for c in charges
+    ]
+
+    assert allocate(shuffled, payments).outstanding == allocate(charges, payments).outstanding
 
 
 @given(ledgers(), CENTS)
