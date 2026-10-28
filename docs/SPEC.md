@@ -84,7 +84,7 @@ El MVP cubre el ciclo mensual completo de un arrendador: registrar sus alquilere
 | Cuenta | Perfil tributario | RUC con dígito verificador, grupo del cronograma (último dígito o buen contribuyente); opcional hasta usar el impuesto | Beta |
 | Inmuebles | Inmuebles y unidades | Un inmueble tiene unidades (cuarto, minidepartamento, departamento, local, cochera u otro); titularidad, autovalúo y porcentaje alquilado opcionales | Beta |
 | Contratos | Alquiler de una unidad | Inquilino, monto mensual, día de pago, inicio, fin previsto, mes desde el que se lleva el control, saldo anterior (de 2025 o antes y de 2026 en adelante) y tratamiento tributario | Beta |
-| Contratos | Corregir y terminar | Anular o corregir un cargo con motivo; cambiar la renta desde el próximo mes; terminar con fecha y crédito opcional | Beta |
+| Contratos | Corregir, renovar y terminar | Anular o corregir un cargo con motivo; cambiar la renta desde el próximo mes; extender o editar el fin previsto (renovación); terminar con fecha y crédito opcional | Beta |
 | Cobros | Cargos mensuales | Se generan solos para cada contrato activo; estados atrasado, vence hoy, por vencer, pendiente y pagado | Beta |
 | Cobros | Registrar pagos | Monto, fecha de cobro, medio y nota; pagos parciales y adelantados; saldo a favor; anulación con motivo; aviso de bancarización | Beta |
 | Cobros | Panel | Atrasados primero con días y monto, luego vence hoy y por vencer; total por cobrar hasta fin de mes (lo pendiente de los cargos que vencen hasta el último día del mes, incluido lo atrasado, que se muestra aparte); también los contratos terminados que aún deben | Beta |
@@ -195,7 +195,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 
 | Regla | Detalle |
 | --- | --- |
-| Activo | Un contrato está activo mientras `ended_at` es nulo. `end_date` es la fecha prevista: el panel avisa 15 días antes, y si pasa sin renovación el worker cierra el contrato con `ended_at = end_date` |
+| Activo | Un contrato está activo mientras `ended_at` es nulo. `end_date` es la fecha prevista: el panel avisa 15 días antes, el arrendador puede extenderla o quitarla mientras el contrato esté activo (renovación), y si pasa sin renovación el worker cierra el contrato con `ended_at = end_date` |
 | Un contrato activo por unidad | Índice único parcial sobre la unidad donde `ended_at` es nulo |
 | Mes de control | Si el inicio está en el pasado, el arrendador elige desde qué mes lleva el control (por defecto el actual), entre el mes de inicio y el actual y nunca antes de enero de 2026; si el inicio es futuro, el control empieza en el mes de inicio. No se generan cargos anteriores; la deuda previa va como saldo anterior |
 | Saldo anterior | Hasta dos cargos `opening_balance` por contrato, únicos por `(lease_id, pre_2026)`: uno con la deuda de 2025 o antes y otro con la de 2026 anterior al mes de control (solo si el control empieza después de enero de 2026). El de 2025 o antes se aplica primero. Ya están vencidos: el de 2025 o antes vence el 31 de diciembre de 2025 y el de 2026, el día anterior al mes de control |
@@ -392,7 +392,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 | Sprint 4 | 18 ene – 31 ene | Calculadora pública (captación desde fines de enero) e inquilinos y contratos | CS-32, 09 | 7 |
 | Sprint 5 | 1 feb – 14 feb | Cargos automáticos y operación segura | CS-11, 26 | 8 |
 | Sprint 6 | 15 feb – 28 feb | Pagos con saldos correctos y panel de cobros | CS-12, 13 | 8 |
-| Sprint 7 | 1 mar – 14 mar | Correcciones de cargos y portal del inquilino | CS-31, 18 | 6 |
+| Sprint 7 | 1 mar – 14 mar | Correcciones de cargos, renovación y portal del inquilino | CS-31, 18 | 7 |
 | Sprint 8 | 15 mar – 28 mar | Formularios de SUNAT (Semana Santa: 25 y 26 de marzo) | CS-21 | 5 |
 | Sprint 9 | 29 mar – 11 abr | Cobro por WhatsApp, registro y recordatorio de pagos a SUNAT y exportación para el contador | CS-16, 34 | 7 |
 | Sprint 10 | 12 abr – 25 abr | Cumplimiento legal: listo para datos reales | CS-25 | 5 |

@@ -31,3 +31,7 @@ Reunidas al redactar los borradores de octubre de 2026. Cada una indica el docum
 19. **Libro físico de respaldo.** ¿Un negocio solo en línea necesita además un libro físico? Las preguntas frecuentes de INDECOPI dicen que sí; el art. 4-A lo liga a los establecimientos. Mientras tanto se guarda uno en el domicilio fiscal.
 20. **Domicilio.** ¿Basta la dirección web como "domicilio del establecimiento" de la hoja (art. 3.2), o hay que mostrar el domicilio fiscal?
 21. **Nuevo reglamento.** ¿Ya se aprobó el proyecto publicado con la R.M. N.° 244-2026-PCM (18 de julio de 2026)? Si se aprobó, ¿qué cambia en el formulario?
+
+## Contratos de alquiler
+
+22. **Contrato vencido.** Si el inquilino sigue en el inmueble y pagando después de la fecha de fin, ¿el arrendamiento continúa (art. 1700 del Código Civil)? Hoy Casero cierra el contrato en su fecha de fin si el arrendador no la extiende. ¿Conviene, en cambio, dejarlo activo como "vencido" hasta que el arrendador lo termine?
