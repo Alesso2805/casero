@@ -409,6 +409,11 @@ CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fech
 | Sprint | Puntos planificados | Puntos reales | Cierre | Velocidad media |
 | --- | --- | --- | --- | --- |
 | Sprint 0 | 5 (CS-01, CS-02) | 5 | 25 oct 2026 (el plan lo cerraba el 6 dic) | 5 puntos por sprint |
+| Sprint 1 | 8 (CS-03, CS-04) | 8; de CS-04 queda la operación que espera tus cuentas: servidor, dominio, SES y buckets | 26 oct 2026 (el plan lo cerraba el 20 dic) | 6.5 puntos por sprint |
+| Sprint 2 | 5 (CS-05) | 5 | 26 oct 2026 (el plan lo cerraba el 3 ene) | 6 puntos por sprint |
+| Sprint 3 | 8 (CS-07, CS-06, CS-08, CS-20) | 10, con CS-32 adelantada del Sprint 4 | 27 oct 2026 (el plan lo cerraba el 17 ene) | 7 puntos por sprint |
+
+Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del plan y las puertas no cambian: la de fin del Sprint 1 (20 dic) decide si se comprime el plan con esta velocidad. El Sprint 4 queda con CS-09 (5 puntos).
 
 **Puertas de decisión**
 
