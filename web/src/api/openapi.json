@@ -511,6 +511,208 @@
         "title": "JoinWaitlistRequest",
         "type": "object"
       },
+      "LeaseRequest": {
+        "properties": {
+          "control_from_period": {
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "title": "Control From Period",
+            "type": "string"
+          },
+          "due_day": {
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Due Day",
+            "type": "integer"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "monthly_rent_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Monthly Rent Cents",
+            "type": "integer"
+          },
+          "opening_balance_2026_cents": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Balance 2026 Cents"
+          },
+          "opening_balance_pre_2026_cents": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Balance Pre 2026 Cents"
+          },
+          "renter_id": {
+            "format": "uuid",
+            "title": "Renter Id",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "tax_treatment": {
+            "enum": [
+              "standard",
+              "company_tenant",
+              "unsupported"
+            ],
+            "title": "Tax Treatment",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "unit_id",
+          "renter_id",
+          "monthly_rent_cents",
+          "due_day",
+          "start_date",
+          "control_from_period",
+          "tax_treatment"
+        ],
+        "title": "LeaseRequest",
+        "type": "object"
+      },
+      "LeaseResponse": {
+        "properties": {
+          "control_from_period": {
+            "title": "Control From Period",
+            "type": "string"
+          },
+          "days_to_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days To End"
+          },
+          "due_day": {
+            "title": "Due Day",
+            "type": "integer"
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "ending_soon": {
+            "description": "The planned end is 15 days away or less",
+            "title": "Ending Soon",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "monthly_rent_cents": {
+            "description": "The rent of the current period",
+            "title": "Monthly Rent Cents",
+            "type": "integer"
+          },
+          "renter_id": {
+            "format": "uuid",
+            "title": "Renter Id",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "tax_treatment": {
+            "enum": [
+              "standard",
+              "company_tenant",
+              "unsupported"
+            ],
+            "title": "Tax Treatment",
+            "type": "string"
+          },
+          "unit_id": {
+            "format": "uuid",
+            "title": "Unit Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "unit_id",
+          "renter_id",
+          "monthly_rent_cents",
+          "due_day",
+          "start_date",
+          "end_date",
+          "ended_at",
+          "control_from_period",
+          "tax_treatment",
+          "days_to_end",
+          "ending_soon"
+        ],
+        "title": "LeaseResponse",
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "email": {
@@ -1378,6 +1580,80 @@
         "summary": "Send Verification"
       }
     },
+    "/api/app/leases": {
+      "get": {
+        "description": "Every lease of the account, ended ones included.",
+        "operationId": "list_leases_api_app_leases_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LeaseResponse"
+                  },
+                  "title": "Response List Leases Api App Leases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "List Leases"
+      },
+      "post": {
+        "description": "Start a lease with its first rent and up to two prior balances.\n\nThe id comes from the client, so sending the same request again creates nothing\n(rule 5). A `conjugal_split` property forces the `unsupported` tax treatment.",
+        "operationId": "create_lease_api_app_leases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LeaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already created with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`unit_not_found` or `renter_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account (no detail), `plan_limit`, `unit_archived` or `unit_occupied`"
+          },
+          "422": {
+            "description": "Invalid data, `end_before_start`, `control_period_out_of_range` or `balance_2026_without_months`"
+          }
+        },
+        "summary": "Create Lease"
+      }
+    },
     "/api/app/me": {
       "get": {
         "description": "Who is signed in.",
@@ -1515,7 +1791,7 @@
             "description": "No such property or unit in this account"
           },
           "409": {
-            "description": "`archived`: archived properties can't be edited"
+            "description": "`archived`, or `active_lease` when the ownership would switch to or from conjugal_split under an active lease"
           },
           "422": {
             "description": "Invalid data, or `ownership_mismatch` with the declarant"
