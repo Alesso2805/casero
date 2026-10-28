@@ -24,6 +24,10 @@ class SqlTaxRuleBook:
         row = (await self._connection.execute(RULES, {"year": year})).mappings().first()
         return TaxRules(**row) if row else None
 
+    async def cash_threshold_for(self, year: int) -> int | None:
+        rules = await self.rules_for(year)
+        return None if rules is None else rules.cash_threshold_cents
+
     async def due_date(self, period: str, group: RucGroup) -> date | None:
         result = await self._connection.execute(
             DUE_DATE, {"period": period, "ruc_group": group, "year": period_year(period)}

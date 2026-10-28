@@ -39,8 +39,13 @@ def rent_due_date(period: Period, due_day: int, start_date: date) -> date:
 
 
 def rent_for(period: Period, changes: tuple[RentChange, ...]) -> int:
-    """The change with the latest (effective_period, created_at) up to the period (SPEC)."""
-    applicable = [change for change in changes if change.effective_period <= period]
+    """The change with the latest (effective_period, created_at) up to the period (SPEC).
+
+    Before the first change (prior debt collected before control began) it is the first rent.
+    """
+    applicable = [change for change in changes if change.effective_period <= period] or [
+        min(changes, key=lambda change: (change.effective_period, change.created_at, change.id))
+    ]
     latest = max(
         applicable, key=lambda change: (change.effective_period, change.created_at, change.id)
     )

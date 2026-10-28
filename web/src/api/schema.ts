@@ -97,6 +97,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/leases/{lease_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Payment
+         * @description Record money the landlord received; the id comes from the client (rule 5).
+         */
+        post: operations["record_payment_api_app_leases__lease_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/leases/{lease_id}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Statement
+         * @description The lease's charges with their status, its payments and its balance.
+         */
+        get: operations["statement_api_app_leases__lease_id__statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/me": {
         parameters: {
             query?: never;
@@ -111,6 +151,26 @@ export interface paths {
         get: operations["me_api_app_me_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/payments/{payment_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Payment
+         * @description Void a payment with a reason; voiding it again returns it unchanged.
+         */
+        post: operations["void_payment_api_app_payments__payment_id__void_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -646,6 +706,39 @@ export interface components {
             /** Total Tax Cents */
             total_tax_cents: number;
         };
+        /** ChargeLineResponse */
+        ChargeLineResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "rent" | "rent_correction" | "opening_balance" | "adjustment";
+            /** Outstanding Cents */
+            outstanding_cents: number;
+            /** Partial */
+            partial: boolean;
+            /** Period */
+            period: string | null;
+            /**
+             * Status
+             * @description None for voided charges and credits
+             */
+            status: ("paid" | "overdue" | "due_today" | "due_soon" | "pending") | null;
+            /** Voided */
+            voided: boolean;
+        };
         /** ClientError */
         ClientError: {
             /** Name */
@@ -915,6 +1008,54 @@ export interface components {
             /** Units */
             units: components["schemas"]["UnitRequest"][];
         };
+        /** PaymentRequest */
+        PaymentRequest: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "cash" | "yape" | "plin" | "transfer" | "bank_deposit";
+            /** Note */
+            note?: string | null;
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+        };
+        /** PaymentResponse */
+        PaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Method */
+            method: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+            /** Voided */
+            voided: boolean;
+        };
         /** ProfileRequest */
         ProfileRequest: {
             /** Daily Digest */
@@ -1006,6 +1147,37 @@ export interface components {
             /** Units */
             units: components["schemas"]["UnitResponse"][];
         };
+        /** RecordedResponse */
+        RecordedResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Bank Threshold Cents
+             * @description Set when a cash payment's rent reaches the year's bancarization threshold
+             */
+            bank_threshold_cents: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Method */
+            method: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+            /** Voided */
+            voided: boolean;
+        };
         /** RegistrationRequest */
         RegistrationRequest: {
             /**
@@ -1062,6 +1234,27 @@ export interface components {
              */
             email: string;
         };
+        /** StatementResponse */
+        StatementResponse: {
+            /** Balance Cents */
+            balance_cents: number;
+            /** Charges */
+            charges: components["schemas"]["ChargeLineResponse"][];
+            /**
+             * Credit Cents
+             * @description Money received beyond what is owed, in favor
+             */
+            credit_cents: number;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Payments */
+            payments: components["schemas"]["PaymentResponse"][];
+            /** Up To Date */
+            up_to_date: boolean;
+        };
         /** TokenRequest */
         TokenRequest: {
             /** Token */
@@ -1111,6 +1304,11 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VoidRequest */
+        VoidRequest: {
+            /** Reason */
+            reason: string;
         };
     };
     responses: never;
@@ -1389,6 +1587,126 @@ export interface operations {
             };
         };
     };
+    record_payment_api_app_leases__lease_id__payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordedResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `received_in_future` or `received_before_control` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    statement_api_app_leases__lease_id__statement_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     me_api_app_me_get: {
         parameters: {
             query?: never;
@@ -1413,6 +1731,62 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    void_payment_api_app_payments__payment_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `payment_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

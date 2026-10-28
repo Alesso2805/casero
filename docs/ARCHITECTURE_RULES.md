@@ -41,3 +41,6 @@ Casos conocidos:
 - `reminders` obtiene de `tenant_portal` el enlace vigente para `{enlace}`.
 - El resumen diario de `reminders` cuenta los vouchers pendientes de `tenant_portal`.
 - La exportación de `accounts` reúne una sección de cada módulo.
+- `accounts` pregunta a `properties` si la cuenta tiene inmuebles, para bloquear el tipo de declarante (`PropertyHoldings`, CS-08).
+- `properties` pregunta a `leases` si una unidad o un inmueble tiene un contrato activo antes de archivarlo o de cambiar su titularidad (`ActiveLeases`, CS-08).
+- `ledger` lee de `tax` el umbral de bancarización del año (`CashThresholds`, CS-12).

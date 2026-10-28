@@ -132,8 +132,17 @@ from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterStore
 from casero.ledger.api import leases as leases_api
+from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
+from casero.ledger.application.payments import (
+    CashThresholds,
+    GetStatement,
+    LedgerStore,
+    RecordPayment,
+    VoidPayment,
+)
+from casero.ledger.infrastructure.ledger import SqlLedger
 from casero.ledger.infrastructure.opening_balances import SqlOpeningBalances
 from casero.ledger.infrastructure.rent_charges import SqlRentCharges
 from casero.properties.api import properties as properties_api
@@ -600,6 +609,33 @@ def create_app(
 
     app.include_router(
         leases_api.create_router(current_account, provide_list_leases, provide_create_lease)
+    )
+
+    async def provide_record_payment(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> RecordPayment:
+        ledger: LedgerStore = SqlLedger(connection)
+        thresholds: CashThresholds = SqlTaxRuleBook(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return RecordPayment(ledger, thresholds, audit, app_clock)
+
+    async def provide_void_payment(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> VoidPayment:
+        ledger: LedgerStore = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return VoidPayment(ledger, audit, app_clock)
+
+    async def provide_statement(
+        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+    ) -> GetStatement:
+        ledger: LedgerStore = SqlLedger(connection)
+        return GetStatement(ledger, app_clock)
+
+    app.include_router(
+        payments_api.create_router(
+            current_account, provide_record_payment, provide_void_payment, provide_statement
+        )
     )
 
     @app.get("/api/health")

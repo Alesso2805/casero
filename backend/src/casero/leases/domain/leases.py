@@ -3,16 +3,13 @@ from datetime import date, timedelta
 from typing import Literal
 from uuid import UUID
 
-from casero.shared.kernel.periods import Period
+from casero.shared.kernel.periods import FIRST_CONTROL_PERIOD, Period
 
 TaxTreatment = Literal["standard", "company_tenant", "unsupported"]
 LeaseProblem = Literal[
     "end_before_start", "control_period_out_of_range", "balance_2026_without_months"
 ]
 
-# Rent became taxable when collected from 2026 on; debt from before is only an opening balance
-# (SPEC, "Deudas de 2025 o antes"), so control never starts earlier.
-FIRST_CONTROL_PERIOD = Period(2026, 1)
 END_NOTICE_DAYS = 15
 
 

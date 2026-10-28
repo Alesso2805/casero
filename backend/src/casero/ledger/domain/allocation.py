@@ -5,6 +5,7 @@ from typing import Literal
 from uuid import UUID
 
 from casero.shared.kernel.clock import LIMA
+from casero.shared.kernel.periods import Period
 
 ChargeKind = Literal["rent", "rent_correction", "opening_balance", "adjustment"]
 ChargeStatus = Literal["paid", "overdue", "due_today", "due_soon", "pending"]
@@ -20,6 +21,7 @@ class Charge:
     pre_2026: bool | None
     created_at: datetime
     voided: bool = False
+    period: Period | None = None
 
     @property
     def is_credit(self) -> bool:
