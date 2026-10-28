@@ -98,6 +98,7 @@ services:
       CASERO_BUSINESS_ADDRESS: ${CASERO_BUSINESS_ADDRESS:?}
       CASERO_COMPLAINTS_INBOX: ${CASERO_COMPLAINTS_INBOX:?}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      CASERO_ALERTS_INBOX: ${CASERO_ALERTS_INBOX:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

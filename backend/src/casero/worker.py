@@ -10,6 +10,7 @@ import asyncpg
 import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
+from casero.admin.application.alerts import AlertLog, AlertMailer, OpsReadings, RaiseAlerts
 from casero.admin.application.complaint_emails import (
     ComplaintMailer,
     ComplaintOutbox,
@@ -17,6 +18,7 @@ from casero.admin.application.complaint_emails import (
     SuppressedAddresses,
 )
 from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
+from casero.admin.infrastructure.alerts import SqlAlertLog, SqlOpsReadings
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.identity.infrastructure.email_suppressions import SuppressionLookup
 from casero.leases.application.closing import CloseExpiredLeases, LeaseClosings
@@ -77,6 +79,9 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
     mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
     suppressed: SuppressedAddresses = SuppressionLookup(engine, settings.email_hash_key)
     identity = business_identity(settings)
+    readings: OpsReadings = SqlOpsReadings(engine)
+    alert_log: AlertLog = SqlAlertLog(engine)
+    alert_mailer: AlertMailer = SmtpMailer(settings.smtp, clock)
 
     async def purge_rate_limits() -> None:
         await purge_expired_buckets(engine, clock)
@@ -84,6 +89,7 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
     return {
         "complaint_emails": SendComplaintEmails(outbox, mailer, suppressed, clock, identity),
         "rate_limit_purge": purge_rate_limits,
+        "alerts": RaiseAlerts(readings, alert_log, alert_mailer, settings.alerts_inbox, clock),
         **{
             name: DailyAccountJob(engine, clock, name, work)
             for name, work in account_jobs(clock).items()

@@ -96,6 +96,7 @@ class WorkerSettings:
     email_hash_key: bytes
     sentry_dsn: str | None = None
     sentry_environment: str = "production"
+    alerts_inbox: str | None = None
 
     @property
     def engine_url(self) -> str:
@@ -112,4 +113,5 @@ class WorkerSettings:
             email_hash_key=env["CASERO_EMAIL_HASH_KEY"].encode(),
             sentry_dsn=env.get("SENTRY_DSN") or None,
             sentry_environment=env.get("SENTRY_ENVIRONMENT", "production"),
+            alerts_inbox=env.get("CASERO_ALERTS_INBOX") or None,
         )
