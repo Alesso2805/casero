@@ -13,7 +13,7 @@ export const calculatorCopy = {
     "Junio",
     "Julio",
     "Agosto",
-    "Septiembre",
+    "Setiembre",
     "Octubre",
     "Noviembre",
     "Diciembre",

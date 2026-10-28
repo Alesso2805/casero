@@ -405,7 +405,7 @@ describe("lease page", () => {
     expect(screen.getByText("Pagó S/ 500.00 de S/ 800.00")).toBeDefined();
     expect(screen.getAllByText("Octubre de 2026")).toHaveLength(2);
     expect(screen.getByText("Anulado")).toBeDefined();
-    expect(screen.getByText("Vence el 29/10/2026")).toBeDefined();
+    expect(screen.getByText("Vence pronto: 29/10/2026")).toBeDefined();
     expect(screen.getByText("Descuento")).toBeDefined();
     expect(screen.getByText("S/ 50.00")).toBeDefined();
     expect(screen.getByText("Yape · Primera parte")).toBeDefined();

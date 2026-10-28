@@ -93,7 +93,7 @@ export const leasesCopy = {
       overdue: (days: number) =>
         `Atrasado ${String(days)} ${days === 1 ? "día" : "días"}`,
       due_today: "Vence hoy",
-      due_soon: (date: string) => `Vence el ${date}`,
+      due_soon: (date: string) => `Vence pronto: ${date}`,
       pending: (date: string) => `Vence el ${date}`,
     },
     partial: (paid: string, total: string) => `Pagó ${paid} de ${total}`,

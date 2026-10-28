@@ -17,7 +17,8 @@ export function solesInput(cents: number): string {
 }
 
 export function formatSoles(cents: number): string {
-  const soles = Math.trunc(cents / CENTS_PER_SOL);
-  const rest = String(cents % CENTS_PER_SOL).padStart(2, "0");
-  return `S/ ${soles.toLocaleString("en-US")}.${rest}`;
+  const absolute = Math.abs(cents);
+  const soles = Math.trunc(absolute / CENTS_PER_SOL);
+  const rest = String(absolute % CENTS_PER_SOL).padStart(2, "0");
+  return `${cents < 0 ? "-" : ""}S/ ${soles.toLocaleString("en-US")}.${rest}`;
 }

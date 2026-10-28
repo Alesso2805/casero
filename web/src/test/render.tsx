@@ -12,7 +12,7 @@ export async function renderPage(path: string) {
     defaultErrorComponent: ErrorPage,
     defaultNotFoundComponent: NotFoundPage,
   });
-  const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const result = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />

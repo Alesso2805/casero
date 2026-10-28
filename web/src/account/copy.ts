@@ -32,7 +32,7 @@ export const accountCopy = {
     noAccount: "¿Todavía no tienes cuenta? Casero está en beta y funciona por invitación.",
   },
   home: {
-    greeting: "Tu cuenta está lista",
+    greeting: "Inicio",
     verify: (email: string, date: string) =>
       `Confirma tu correo: te enviamos un enlace a ${email}. Tienes hasta el ${date} para confirmarlo.`,
     blocked: (email: string) =>

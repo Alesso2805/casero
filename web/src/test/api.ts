@@ -16,10 +16,13 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
+export const unmockedRequests: string[] = [];
+
 export function mockApi(routes: Record<string, Route>) {
   const requests: Request[] = [];
   const allRoutes: Record<string, Route> = {
     "/api/public/business": () => json(testBusiness),
+    "/api/public/csrf": 204,
     ...routes,
   };
   vi.stubGlobal(
@@ -28,6 +31,7 @@ export function mockApi(routes: Record<string, Route>) {
       requests.push(request);
       const route = allRoutes[new URL(request.url).pathname];
       if (route === undefined) {
+        unmockedRequests.push(`${request.method} ${new URL(request.url).pathname}`);
         return Promise.resolve(new Response(null, { status: 404 }));
       }
       return Promise.resolve(

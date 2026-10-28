@@ -37,6 +37,8 @@ describe("soles", () => {
   test("formats like the backend", () => {
     expect(formatSoles(275000)).toBe("S/ 2,750.00");
     expect(formatSoles(1905)).toBe("S/ 19.05");
+    expect(formatSoles(-150)).toBe("-S/ 1.50");
+    expect(formatSoles(-123456)).toBe("-S/ 1,234.56");
   });
 });
 

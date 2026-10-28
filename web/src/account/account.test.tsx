@@ -13,6 +13,13 @@ const ME = {
   blocked_until_verified: false,
 };
 
+const EMPTY_HOME = {
+  "/api/app/collections": () => json({ due_by_month_end_cents: 0, overdue_cents: 0, leases: [] }),
+  "/api/app/leases": () => json([]),
+  "/api/app/renters": () => json([]),
+  "/api/app/properties": () => json([]),
+};
+
 function setCsrfCookie(value: string | null) {
   // __Host- cookies must be Secure with Path=/, or the browser (and jsdom) drops them.
   document.cookie = value
@@ -58,6 +65,7 @@ describe("registration", () => {
     const api = mockApi({
       "/api/public/registration": 201,
       "/api/app/me": () => json(ME),
+      ...EMPTY_HOME,
     });
     await renderPage("/registro#invitacion=abc123");
 
@@ -65,7 +73,7 @@ describe("registration", () => {
     await fillRegistration();
     await userEvent.click(screen.getByRole("button", { name: "Crear mi cuenta" }));
 
-    expect(await screen.findByRole("heading", { name: "Tu cuenta está lista" })).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "Inicio" })).toBeDefined();
     const [request] = api.requestsTo("/api/public/registration");
     expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
     expect(await request?.json()).toEqual({
@@ -119,6 +127,7 @@ describe("login", () => {
     mockApi({
       "/api/public/session": () => new Response(null, { status: ++attempts === 1 ? 401 : 204 }),
       "/api/app/me": () => json(ME),
+      ...EMPTY_HOME,
     });
     await renderPage("/ingresar");
 
@@ -128,7 +137,7 @@ describe("login", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Correo o contraseña incorrectos.");
 
     await userEvent.click(screen.getByRole("button", { name: "Ingresar" }));
-    expect(await screen.findByRole("heading", { name: "Tu cuenta está lista" })).toBeDefined();
+    expect(await screen.findByRole("heading", { name: "Inicio" })).toBeDefined();
   });
 
   test("shows and hides the password", async () => {
@@ -144,7 +153,11 @@ describe("login", () => {
 
 describe("account home", () => {
   test("asks to confirm the email and resends the link", async () => {
-    const api = mockApi({ "/api/app/me": () => json(ME), "/api/app/email-verification": 202 });
+    const api = mockApi({
+      "/api/app/me": () => json(ME),
+      "/api/app/email-verification": 202,
+      ...EMPTY_HOME,
+    });
     await renderPage("/app");
 
     expect(
@@ -171,6 +184,7 @@ describe("account home", () => {
     const api = mockApi({
       "/api/app/me": () => json({ ...ME, email_verified: true, verify_by: null }),
       "/api/app/sessions": 204,
+      ...EMPTY_HOME,
     });
     await renderPage("/app");
 
