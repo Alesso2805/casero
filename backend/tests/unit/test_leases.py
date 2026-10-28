@@ -6,7 +6,6 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from casero.leases.domain.leases import (
-    FIRST_CONTROL_PERIOD,
     Lease,
     LeaseTerms,
     OpeningBalances,
@@ -15,7 +14,7 @@ from casero.leases.domain.leases import (
     lease_problem,
     opening_balance_due,
 )
-from casero.shared.kernel.periods import Period
+from casero.shared.kernel.periods import FIRST_CONTROL_PERIOD, Period
 
 TODAY = date(2026, 10, 27)
 NO_BALANCES = OpeningBalances(None, None)

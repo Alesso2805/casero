@@ -38,3 +38,8 @@ class Period:
         if self.month == MONTHS_PER_YEAR:
             return Period(self.year + 1, 1)
         return Period(self.year, self.month + 1)
+
+
+# Rent became taxable when collected from 2026 on; debt from before is only an opening balance
+# (SPEC, "Deudas de 2025 o antes"), so no lease is controlled and no receipt is dated earlier.
+FIRST_CONTROL_PERIOD = Period(2026, 1)

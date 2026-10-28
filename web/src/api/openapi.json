@@ -198,6 +198,89 @@
         "title": "CalculatorResponse",
         "type": "object"
       },
+      "ChargeLineResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "rent",
+              "rent_correction",
+              "opening_balance",
+              "adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "outstanding_cents": {
+            "title": "Outstanding Cents",
+            "type": "integer"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "paid",
+                  "overdue",
+                  "due_today",
+                  "due_soon",
+                  "pending"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None for voided charges and credits",
+            "title": "Status"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "period",
+          "amount_cents",
+          "due_date",
+          "outstanding_cents",
+          "status",
+          "partial",
+          "voided"
+        ],
+        "title": "ChargeLineResponse",
+        "type": "object"
+      },
       "ClientError": {
         "properties": {
           "name": {
@@ -923,6 +1006,111 @@
         "title": "NewPropertyRequest",
         "type": "object"
       },
+      "PaymentRequest": {
+        "properties": {
+          "amount_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "method": {
+            "enum": [
+              "cash",
+              "yape",
+              "plin",
+              "transfer",
+              "bank_deposit"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount_cents",
+          "received_on",
+          "method"
+        ],
+        "title": "PaymentRequest",
+        "type": "object"
+      },
+      "PaymentResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "amount_cents",
+          "received_on",
+          "method",
+          "note",
+          "voided"
+        ],
+        "title": "PaymentResponse",
+        "type": "object"
+      },
       "ProfileRequest": {
         "properties": {
           "daily_digest": {
@@ -1199,6 +1387,72 @@
         "title": "PropertyResponse",
         "type": "object"
       },
+      "RecordedResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "bank_threshold_cents": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when a cash payment's rent reaches the year's bancarization threshold",
+            "title": "Bank Threshold Cents"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "amount_cents",
+          "received_on",
+          "method",
+          "note",
+          "voided",
+          "bank_threshold_cents"
+        ],
+        "title": "RecordedResponse",
+        "type": "object"
+      },
       "RegistrationRequest": {
         "properties": {
           "accept_terms_and_privacy": {
@@ -1364,6 +1618,52 @@
         "title": "ResetRequest",
         "type": "object"
       },
+      "StatementResponse": {
+        "properties": {
+          "balance_cents": {
+            "title": "Balance Cents",
+            "type": "integer"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/ChargeLineResponse"
+            },
+            "title": "Charges",
+            "type": "array"
+          },
+          "credit_cents": {
+            "description": "Money received beyond what is owed, in favor",
+            "title": "Credit Cents",
+            "type": "integer"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lease_id",
+          "balance_cents",
+          "credit_cents",
+          "up_to_date",
+          "charges",
+          "payments"
+        ],
+        "title": "StatementResponse",
+        "type": "object"
+      },
       "TokenRequest": {
         "properties": {
           "token": {
@@ -1488,6 +1788,21 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VoidRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "VoidRequest",
         "type": "object"
       }
     }
@@ -1690,6 +2005,115 @@
         "summary": "Create Lease"
       }
     },
+    "/api/app/leases/{lease_id}/payments": {
+      "post": {
+        "description": "Record money the landlord received; the id comes from the client (rule 5).",
+        "operationId": "record_payment_api_app_leases__lease_id__payments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "description": "Invalid data, `received_in_future` or `received_before_control`"
+          }
+        },
+        "summary": "Record Payment"
+      }
+    },
+    "/api/app/leases/{lease_id}/statement": {
+      "get": {
+        "description": "The lease's charges with their status, its payments and its balance.",
+        "operationId": "statement_api_app_leases__lease_id__statement_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Statement"
+      }
+    },
     "/api/app/me": {
       "get": {
         "description": "Who is signed in.",
@@ -1710,6 +2134,66 @@
           }
         },
         "summary": "Me"
+      }
+    },
+    "/api/app/payments/{payment_id}/void": {
+      "post": {
+        "description": "Void a payment with a reason; voiding it again returns it unchanged.",
+        "operationId": "void_payment_api_app_payments__payment_id__void_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`payment_not_found`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Void Payment"
       }
     },
     "/api/app/properties": {
