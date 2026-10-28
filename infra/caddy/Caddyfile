@@ -1,5 +1,9 @@
 {
 	admin off
+	# Caddy's error entries carry the client IP, the URI and headers such as X-Tenant-Token.
+	log default {
+		exclude http.log.error
+	}
 }
 
 (app) {
@@ -7,7 +11,7 @@
 		max_size 5MB
 	}
 	header Referrer-Policy no-referrer
-	@noindex path /privacidad /privacidad/* /libro-de-reclamaciones /libro-de-reclamaciones/* /baja /api/*
+	@noindex path /privacidad /privacidad/* /legal /legal/* /libro-de-reclamaciones /libro-de-reclamaciones/* /baja /api/*
 	header @noindex X-Robots-Tag noindex
 
 	# Served by Caddy from the environment so the complaints book can show who to
