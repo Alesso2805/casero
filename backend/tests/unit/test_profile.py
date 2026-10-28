@@ -7,8 +7,9 @@ from hypothesis import strategies as st
 
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.profile import ProfileChange, ProfileView, UpdateProfile
-from casero.accounts.domain.profile import Profile, RucGroup, is_valid_ruc, ruc_group
+from casero.accounts.domain.profile import Profile, RucGroup, ruc_group
 from casero.shared.kernel.audit import AuditEntry
+from casero.shared.kernel.ruc import is_valid_ruc
 
 NOW = datetime(2026, 10, 27, 15, 0, tzinfo=UTC)
 CONTEXT = AccountContext(UUID(int=1), UUID(int=2))

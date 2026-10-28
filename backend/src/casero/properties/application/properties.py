@@ -60,15 +60,8 @@ def audit_entry(
     changed_fields: Sequence[str],
     at: datetime,
 ) -> AuditEntry:
-    return AuditEntry(
-        id=new_id(),
-        account_id=context.account_id,
-        actor_user_id=context.user_id,
-        action=action,
-        entity=entity,
-        entity_id=entity_id,
-        changed_fields=tuple(changed_fields),
-        at=at,
+    return AuditEntry.of(
+        context.account_id, context.user_id, action, entity, entity_id, changed_fields, at
     )
 
 

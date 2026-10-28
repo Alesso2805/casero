@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from casero.api import create_app
+from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher
 from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings
 
@@ -16,6 +17,8 @@ UNUSED_SETTINGS = ApiSettings(
     registration_mode="closed",
     smtp=SmtpSettings("localhost", 25, "none", None, None, "Casero <no-reply@example.com>"),
     public_url="https://casero.example",
+    field_cipher=FieldCipher({"test": bytes(32)}, "test"),
+    document_hasher=DocumentHasher(bytes(range(32))),
 )
 
 

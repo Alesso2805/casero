@@ -6,6 +6,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from casero.api import create_app
+from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher
 from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings
 
@@ -19,6 +20,8 @@ SETTINGS = ApiSettings(
     registration_mode="closed",
     smtp=SmtpSettings("localhost", 25, "none", None, None, "Casero <no-reply@example.com>"),
     public_url="https://casero.example",
+    field_cipher=FieldCipher({"test": bytes(32)}, "test"),
+    document_hasher=DocumentHasher(bytes(range(32))),
 )
 
 # Session-level routes that must keep working before an account is usable (AR-20).

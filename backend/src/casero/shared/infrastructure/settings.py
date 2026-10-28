@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal, cast
 
+from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, b64decode, parse_keys
 from casero.shared.infrastructure.mail import SmtpSecurity, SmtpSettings
 
 SMTP_SECURITY_MODES = ("none", "starttls", "tls")
@@ -36,6 +37,8 @@ class ApiSettings:
     registration_mode: RegistrationMode
     smtp: SmtpSettings
     public_url: str
+    field_cipher: FieldCipher
+    document_hasher: DocumentHasher
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -49,6 +52,11 @@ class ApiSettings:
             registration_mode=registration_mode(os.environ.get("REGISTRATION_MODE", "closed")),
             smtp=smtp_from_environment(os.environ),
             public_url=os.environ["CASERO_PUBLIC_URL"],
+            field_cipher=FieldCipher(
+                parse_keys(os.environ["CASERO_ENCRYPTION_KEYS"]),
+                os.environ["CASERO_ENCRYPTION_ACTIVE_KEY"],
+            ),
+            document_hasher=DocumentHasher(b64decode(os.environ["CASERO_DOC_HMAC_KEY"])),
         )
 
 

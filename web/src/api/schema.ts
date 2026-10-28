@@ -176,6 +176,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/renters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Renters
+         * @description The account's renters; documents show only their type and last characters.
+         */
+        get: operations["list_renters_api_app_renters_get"];
+        put?: never;
+        /**
+         * Create Renter
+         * @description Register a renter; a Peruvian mobile without +51 is taken as such.
+         */
+        post: operations["create_renter_api_app_renters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/renters/{renter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Renter
+         * @description Replace the name and phone; a `document`, if sent, replaces the stored one.
+         */
+        put: operations["update_renter_api_app_renters__renter_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/session": {
         parameters: {
             query?: never;
@@ -555,6 +599,16 @@ export interface components {
             /** Total Tax Cents */
             total_tax_cents: number;
         };
+        /** DocumentRequest */
+        DocumentRequest: {
+            /**
+             * Doc Type
+             * @enum {string}
+             */
+            doc_type: "dni" | "ce" | "passport" | "ruc";
+            /** Number */
+            number: string;
+        };
         /** FileComplaintRequest */
         FileComplaintRequest: {
             /** Address */
@@ -831,6 +885,30 @@ export interface components {
             invite_token?: string | null;
             /** Password */
             password: string;
+        };
+        /** RenterRequest */
+        RenterRequest: {
+            document?: components["schemas"]["DocumentRequest"] | null;
+            /** Full Name */
+            full_name: string;
+            /** Phone */
+            phone?: string | null;
+        };
+        /** RenterResponse */
+        RenterResponse: {
+            /** Doc Last4 */
+            doc_last4: string | null;
+            /** Doc Type */
+            doc_type: ("dni" | "ce" | "passport" | "ruc") | null;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phone E164 */
+            phone_e164: string | null;
         };
         /** ResetRequest */
         ResetRequest: {
@@ -1360,6 +1438,153 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    list_renters_api_app_renters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenterResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    create_renter_api_app_renters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenterResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `duplicate_document`: another renter of the account has it */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `invalid_phone` or `invalid_document` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_renter_api_app_renters__renter_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                renter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RenterResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such renter in this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `duplicate_document`: another renter of the account has it */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `invalid_phone` or `invalid_document` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -198,6 +198,32 @@
         "title": "CalculatorResponse",
         "type": "object"
       },
+      "DocumentRequest": {
+        "properties": {
+          "doc_type": {
+            "enum": [
+              "dni",
+              "ce",
+              "passport",
+              "ruc"
+            ],
+            "title": "Doc Type",
+            "type": "string"
+          },
+          "number": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_type",
+          "number"
+        ],
+        "title": "DocumentRequest",
+        "type": "object"
+      },
       "FileComplaintRequest": {
         "properties": {
           "address": {
@@ -987,6 +1013,105 @@
         "title": "RegistrationRequest",
         "type": "object"
       },
+      "RenterRequest": {
+        "properties": {
+          "document": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "full_name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "full_name"
+        ],
+        "title": "RenterRequest",
+        "type": "object"
+      },
+      "RenterResponse": {
+        "properties": {
+          "doc_last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Last4"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "dni",
+                  "ce",
+                  "passport",
+                  "ruc"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone_e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone E164"
+          }
+        },
+        "required": [
+          "id",
+          "full_name",
+          "phone_e164",
+          "doc_type",
+          "doc_last4"
+        ],
+        "title": "RenterResponse",
+        "type": "object"
+      },
       "ResetRequest": {
         "properties": {
           "email": {
@@ -1513,6 +1638,130 @@
           }
         },
         "summary": "Add Unit"
+      }
+    },
+    "/api/app/renters": {
+      "get": {
+        "description": "The account's renters; documents show only their type and last characters.",
+        "operationId": "list_renters_api_app_renters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RenterResponse"
+                  },
+                  "title": "Response List Renters Api App Renters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "List Renters"
+      },
+      "post": {
+        "description": "Register a renter; a Peruvian mobile without +51 is taken as such.",
+        "operationId": "create_renter_api_app_renters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "409": {
+            "description": "`duplicate_document`: another renter of the account has it"
+          },
+          "422": {
+            "description": "Invalid data, `invalid_phone` or `invalid_document`"
+          }
+        },
+        "summary": "Create Renter"
+      }
+    },
+    "/api/app/renters/{renter_id}": {
+      "put": {
+        "description": "Replace the name and phone; a `document`, if sent, replaces the stored one.",
+        "operationId": "update_renter_api_app_renters__renter_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "renter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Renter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "No such renter in this account"
+          },
+          "409": {
+            "description": "`duplicate_document`: another renter of the account has it"
+          },
+          "422": {
+            "description": "Invalid data, `invalid_phone` or `invalid_document`"
+          }
+        },
+        "summary": "Update Renter"
       }
     },
     "/api/app/session": {

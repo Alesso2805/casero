@@ -60,6 +60,9 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_EMAIL_HASH_KEY=...
    CASERO_UNSUBSCRIBE_KEY=...
    CASERO_ACCEPTANCE_IP_KEY=...
+   CASERO_ENCRYPTION_KEYS=k1:<32 bytes en base64url>
+   CASERO_ENCRYPTION_ACTIVE_KEY=k1
+   CASERO_DOC_HMAC_KEY=<32 bytes en base64url>
    REGISTRATION_MODE=closed
    CASERO_SES_EVENTS_TOPIC_ARN=<ARN del tema SNS de rebotes y quejas>
    CASERO_SMTP_HOST=email-smtp.us-east-1.amazonaws.com
@@ -73,7 +76,7 @@ Conectarse con `gcloud compute ssh casero --zone=us-east1-b` y:
    CASERO_DOMAIN=<dominio>.com
    CASERO_TLS=<correo para los avisos de Let's Encrypt>
    ```
-   `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
+   `CASERO_EMAIL_HASH_KEY` no se cambia nunca: las supresiones de correo solo guardan su HMAC (ADR-0010). Tampoco `CASERO_DOC_HMAC_KEY`: agrupa las declaraciones y los pagos a SUNAT de solo inserción (ADR-0007). Las claves de 32 bytes se generan con `python -c "import base64, secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"`; para rotar el cifrado se agrega otra clave a `CASERO_ENCRYPTION_KEYS` (`k1:...,k2:...`), se activa y, cuando un trabajo vuelve a cifrar las columnas, se retira la anterior. El usuario y la contraseña SMTP se crean en SES (credenciales SMTP de la región us-east-1) y también van a Bitwarden. Los datos del negocio aparecen en el Libro de Reclamaciones, en la copia de cada reclamo y en el aviso de la lista de espera; viven solo en el servidor, nunca en el repositorio.
 
 ## 3. Dominio
 
