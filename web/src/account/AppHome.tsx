@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 
 import { api } from "../api/client";
 import type { components } from "../api/schema";
+import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { accountCopy as text } from "./copy";
 import { primaryButton, secondaryButton } from "./fields";
 
@@ -91,7 +92,7 @@ export function AppHome() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
-      <p>{text.home.soon}</p>
+      <CollectionsPanel />
       <Link to="/app/inmuebles" className="text-brand underline">
         {text.home.properties}
       </Link>
