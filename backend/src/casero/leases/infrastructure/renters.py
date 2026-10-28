@@ -39,10 +39,12 @@ class SqlRenterStore:
         self._cipher = cipher
         self._hasher = hasher
 
-    def _sealed(self, account_id: UUID, document: Document | None) -> dict[str, object]:
+    def _sealed(
+        self, account_id: UUID, renter_id: UUID, document: Document | None
+    ) -> dict[str, object]:
         if document is None:
             return {"doc_type": None, "doc_enc": None, "doc_hmac": None, "doc_last4": None}
-        context = field_context("renters", "doc_enc", account_id)
+        context = field_context("renters", "doc_enc", account_id, renter_id)
         return {
             "doc_type": document.doc_type,
             "doc_enc": self._cipher.encrypt(document.number, context),
@@ -74,7 +76,7 @@ class SqlRenterStore:
                 "account_id": account_id,
                 "full_name": details.full_name,
                 "phone_e164": details.phone_e164,
-                **self._sealed(account_id, document),
+                **self._sealed(account_id, renter_id, document),
             },
         )
 
@@ -86,5 +88,5 @@ class SqlRenterStore:
 
     async def set_document(self, account_id: UUID, renter_id: UUID, document: Document) -> None:
         await self._connection.execute(
-            SET_DOCUMENT, {"id": renter_id, **self._sealed(account_id, document)}
+            SET_DOCUMENT, {"id": renter_id, **self._sealed(account_id, renter_id, document)}
         )

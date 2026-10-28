@@ -27,9 +27,9 @@ def b64decode(text: str) -> bytes:
     return base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
 
 
-def field_context(table: str, column: str, account_id: UUID) -> str:
-    """Associated data that ties a ciphertext to its row's account and column (ADR-0007)."""
-    return f"{table}.{column}:{account_id}"
+def field_context(table: str, column: str, account_id: UUID, row_id: UUID) -> str:
+    """Associated data that ties a ciphertext to its column, account and row (ADR-0007)."""
+    return f"{table}.{column}:{account_id}:{row_id}"
 
 
 @dataclass(frozen=True)

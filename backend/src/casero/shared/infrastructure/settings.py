@@ -9,6 +9,7 @@ from casero.shared.infrastructure.mail import SmtpSecurity, SmtpSettings
 SMTP_SECURITY_MODES = ("none", "starttls", "tls")
 RegistrationMode = Literal["closed", "invite", "open"]
 REGISTRATION_MODES = ("closed", "invite", "open")
+MIN_SECRET_KEY_BYTES = 32
 
 
 @dataclass(frozen=True)
@@ -46,11 +47,11 @@ class ApiSettings:
     def from_environment(cls) -> ApiSettings:
         return cls(
             database_url=os.environ["CASERO_APP_DATABASE_URL"],
-            rate_limit_key=os.environ["CASERO_RATE_LIMIT_KEY"].encode(),
-            email_hash_key=os.environ["CASERO_EMAIL_HASH_KEY"].encode(),
+            rate_limit_key=secret_key(os.environ, "CASERO_RATE_LIMIT_KEY"),
+            email_hash_key=secret_key(os.environ, "CASERO_EMAIL_HASH_KEY"),
             ses_events_topic_arn=os.environ["CASERO_SES_EVENTS_TOPIC_ARN"],
-            unsubscribe_key=os.environ["CASERO_UNSUBSCRIBE_KEY"].encode(),
-            acceptance_ip_key=os.environ["CASERO_ACCEPTANCE_IP_KEY"].encode(),
+            unsubscribe_key=secret_key(os.environ, "CASERO_UNSUBSCRIBE_KEY"),
+            acceptance_ip_key=secret_key(os.environ, "CASERO_ACCEPTANCE_IP_KEY"),
             registration_mode=registration_mode(os.environ.get("REGISTRATION_MODE", "closed")),
             smtp=smtp_from_environment(os.environ),
             public_url=os.environ["CASERO_PUBLIC_URL"],
@@ -62,6 +63,14 @@ class ApiSettings:
             sentry_dsn=os.environ.get("SENTRY_DSN") or None,
             sentry_environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         )
+
+
+def secret_key(env: Mapping[str, str], name: str) -> bytes:
+    """Rejects a weak HMAC key at startup: CASERO_EMAIL_HASH_KEY can never be changed later."""
+    key = env[name].encode()
+    if len(key) < MIN_SECRET_KEY_BYTES:
+        raise ValueError(f"{name} must have at least {MIN_SECRET_KEY_BYTES} bytes")
+    return key
 
 
 def registration_mode(value: str) -> RegistrationMode:
@@ -111,7 +120,7 @@ class WorkerSettings:
             smtp=smtp_from_environment(env),
             business=BusinessSettings.from_environment(env),
             complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
-            email_hash_key=env["CASERO_EMAIL_HASH_KEY"].encode(),
+            email_hash_key=secret_key(env, "CASERO_EMAIL_HASH_KEY"),
             sentry_dsn=env.get("SENTRY_DSN") or None,
             sentry_environment=env.get("SENTRY_ENVIRONMENT", "production"),
             alerts_inbox=env.get("CASERO_ALERTS_INBOX") or None,

@@ -518,14 +518,16 @@ casero/
 │   ├── seed/tax/              # 2026.yaml, 2027.yaml con su fuente
 │   ├── caddy/                 # Caddyfile (local) y Caddyfile.prod
 │   ├── edge/                  # imagen de Caddy con la web compilada
-│   └── deploy/                # despliegue y respaldos
+│   ├── backup/                # respaldos cifrados: pg_dump, age y rclone (ADR-0013)
+│   └── deploy/                # despliegue en el servidor
 ├── docs/
 │   ├── SPEC.md
 │   ├── BACKLOG.md
 │   ├── ARCHITECTURE_RULES.md
 │   ├── adr/                   # en inglés
 │   ├── legal/                 # términos, privacidad, consentimiento, oficial de datos
-│   └── ops/                   # respaldos, claves, incidentes, carga anual del cronograma
+│   ├── ops/                   # respaldos, claves, incidentes, carga anual del cronograma
+│   └── reviews/               # revisiones críticas cada 3 sprints, en PDF
 ├── docker-compose.yml
 ├── Makefile                   # up, down, test, lint, migrate, load-tax-config, invite, check-bucket-policy; luego create-staff, grant-founder y complaint-respond
 ├── CLAUDE.md
