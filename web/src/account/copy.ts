@@ -33,7 +33,7 @@ export const accountCopy = {
   },
   home: {
     greeting: "Tu cuenta está lista",
-    soon: "Pronto podrás registrar aquí a tus inquilinos y sus contratos.",
+    soon: "Pronto podrás registrar aquí los pagos de tus inquilinos.",
     verify: (email: string, date: string) =>
       `Confirma tu correo: te enviamos un enlace a ${email}. Tienes hasta el ${date} para confirmarlo.`,
     blocked: (email: string) =>
@@ -48,6 +48,7 @@ export const accountCopy = {
     logOutEverywhere: "Cerrar sesión en todos mis dispositivos",
     profile: "Mis datos",
     properties: "Mis inmuebles",
+    leases: "Mis contratos",
   },
   profile: {
     title: "Mis datos",
