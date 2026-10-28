@@ -27,7 +27,7 @@ Los tests viven en `backend/tests/architecture/`. Los contratos de import-linter
 | AR-17 | `casero_admin` solo ve filas de cuenta en `accounts`, `subscriptions` y `subscription_payments`, aunque se le otorgue SELECT en otra tabla | ADR-0002, ADR-0008 | `test_row_access.py::test_ar17_*` |
 | AR-18 | `casero_app` y `casero_worker` solo ven filas de la cuenta de `app.account_id`, y ninguna sin él | CLAUDE.md (regla 3), ADR-0002 | `test_row_access.py::test_ar18_*` |
 | AR-19 | Las únicas funciones del esquema `public` son las cuatro `SECURITY DEFINER` de SPEC.md, todas de `casero_owner`, con `search_path` fijo, y solo las ejecuta su rol: `casero_app` las de tenant y cancelación, `casero_worker` las de listado y purga | ADR-0002 | `test_catalog.py::test_ar19_*` |
-| AR-20 | Toda ruta de `/api/app/*` depende de `current_account`, que fija `app.account_id` antes de tocar datos de la cuenta; solo `GET /api/app/me`, `DELETE /api/app/session`, `DELETE /api/app/sessions` y `POST /api/app/email-verification` usan únicamente la sesión | CLAUDE.md (regla 3), ADR-0002 | `test_app_routes.py::test_ar20_*` |
+| AR-20 | Toda ruta de `/api/app/*` depende de `current_account`, que fija `app.account_id` antes de tocar datos de la cuenta; solo `GET /api/app/me`, `DELETE /api/app/session`, `DELETE /api/app/sessions` y `POST /api/app/email-verification` usan únicamente la sesión. Toda escritura (POST, PUT, PATCH o DELETE) de `/api/app/*` depende de `require_csrf`, y la revisión incluye las rutas de los routers incluidos | CLAUDE.md (regla 3), ADR-0002 | `test_app_routes.py::test_ar20_*` |
 
 ## Patrón de puertos (AR-03)
 

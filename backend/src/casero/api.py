@@ -162,7 +162,7 @@ from casero.properties.application.properties import (
 from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
-from casero.shared.infrastructure.database import anonymous_transaction, create_engine
+from casero.shared.infrastructure.database import Transaction, create_engine
 from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.logs import ErrorShield, configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
@@ -225,7 +225,7 @@ def create_app(
     app.add_middleware(ErrorShield)
 
     async def provide_join_waitlist(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> JoinWaitlist:
         repository: WaitlistRepository = SqlWaitlistRepository(connection)
         limiter: WaitlistRateLimiter = PostgresRateLimiter(
@@ -236,7 +236,7 @@ def create_app(
     app.include_router(waitlist_api.create_router(provide_join_waitlist))
 
     async def provide_file_complaint(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> FileComplaint:
         repository: ComplaintRepository = SqlComplaintRepository(connection)
         limiter: ComplaintRateLimiter = PostgresRateLimiter(
@@ -247,7 +247,7 @@ def create_app(
     app.include_router(complaints_api.create_router(provide_file_complaint))
 
     async def provide_record_email_event(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> RecordEmailEvent:
         store: SuppressionStore = SqlSuppressionStore(connection, config.email_hash_key)
         return RecordEmailEvent(store, verifier, app_clock, config.ses_events_topic_arn)
@@ -257,7 +257,7 @@ def create_app(
     tokens: UnsubscribeTokens = HmacUnsubscribeTokens(config.unsubscribe_key)
 
     async def provide_unsubscribe(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> Unsubscribe:
         users: UserEmails = SqlUserEmails(connection)
         store: SuppressionStore = SqlSuppressionStore(connection, config.email_hash_key)
@@ -266,7 +266,7 @@ def create_app(
     app.include_router(unsubscribe_api.create_router(provide_unsubscribe))
 
     async def provide_calculate(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> CalculateTax:
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
         limiter: CalculatorRateLimiter = PostgresRateLimiter(
@@ -277,7 +277,7 @@ def create_app(
     app.include_router(calculator_api.create_router(provide_calculate))
 
     async def provide_client_error_limiter(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> client_errors_api.RateLimiter:
         return PostgresRateLimiter(
             connection, config.rate_limit_key, app_clock, "client-errors", CLIENT_ERRORS_PER_HOUR
@@ -290,12 +290,12 @@ def create_app(
     login_sleeper: Sleeper = sleeper or AsyncioSleeper()
 
     async def provide_credentials(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> SqlCredentials:
         return SqlCredentials(connection)
 
     async def provide_login(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> LogIn:
         credentials: Credentials = SqlCredentials(connection)
         store: SessionStore = SqlSessionStore(connection)
@@ -306,13 +306,13 @@ def create_app(
         return LogIn(credentials, hasher, start, throttle, login_sleeper)
 
     async def provide_authenticate(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> AuthenticateSession:
         store: SessionStore = SqlSessionStore(connection)
         return AuthenticateSession(session_tokens, store, app_clock)
 
     async def provide_logout(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> LogOut:
         store: SessionStore = SqlSessionStore(connection)
         return LogOut(store, app_clock)
@@ -342,19 +342,19 @@ def create_app(
         return SendVerification(users, limiter, email_sender(connection))
 
     async def provide_send_verification(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> SendVerification:
         return send_verification(connection)
 
     async def provide_confirm_email(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ConfirmEmail:
         users: AccountUsers = SqlAccountUsers(connection)
         store: EmailTokenStore = SqlEmailTokenStore(connection)
         return ConfirmEmail(users, store, email_tokens, app_clock)
 
     async def provide_request_reset(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> RequestPasswordReset:
         users: AccountUsers = SqlAccountUsers(connection)
         ip_limiter: EmailRateLimiter = PostgresRateLimiter(
@@ -374,7 +374,7 @@ def create_app(
         return RequestPasswordReset(users, ip_limiter, email_limiter, email_sender(connection))
 
     async def provide_reset_password(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ResetPassword:
         users: AccountUsers = SqlAccountUsers(connection)
         store: EmailTokenStore = SqlEmailTokenStore(connection)
@@ -392,7 +392,7 @@ def create_app(
     )
 
     async def provide_register(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> RegisterLandlord:
         limiter: RegistrationRateLimiter = PostgresRateLimiter(
             connection,
@@ -426,14 +426,14 @@ def create_app(
     )
 
     async def provide_open_account(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> OpenAccount:
         memberships: Memberships = SqlMemberships(connection)
         scope: AccountScope = SqlAccountScope(connection)
         return OpenAccount(memberships, scope)
 
     async def provide_access_gate(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> AccessGate:
         users: AccountUsers = SqlAccountUsers(connection)
         return AccessGate(users, app_clock)
@@ -451,28 +451,28 @@ def create_app(
         return context
 
     async def provide_entitlements(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> GetEntitlements:
         subscriptions: SubscriptionReader = SqlSubscriptions(connection)
         plans: PlanCatalog = SqlPlans(connection)
         return GetEntitlements(subscriptions, plans, app_clock)
 
     async def provide_account_summary(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
         entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
     ) -> GetAccountSummary:
         names: AccountNames = SqlAccounts(connection)
         return GetAccountSummary(names, entitlements)
 
     async def provide_get_profile(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> GetProfile:
         profiles: Profiles = SqlProfiles(connection)
         holdings: PropertyHoldings = SqlPropertyStore(connection)
         return GetProfile(profiles, holdings)
 
     async def provide_update_profile(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> UpdateProfile:
         profiles: Profiles = SqlProfiles(connection)
         holdings: PropertyHoldings = SqlPropertyStore(connection)
@@ -489,13 +489,13 @@ def create_app(
     )
 
     async def provide_list_properties(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ListProperties:
         store: PropertyStore = SqlPropertyStore(connection)
         return ListProperties(store)
 
     async def provide_create_property(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> CreateProperty:
         profiles: Profiles = SqlProfiles(connection)
         store: PropertyStore = SqlPropertyStore(connection)
@@ -503,7 +503,7 @@ def create_app(
         return CreateProperty(profiles, store, audit, app_clock)
 
     async def provide_update_property(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> UpdateProperty:
         profiles: Profiles = SqlProfiles(connection)
         store: PropertyStore = SqlPropertyStore(connection)
@@ -512,7 +512,7 @@ def create_app(
         return UpdateProperty(profiles, store, leases, audit, app_clock)
 
     async def provide_archive_property(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ArchiveProperty:
         store: PropertyStore = SqlPropertyStore(connection)
         leases: ActiveLeases = SqlActiveLeases(connection)
@@ -520,21 +520,21 @@ def create_app(
         return ArchiveProperty(store, leases, audit, app_clock)
 
     async def provide_add_unit(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> AddUnit:
         store: PropertyStore = SqlPropertyStore(connection)
         audit: AuditLog = SqlAuditLog(connection)
         return AddUnit(store, audit, app_clock)
 
     async def provide_update_unit(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> UpdateUnit:
         store: PropertyStore = SqlPropertyStore(connection)
         audit: AuditLog = SqlAuditLog(connection)
         return UpdateUnit(store, audit, app_clock)
 
     async def provide_archive_unit(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ArchiveUnit:
         store: PropertyStore = SqlPropertyStore(connection)
         leases: ActiveLeases = SqlActiveLeases(connection)
@@ -559,18 +559,18 @@ def create_app(
         return store
 
     async def provide_list_renters(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ListRenters:
         return ListRenters(renter_store(connection))
 
     async def provide_create_renter(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> CreateRenter:
         audit: AuditLog = SqlAuditLog(connection)
         return CreateRenter(renter_store(connection), audit, app_clock)
 
     async def provide_update_renter(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> UpdateRenter:
         audit: AuditLog = SqlAuditLog(connection)
         return UpdateRenter(renter_store(connection), audit, app_clock)
@@ -582,13 +582,13 @@ def create_app(
     )
 
     async def provide_list_leases(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> ListLeases:
         leases: LeaseStore = SqlLeaseStore(connection)
         return ListLeases(leases, app_clock)
 
     async def provide_create_lease(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
         entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
     ) -> CreateLease:
         profiles: Profiles = SqlProfiles(connection)
@@ -614,7 +614,7 @@ def create_app(
     )
 
     async def provide_record_payment(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> RecordPayment:
         ledger: LedgerStore = SqlLedger(connection)
         thresholds: CashThresholds = SqlTaxRuleBook(connection)
@@ -622,14 +622,14 @@ def create_app(
         return RecordPayment(ledger, thresholds, audit, app_clock)
 
     async def provide_void_payment(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> VoidPayment:
         ledger: LedgerStore = SqlLedger(connection)
         audit: AuditLog = SqlAuditLog(connection)
         return VoidPayment(ledger, audit, app_clock)
 
     async def provide_statement(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> GetStatement:
         ledger: LedgerStore = SqlLedger(connection)
         return GetStatement(ledger, app_clock)
@@ -641,7 +641,7 @@ def create_app(
     )
 
     async def provide_collections(
-        connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],
+        connection: Transaction,
     ) -> GetCollections:
         books: CollectionsStore = SqlLedger(connection)
         return GetCollections(books, app_clock)
