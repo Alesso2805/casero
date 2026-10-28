@@ -66,6 +66,9 @@ class RecordedResponse(PaymentResponse):
     bank_threshold_cents: int | None = Field(
         description="Set when a cash payment's rent reaches the year's bancarization threshold"
     )
+    before_control: bool = Field(
+        description="Collected before the lease's control month, for example at signing"
+    )
 
 
 class ChargeLineResponse(BaseModel):
@@ -120,7 +123,7 @@ def create_router(
             200: {"description": "The same id was already recorded with the same content"},
             404: {"description": "`lease_not_found`"},
             409: {"description": "The id exists with other content or in another account"},
-            422: {"description": "Invalid data, `received_in_future` or `received_before_control`"},
+            422: {"description": "Invalid data, `received_in_future` or `received_before_2026`"},
         },
     )
     async def record_payment(
@@ -145,6 +148,7 @@ def create_router(
         return RecordedResponse(
             **payment_response(result.record).model_dump(),
             bank_threshold_cents=result.bank_threshold_cents,
+            before_control=result.before_control,
         )
 
     @router.post(

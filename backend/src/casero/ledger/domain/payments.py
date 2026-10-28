@@ -4,23 +4,20 @@ from typing import Literal
 from casero.shared.kernel.periods import FIRST_CONTROL_PERIOD, Period
 
 PaymentMethod = Literal["cash", "yape", "plin", "transfer", "bank_deposit"]
-ReceiptProblem = Literal["received_in_future", "received_before_control"]
+ReceiptProblem = Literal["received_in_future", "received_before_2026"]
 
 
-def earliest_receipt(control_from: Period, has_opening_balance: bool) -> date:
-    """A lease with prior debt may have collected it since 2026 began (SPEC, "Fecha de cobro")."""
-    start = FIRST_CONTROL_PERIOD if has_opening_balance else control_from
-    return start.first_day()
-
-
-def receipt_problem(
-    received_on: date, today: date, control_from: Period, has_opening_balance: bool
-) -> ReceiptProblem | None:
+def receipt_problem(received_on: date, today: date) -> ReceiptProblem | None:
     if received_on > today:
         return "received_in_future"
-    if received_on < earliest_receipt(control_from, has_opening_balance):
-        return "received_before_control"
+    if received_on < FIRST_CONTROL_PERIOD.first_day():
+        return "received_before_2026"
     return None
+
+
+def before_control(received_on: date, control_from: Period) -> bool:
+    """Accepted, with a warning: rent paid at signing counts in the month it was collected."""
+    return received_on < control_from.first_day()
 
 
 def needs_bank(method: PaymentMethod, rent_cents: int, threshold_cents: int | None) -> bool:

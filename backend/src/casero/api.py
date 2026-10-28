@@ -566,14 +566,16 @@ def create_app(
     async def provide_create_renter(
         connection: Transaction,
     ) -> CreateRenter:
+        profiles: Profiles = SqlProfiles(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return CreateRenter(renter_store(connection), audit, app_clock)
+        return CreateRenter(profiles, renter_store(connection), audit, app_clock)
 
     async def provide_update_renter(
         connection: Transaction,
     ) -> UpdateRenter:
+        profiles: Profiles = SqlProfiles(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return UpdateRenter(renter_store(connection), audit, app_clock)
+        return UpdateRenter(profiles, renter_store(connection), audit, app_clock)
 
     app.include_router(
         renters_api.create_router(

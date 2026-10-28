@@ -4,6 +4,7 @@ from uuid import UUID
 import pytest
 
 from casero.accounts.application.context import AccountContext
+from casero.accounts.domain.profile import Profile
 from casero.leases.application.renters import CreateRenter, UpdateRenter
 from casero.leases.domain.renters import (
     DocType,
@@ -83,11 +84,13 @@ class Store:
         self.renters = {renter.id: renter for renter, _ in renters}
         self.documents = {document: renter.id for renter, document in renters if document}
         self.writes: list[str] = []
+        self.reads: list[str] = []
 
     async def all(self) -> list[Renter]:
         return list(self.renters.values())
 
     async def holder_of(self, document: Document) -> UUID | None:
+        self.reads.append("holder_of")
         return self.documents.get(document)
 
     async def lock(self, renter_id: UUID) -> Renter | None:
@@ -103,6 +106,21 @@ class Store:
 
     async def set_document(self, account_id: UUID, renter_id: UUID, document: Document) -> None:
         self.writes.append("set_document")
+
+
+class Profiles:
+    def __init__(self, store: Store) -> None:
+        self._store = store
+
+    async def current(self) -> Profile:
+        raise AssertionError("not used")
+
+    async def lock_current(self) -> Profile:
+        self._store.reads.append("lock_account")
+        return Profile("Casera", "person", None, None, False)
+
+    async def save(self, account_id: UUID, profile: Profile) -> None:
+        raise AssertionError("not used")
 
 
 class Audit:
@@ -122,7 +140,7 @@ def ana(document: Document | None = DNI) -> tuple[Renter, Document | None]:
 async def test_a_renter_is_created_and_audited_without_values() -> None:
     store, audit = Store(), Audit()
 
-    result = await CreateRenter(store, audit, Clock())(CONTEXT, ANA, DNI)
+    result = await CreateRenter(Profiles(store), store, audit, Clock())(CONTEXT, ANA, DNI)
 
     assert isinstance(result, Renter)
     assert (result.doc_type, result.doc_last4) == ("dni", "5678")
@@ -137,7 +155,10 @@ async def test_a_renter_is_created_and_audited_without_values() -> None:
 async def test_a_document_already_in_the_account_is_refused() -> None:
     store = Store(ana())
 
-    assert await CreateRenter(store, Audit(), Clock())(CONTEXT, ANA, DNI) == "duplicate_document"
+    assert (
+        await CreateRenter(Profiles(store), store, Audit(), Clock())(CONTEXT, ANA, DNI)
+        == "duplicate_document"
+    )
     assert store.writes == []
 
 
@@ -146,7 +167,9 @@ async def test_updating_with_the_same_document_changes_only_the_details() -> Non
     store, audit = Store(ana()), Audit()
     details = RenterDetails("Ana María Quispe", None)
 
-    result = await UpdateRenter(store, audit, Clock())(CONTEXT, UUID(int=10), details, DNI)
+    result = await UpdateRenter(Profiles(store), store, audit, Clock())(
+        CONTEXT, UUID(int=10), details, DNI
+    )
 
     assert isinstance(result, Renter)
     assert store.writes == ["update"]
@@ -157,7 +180,9 @@ async def test_updating_with_the_same_document_changes_only_the_details() -> Non
 async def test_a_new_document_replaces_the_stored_one() -> None:
     store, audit = Store(ana(None)), Audit()
 
-    result = await UpdateRenter(store, audit, Clock())(CONTEXT, UUID(int=10), ANA, DNI)
+    result = await UpdateRenter(Profiles(store), store, audit, Clock())(
+        CONTEXT, UUID(int=10), ANA, DNI
+    )
 
     assert isinstance(result, Renter)
     assert (result.doc_type, result.doc_last4) == ("dni", "5678")
@@ -170,7 +195,9 @@ async def test_a_document_held_by_another_renter_is_refused() -> None:
     luis = Renter(UUID(int=11), RenterDetails("Luis", None), None, None)
     store = Store(ana(), (luis, None))
 
-    result = await UpdateRenter(store, Audit(), Clock())(CONTEXT, UUID(int=11), ANA, DNI)
+    result = await UpdateRenter(Profiles(store), store, Audit(), Clock())(
+        CONTEXT, UUID(int=11), ANA, DNI
+    )
 
     assert result == "duplicate_document"
     assert store.writes == []
@@ -178,6 +205,20 @@ async def test_a_document_held_by_another_renter_is_refused() -> None:
 
 @pytest.mark.anyio
 async def test_an_unknown_renter_is_not_found() -> None:
-    result = await UpdateRenter(Store(), Audit(), Clock())(CONTEXT, UUID(int=10), ANA, None)
+    result = await UpdateRenter(Profiles(Store()), Store(), Audit(), Clock())(
+        CONTEXT, UUID(int=10), ANA, None
+    )
 
     assert result == "not_found"
+
+
+@pytest.mark.anyio
+async def test_the_account_is_locked_before_a_document_is_checked() -> None:
+    created, updated = Store(), Store(ana(None))
+
+    await CreateRenter(Profiles(created), created, Audit(), Clock())(CONTEXT, ANA, DNI)
+    await UpdateRenter(Profiles(updated), updated, Audit(), Clock())(
+        CONTEXT, UUID(int=10), ANA, DNI
+    )
+
+    assert created.reads == updated.reads == ["lock_account", "holder_of"]

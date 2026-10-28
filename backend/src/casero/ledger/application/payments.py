@@ -16,6 +16,7 @@ from casero.ledger.domain.charges import RentChange, rent_for
 from casero.ledger.domain.payments import (
     PaymentMethod,
     ReceiptProblem,
+    before_control,
     needs_bank,
     receipt_problem,
 )
@@ -61,12 +62,12 @@ class LeaseLedger:
     charges: list[Charge]
     payments: list[PaymentRecord]
 
-    @property
-    def has_opening_balance(self) -> bool:
-        return any(c.kind == "opening_balance" and not c.voided for c in self.charges)
-
 
 class LedgerStore(Protocol):
+    async def lock_lease(self, lease_id: UUID) -> bool:
+        """Serializes writes on one lease (SPEC: locks go on the lease row); False if missing."""
+        ...
+
     async def lease_ledger(self, lease_id: UUID) -> LeaseLedger | None: ...
 
     async def payment(self, payment_id: UUID) -> PaymentRecord | None: ...
@@ -93,6 +94,7 @@ class Recorded:
     record: PaymentRecord
     replayed: bool
     bank_threshold_cents: int | None
+    before_control: bool
 
 
 @dataclass(frozen=True)
@@ -105,6 +107,8 @@ class RecordPayment:
     async def __call__(
         self, context: AccountContext, new: NewPayment
     ) -> Recorded | ReceiptProblem | Literal["lease_not_found", "conflict"]:
+        if not await self.store.lock_lease(new.lease_id):
+            return "lease_not_found"
         ledger = await self.store.lease_ledger(new.lease_id)
         if ledger is None:
             return "lease_not_found"
@@ -112,13 +116,8 @@ class RecordPayment:
         if existing is not None:
             if not existing.matches(new):
                 return "conflict"
-            return Recorded(existing, True, await self._bank_threshold(ledger, new))
-        problem = receipt_problem(
-            new.received_on,
-            self.clock.today_lima(),
-            ledger.control_from,
-            ledger.has_opening_balance,
-        )
+            return await self._recorded(existing, True, ledger, new)
+        problem = receipt_problem(new.received_on, self.clock.today_lima())
         if problem is not None:
             return problem
         now = self.clock.now()
@@ -141,12 +140,19 @@ class RecordPayment:
             new.method,
             new.note,
         )
-        return Recorded(record, False, await self._bank_threshold(ledger, new))
+        return await self._recorded(record, False, ledger, new)
 
-    async def _bank_threshold(self, ledger: LeaseLedger, new: NewPayment) -> int | None:
+    async def _recorded(
+        self, record: PaymentRecord, replayed: bool, ledger: LeaseLedger, new: NewPayment
+    ) -> Recorded:
         rent = rent_for(Period.of(new.received_on), ledger.rent_changes)
         threshold = await self.thresholds.cash_threshold_for(new.received_on.year)
-        return threshold if needs_bank(new.method, rent, threshold) else None
+        return Recorded(
+            record,
+            replayed,
+            threshold if needs_bank(new.method, rent, threshold) else None,
+            before_control(new.received_on, ledger.control_from),
+        )
 
 
 @dataclass(frozen=True)
@@ -160,6 +166,10 @@ class VoidPayment:
     async def __call__(
         self, context: AccountContext, payment_id: UUID, reason: str
     ) -> PaymentRecord | Literal["payment_not_found"]:
+        found = await self.store.payment(payment_id)
+        if found is None:
+            return "payment_not_found"
+        await self.store.lock_lease(found.lease_id)
         record = await self.store.payment(payment_id)
         if record is None:
             return "payment_not_found"

@@ -212,6 +212,11 @@ async def test_a_unit_holds_one_active_lease_and_must_be_in_use(
             "balance_2026_without_months",
         ),
         ({"end_date": "2025-05-31"}, "end_before_start"),
+        ({"end_date": "2026-08-31"}, "end_before_control"),
+        (
+            {"start_date": "2026-03-01", "opening_balance_pre_2026_cents": 10_000},
+            "balance_pre_2026_without_months",
+        ),
         ({"id": str(uuid4())}, None),
         ({"monthly_rent_cents": 0}, None),
         ({"due_day": 32}, None),

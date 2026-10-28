@@ -3,6 +3,7 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
+from casero.accounts.application.profile import Profiles
 from casero.leases.domain.renters import Document, Renter, RenterDetails
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
@@ -39,6 +40,7 @@ class ListRenters:
 
 @dataclass(frozen=True)
 class CreateRenter:
+    profiles: Profiles
     store: RenterStore
     audit: AuditLog
     clock: Clock
@@ -46,8 +48,12 @@ class CreateRenter:
     async def __call__(
         self, context: AccountContext, details: RenterDetails, document: Document | None
     ) -> Renter | Literal["duplicate_document"]:
-        if document is not None and await self.store.holder_of(document) is not None:
-            return "duplicate_document"
+        if document is not None:
+            # The account row lock makes concurrent requests with one document wait for each
+            # other, so the second gets duplicate_document instead of the unique index's 500.
+            await self.profiles.lock_current()
+            if await self.store.holder_of(document) is not None:
+                return "duplicate_document"
         renter_id = new_id()
         await self.store.add(context.account_id, renter_id, details, document)
         fields = [*DETAIL_FIELDS, *(["document"] if document else [])]
@@ -74,6 +80,7 @@ class CreateRenter:
 class UpdateRenter:
     """Replaces the name and phone; a document, if given, replaces the stored one."""
 
+    profiles: Profiles
     store: RenterStore
     audit: AuditLog
     clock: Clock
@@ -85,6 +92,8 @@ class UpdateRenter:
         details: RenterDetails,
         document: Document | None,
     ) -> Renter | Literal["not_found", "duplicate_document"]:
+        if document is not None:
+            await self.profiles.lock_current()
         current = await self.store.lock(renter_id)
         if current is None:
             return "not_found"

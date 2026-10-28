@@ -1512,6 +1512,11 @@
             "description": "Set when a cash payment's rent reaches the year's bancarization threshold",
             "title": "Bank Threshold Cents"
           },
+          "before_control": {
+            "description": "Collected before the lease's control month, for example at signing",
+            "title": "Before Control",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1555,7 +1560,8 @@
           "method",
           "note",
           "voided",
-          "bank_threshold_cents"
+          "bank_threshold_cents",
+          "before_control"
         ],
         "title": "RecordedResponse",
         "type": "object"
@@ -2131,7 +2137,7 @@
             "description": "The id exists with other content or in another account (no detail), `plan_limit`, `unit_archived` or `unit_occupied`"
           },
           "422": {
-            "description": "Invalid data, `end_before_start`, `control_period_out_of_range` or `balance_2026_without_months`"
+            "description": "Invalid data, `end_before_start`, `control_period_out_of_range`, `end_before_control`, `balance_pre_2026_without_months` or `balance_2026_without_months`"
           }
         },
         "summary": "Create Lease"
@@ -2190,7 +2196,7 @@
             "description": "The id exists with other content or in another account"
           },
           "422": {
-            "description": "Invalid data, `received_in_future` or `received_before_control`"
+            "description": "Invalid data, `received_in_future` or `received_before_2026`"
           }
         },
         "summary": "Record Payment"

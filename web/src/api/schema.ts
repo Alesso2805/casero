@@ -1231,6 +1231,11 @@ export interface components {
              */
             bank_threshold_cents: number | null;
             /**
+             * Before Control
+             * @description Collected before the lease's control month, for example at signing
+             */
+            before_control: boolean;
+            /**
              * Id
              * Format: uuid
              */
@@ -1686,7 +1691,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid data, `end_before_start`, `control_period_out_of_range` or `balance_2026_without_months` */
+            /** @description Invalid data, `end_before_start`, `control_period_out_of_range`, `end_before_control`, `balance_pre_2026_without_months` or `balance_2026_without_months` */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -1754,7 +1759,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid data, `received_in_future` or `received_before_control` */
+            /** @description Invalid data, `received_in_future` or `received_before_2026` */
             422: {
                 headers: {
                     [name: string]: unknown;
