@@ -183,7 +183,10 @@ def create_router(
         dependencies=csrf,
         responses={
             **WRITE_ERRORS,
-            409: {"description": "`archived`: archived properties can't be edited"},
+            409: {
+                "description": "`archived`, or `active_lease` when the ownership would"
+                " switch to or from conjugal_split under an active lease"
+            },
             422: {"description": "Invalid data, or `ownership_mismatch` with the declarant"},
         },
     )

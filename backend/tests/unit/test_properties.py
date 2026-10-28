@@ -93,6 +93,9 @@ class Store:
     async def archive(self, property_id: UUID, at: datetime) -> None:
         self.writes.append("archive")
 
+    async def ownership_of(self, property_id: UUID) -> Ownership:
+        return self.properties[property_id].details.ownership
+
     async def lock_unit(self, unit_id: UUID) -> Unit | None:
         units = (unit for item in self.properties.values() for unit in item.units)
         return next((unit for unit in units if unit.id == unit_id), None)
@@ -188,7 +191,7 @@ async def test_an_estate_account_registers_estate_properties() -> None:
 
 async def test_editing_a_property_audits_only_what_changed() -> None:
     store, audit = Store(house()), Audit()
-    update = UpdateProperty(Profiles("person"), store, audit, Clock())
+    update = UpdateProperty(Profiles("person"), store, Leases(active=False), audit, Clock())
     details = replace(HOUSE, autovaluo_cents=25_000_000, rented_share_pct=40)
 
     result = await update(CONTEXT, UUID(int=10), details)
@@ -200,7 +203,7 @@ async def test_editing_a_property_audits_only_what_changed() -> None:
 
 async def test_saving_the_same_property_writes_nothing() -> None:
     store, audit = Store(house()), Audit()
-    update = UpdateProperty(Profiles("person"), store, audit, Clock())
+    update = UpdateProperty(Profiles("person"), store, Leases(active=False), audit, Clock())
 
     await update(CONTEXT, UUID(int=10), HOUSE)
 
@@ -218,10 +221,34 @@ async def test_saving_the_same_property_writes_nothing() -> None:
 async def test_some_property_edits_are_refused(
     store: Store, details: PropertyDetails, refusal: str
 ) -> None:
-    update = UpdateProperty(Profiles("person"), store, Audit(), Clock())
+    update = UpdateProperty(Profiles("person"), store, Leases(active=False), Audit(), Clock())
 
     assert await update(CONTEXT, UUID(int=10), details) == refusal
     assert store.writes == []
+
+
+@pytest.mark.parametrize(
+    ("before", "after"), [("sole", "conjugal_split"), ("conjugal_split", "sole")]
+)
+async def test_conjugal_split_does_not_flip_under_an_active_lease(
+    before: Ownership, after: Ownership
+) -> None:
+    store = Store(Property(UUID(int=10), replace(HOUSE, ownership=before), False, ()))
+    update = UpdateProperty(Profiles("person"), store, Leases(active=True), Audit(), Clock())
+
+    result = await update(CONTEXT, UUID(int=10), replace(HOUSE, ownership=after))
+
+    assert result == "active_lease"
+    assert store.writes == []
+
+
+async def test_other_ownership_changes_are_free_with_an_active_lease() -> None:
+    store = Store(house())
+    update = UpdateProperty(Profiles("person"), store, Leases(active=True), Audit(), Clock())
+
+    result = await update(CONTEXT, UUID(int=10), replace(HOUSE, ownership="co_owned"))
+
+    assert isinstance(result, Property)
 
 
 async def test_a_property_with_an_active_lease_is_not_archived() -> None:

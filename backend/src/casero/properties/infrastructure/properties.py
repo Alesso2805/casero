@@ -6,7 +6,13 @@ from uuid import UUID
 from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from casero.properties.domain.properties import Property, PropertyDetails, Unit, UnitDetails
+from casero.properties.domain.properties import (
+    Ownership,
+    Property,
+    PropertyDetails,
+    Unit,
+    UnitDetails,
+)
 
 ANY_PROPERTY = text("SELECT EXISTS (SELECT 1 FROM properties)")
 SELECT_PROPERTIES = (
@@ -19,6 +25,7 @@ ALL_UNITS = text(SELECT_UNITS + " ORDER BY id")
 LOCK_PROPERTY = text(SELECT_PROPERTIES + " WHERE id = :id FOR UPDATE")
 LOCK_UNITS_OF = text(SELECT_UNITS + " WHERE property_id = :property_id ORDER BY id FOR UPDATE")
 LOCK_UNIT = text(SELECT_UNITS + " WHERE id = :id FOR UPDATE")
+OWNERSHIP = text("SELECT ownership FROM properties WHERE id = :id")
 ADD_PROPERTY = text(
     "INSERT INTO properties (id, account_id, name, address_line, district, ownership,"
     " autovaluo_cents, rented_share_pct) VALUES (:id, :account_id, :name, :address_line,"
@@ -106,6 +113,12 @@ class SqlPropertyStore:
     async def lock_unit(self, unit_id: UUID) -> Unit | None:
         row = (await self._connection.execute(LOCK_UNIT, {"id": unit_id})).first()
         return None if row is None else unit(row)
+
+    async def ownership_of(self, property_id: UUID) -> Ownership:
+        ownership: Ownership = (
+            await self._connection.execute(OWNERSHIP, {"id": property_id})
+        ).scalar_one()
+        return ownership
 
     async def add_unit(
         self, account_id: UUID, unit_id: UUID, property_id: UUID, details: UnitDetails
