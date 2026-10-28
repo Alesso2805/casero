@@ -33,7 +33,6 @@ export const accountCopy = {
   },
   home: {
     greeting: "Tu cuenta está lista",
-    soon: "Pronto podrás registrar aquí los pagos de tus inquilinos.",
     verify: (email: string, date: string) =>
       `Confirma tu correo: te enviamos un enlace a ${email}. Tienes hasta el ${date} para confirmarlo.`,
     blocked: (email: string) =>
