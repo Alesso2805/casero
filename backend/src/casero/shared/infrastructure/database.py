@@ -1,8 +1,9 @@
 import asyncio
 from collections.abc import AsyncIterator
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import Request
+from fastapi import Depends, Request
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
@@ -21,6 +22,12 @@ async def anonymous_transaction(request: Request) -> AsyncIterator[AsyncConnecti
     engine: AsyncEngine = request.app.state.engine
     async with engine.begin() as connection:
         yield connection
+
+
+# FastAPI's default "request" scope commits after the response is sent; "function" commits
+# before it, so a 2xx means the write is durable. Every use must share this one scope, or a
+# request would open a second transaction without app.account_id.
+Transaction = Annotated[AsyncConnection, Depends(anonymous_transaction, scope="function")]
 
 
 async def set_account_context(connection: AsyncConnection, account_id: UUID) -> None:
