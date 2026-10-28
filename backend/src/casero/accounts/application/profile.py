@@ -3,10 +3,11 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
-from casero.accounts.domain.profile import Profile, TaxpayerKind, is_valid_ruc, ruc_group
+from casero.accounts.domain.profile import Profile, TaxpayerKind, ruc_group
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.ids import new_id
+from casero.shared.kernel.ruc import is_valid_ruc
 
 
 class Profiles(Protocol):
