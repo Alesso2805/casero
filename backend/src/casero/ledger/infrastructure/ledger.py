@@ -6,6 +6,7 @@ from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.ledger.application.collections import LeaseBook
+from casero.ledger.application.manual_charges import ChargeRecord
 from casero.ledger.application.payments import LeaseLedger, NewPayment, PaymentRecord
 from casero.ledger.domain.allocation import Charge, Payment
 from casero.ledger.domain.charges import RentChange
@@ -20,11 +21,24 @@ RENT_CHANGES = text(
 )
 SELECT_CHARGES = (
     "SELECT c.id, c.lease_id, c.kind, c.amount_cents, c.due_date, c.pre_2026, c.created_at,"
-    " c.period, v.charge_id IS NOT NULL AS voided FROM charges c"
+    " c.period, c.corrects_charge_id, v.charge_id IS NOT NULL AS voided FROM charges c"
     " LEFT JOIN charge_voids v ON v.charge_id = c.id"
 )
 CHARGES = text(SELECT_CHARGES + " WHERE c.lease_id = :lease_id")
 ALL_CHARGES = text(SELECT_CHARGES)
+CHARGE = text(SELECT_CHARGES + " WHERE c.id = :charge_id")
+CORRECTION_OF = text("SELECT id FROM charges WHERE corrects_charge_id = :charge_id")
+ADD_CHARGE = text(
+    "INSERT INTO charges (id, account_id, lease_id, kind, period, amount_cents, due_date,"
+    " corrects_charge_id, pre_2026, created_by, created_at) VALUES (:id, :account_id, :lease_id,"
+    " :kind, :period, :amount_cents, :due_date, :corrects_charge_id, :pre_2026, :created_by,"
+    " :created_at) ON CONFLICT (id) DO NOTHING RETURNING id"
+)
+VOID_CHARGE = text(
+    "INSERT INTO charge_voids (charge_id, account_id, reason, voided_by, voided_at)"
+    " VALUES (:charge_id, :account_id, :reason, :voided_by, :voided_at)"
+    " ON CONFLICT (charge_id) DO NOTHING"
+)
 SELECT_PAYMENTS = (
     "SELECT p.id, p.lease_id, p.amount_cents, p.received_on, p.created_at, p.method, p.note,"
     " v.payment_id IS NOT NULL AS voided FROM payments p"
@@ -101,6 +115,51 @@ class SqlLedger:
         for row in await self._connection.execute(ALL_PAYMENTS):
             books[row.lease_id].payments.append(payment_record(row).payment)
         return list(books.values())
+
+    async def charge(self, charge_id: UUID) -> ChargeRecord | None:
+        row = (await self._connection.execute(CHARGE, {"charge_id": charge_id})).first()
+        if row is None:
+            return None
+        return ChargeRecord(charge(row), row.lease_id, row.corrects_charge_id)
+
+    async def correction_of(self, charge_id: UUID) -> UUID | None:
+        result = await self._connection.execute(CORRECTION_OF, {"charge_id": charge_id})
+        correction: UUID | None = result.scalar_one_or_none()
+        return correction
+
+    async def add_charge(self, account_id: UUID, record: ChargeRecord, created_by: UUID) -> bool:
+        new = record.charge
+        inserted = await self._connection.execute(
+            ADD_CHARGE,
+            {
+                "id": new.id,
+                "account_id": account_id,
+                "lease_id": record.lease_id,
+                "kind": new.kind,
+                "period": str(new.period) if new.period else None,
+                "amount_cents": new.amount_cents,
+                "due_date": new.due_date,
+                "corrects_charge_id": record.corrects_charge_id,
+                "pre_2026": new.pre_2026,
+                "created_by": created_by,
+                "created_at": new.created_at,
+            },
+        )
+        return inserted.first() is not None
+
+    async def void_charge(
+        self, account_id: UUID, charge_id: UUID, reason: str, voided_by: UUID, at: datetime
+    ) -> None:
+        await self._connection.execute(
+            VOID_CHARGE,
+            {
+                "charge_id": charge_id,
+                "account_id": account_id,
+                "reason": reason,
+                "voided_by": voided_by,
+                "voided_at": at,
+            },
+        )
 
     async def payment(self, payment_id: UUID) -> PaymentRecord | None:
         row = (await self._connection.execute(PAYMENT, {"payment_id": payment_id})).first()
