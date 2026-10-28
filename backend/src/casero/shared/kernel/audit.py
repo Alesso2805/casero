@@ -24,7 +24,7 @@ class AuditEntry:
     def of(
         cls,
         account_id: UUID,
-        actor_user_id: UUID,
+        actor_user_id: UUID | None,
         action: str,
         entity: str,
         entity_id: UUID,
