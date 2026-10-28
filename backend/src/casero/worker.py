@@ -16,6 +16,7 @@ from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.identity.infrastructure.email_suppressions import SuppressionLookup
 from casero.shared.infrastructure.database import create_engine
+from casero.shared.infrastructure.logs import configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import purge_expired_buckets
 from casero.shared.infrastructure.settings import WorkerSettings
@@ -112,6 +113,7 @@ async def run() -> None:
 
 
 def main() -> None:
+    configure_logging()
     if sys.argv[1:2] == ["complaint-copy"] and len(sys.argv) == 3:
         sys.exit(asyncio.run(print_complaint_copy(sys.argv[2])))
     asyncio.run(run())

@@ -9,7 +9,9 @@ SET_ACCOUNT = text("SELECT set_config('app.account_id', :account_id, true)")
 
 
 def create_engine(database_url: str) -> AsyncEngine:
-    return create_async_engine(database_url, pool_size=5, max_overflow=5, pool_pre_ping=True)
+    return create_async_engine(
+        database_url, pool_size=5, max_overflow=5, pool_pre_ping=True, hide_parameters=True
+    )
 
 
 async def anonymous_transaction(request: Request) -> AsyncIterator[AsyncConnection]:

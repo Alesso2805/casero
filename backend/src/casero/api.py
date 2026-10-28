@@ -136,6 +136,7 @@ from casero.properties.application.properties import (
 from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import anonymous_transaction, create_engine
+from casero.shared.infrastructure.logs import ErrorShield, configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
 from casero.shared.infrastructure.settings import ApiSettings
@@ -169,6 +170,7 @@ def create_app(
     sleeper: Sleeper | None = None,
     mailer: AccountMailer | None = None,
 ) -> FastAPI:
+    configure_logging()
     config = settings or ApiSettings.from_environment()
     app_clock: Clock = clock or SystemClock()
     engine = create_engine(config.database_url)
@@ -190,6 +192,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.engine = engine
+    app.add_middleware(ErrorShield)
 
     async def provide_join_waitlist(
         connection: Annotated[AsyncConnection, Depends(anonymous_transaction)],

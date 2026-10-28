@@ -94,6 +94,7 @@ def test_the_edge_serves_the_business_identity_from_its_environment() -> None:
     [
         ("/", True),
         ("/privacidad", False),
+        ("/legal/terminos", False),
         ("/libro-de-reclamaciones", False),
         ("/api/health", False),
         ("/api/public/business", False),

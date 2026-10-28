@@ -14,8 +14,8 @@ from typing import Any
 
 import yaml
 from sqlalchemy import TextClause, text
-from sqlalchemy.ext.asyncio import create_async_engine
 
+from casero.shared.infrastructure.database import create_engine
 from casero.tax.domain.rules import ROUNDING_METHODS, RUC_GROUPS, RucGroup, TaxRules
 
 MONTHS = range(1, 13)
@@ -206,7 +206,7 @@ def year_files(directory: Path) -> list[Path]:
 
 async def load_all(database_url: str, directory: Path) -> list[int]:
     configs = [read_year(path) for path in year_files(directory)]
-    engine = create_async_engine(database_url)
+    engine = create_engine(database_url)
     try:
         async with engine.begin() as connection:
             for config in configs:
