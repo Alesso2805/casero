@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Navigate, useParams } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -144,24 +144,37 @@ const paymentSchema = z.object({
 });
 
 type PaymentValues = z.input<typeof paymentSchema>;
-type Saved = { kind: "saved"; bankThreshold: number | null } | { kind: "refused"; detail: string };
+interface Notice {
+  bankThreshold: number | null;
+  beforeControl: boolean;
+}
+type Saved =
+  | ({ kind: "saved" } & Notice)
+  | { kind: "refused"; detail: string }
+  | { kind: "conflict" }
+  | { kind: "login" };
 
 const RECEIPT_ERRORS: Record<string, string> = {
   received_in_future: text.errors.receivedInFuture,
-  received_before_control: text.errors.receivedBeforeControl,
+  received_before_2026: text.errors.receivedBefore2026,
 };
 
 function PaymentForm({
   leaseId,
+  paymentId,
   onSaved,
+  onConflict,
   onCancel,
 }: {
   leaseId: string;
-  onSaved: (threshold: number | null) => void;
+  paymentId: string;
+  onSaved: (notice: Notice) => void;
+  onConflict: () => void;
   onCancel: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [paymentId] = useState(uuidv7);
+  const navigate = useNavigate();
+  const [conflict, setConflict] = useState(false);
   const {
     register,
     handleSubmit,
@@ -173,7 +186,7 @@ function PaymentForm({
   });
   const mutation = useMutation({
     mutationFn: async (values: PaymentValues): Promise<Saved> => {
-      const { data, error } = await api.POST("/api/app/leases/{lease_id}/payments", {
+      const { data, error, response } = await api.POST("/api/app/leases/{lease_id}/payments", {
         params: { path: { lease_id: leaseId } },
         body: {
           id: paymentId,
@@ -184,7 +197,17 @@ function PaymentForm({
         },
       });
       if (data) {
-        return { kind: "saved", bankThreshold: data.bank_threshold_cents };
+        return {
+          kind: "saved",
+          bankThreshold: data.bank_threshold_cents,
+          beforeControl: data.before_control,
+        };
+      }
+      if (response.status === 401) {
+        return { kind: "login" };
+      }
+      if (response.status === 409) {
+        return { kind: "conflict" };
       }
       const detail = (error as { detail?: unknown } | undefined)?.detail;
       if (typeof detail === "string" && Object.hasOwn(RECEIPT_ERRORS, detail)) {
@@ -192,13 +215,23 @@ function PaymentForm({
       }
       throw new Error("Payment not saved");
     },
-    onSuccess: async (result) => {
-      if (result.kind === "refused") {
-        setError("receivedOn", { message: RECEIPT_ERRORS[result.detail] ?? text.errors.failure });
-        return;
+    // A lost response may hide a saved payment, so the list reloads whatever happened.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["statement", leaseId] }),
+    onSuccess: (result) => {
+      switch (result.kind) {
+        case "saved":
+          onSaved({ bankThreshold: result.bankThreshold, beforeControl: result.beforeControl });
+          return;
+        case "refused":
+          setError("receivedOn", { message: RECEIPT_ERRORS[result.detail] ?? text.errors.failure });
+          return;
+        case "conflict":
+          setConflict(true);
+          onConflict();
+          return;
+        case "login":
+          void navigate({ to: "/ingresar" });
       }
-      await queryClient.invalidateQueries({ queryKey: ["statement", leaseId] });
-      onSaved(result.bankThreshold);
     },
   });
   return (
@@ -208,6 +241,7 @@ function PaymentForm({
       className="flex flex-col gap-4 rounded-lg border border-stone-300 p-4"
       onSubmit={(event) => {
         void handleSubmit((values) => {
+          setConflict(false);
           mutation.mutate(values);
         })(event);
       }}
@@ -256,6 +290,11 @@ function PaymentForm({
           {text.errors.failure}
         </p>
       )}
+      {conflict && (
+        <p role="alert" className="text-red-800">
+          {text.payment.conflict}
+        </p>
+      )}
       <button type="submit" disabled={mutation.isPending} className={primaryButton}>
         {mutation.isPending ? text.payment.sending : text.payment.submit}
       </button>
@@ -268,19 +307,29 @@ function PaymentForm({
 
 function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: string }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
   const mutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.POST("/api/app/payments/{payment_id}/void", {
+      const { data, response } = await api.POST("/api/app/payments/{payment_id}/void", {
         params: { path: { payment_id: payment.id } },
         body: { reason: reason.trim() },
       });
+      if (response.status === 401) {
+        return "login";
+      }
       if (!data) {
         throw new Error("Payment not voided");
       }
+      return "voided";
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["statement", leaseId] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["statement", leaseId] }),
+    onSuccess: (result) => {
+      if (result === "login") {
+        void navigate({ to: "/ingresar" });
+      }
+    },
   });
   const reasonId = `void-reason-${payment.id}`;
   return (
@@ -357,8 +406,10 @@ export function LeasePage() {
   const leases = useQuery({ queryKey: ["leases"], queryFn: fetchLeases });
   const renters = useQuery({ queryKey: ["renters"], queryFn: fetchRenters });
   const properties = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
+  // Kept until a save is confirmed: reopening after a lost response replays the same payment.
+  const [draftId, setDraftId] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
-  const [notice, setNotice] = useState<{ bankThreshold: number | null } | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   if (statement.data?.kind === "login") {
     return <Navigate to="/ingresar" />;
@@ -400,14 +451,22 @@ export function LeasePage() {
                   {text.payment.bank(formatSoles(notice.bankThreshold))}
                 </p>
               )}
+              {notice.beforeControl && (
+                <p className="text-amber-900">{text.payment.beforeControl}</p>
+              )}
             </div>
           )}
-          {recording ? (
+          {recording && draftId !== null ? (
             <PaymentForm
               leaseId={leaseId}
-              onSaved={(bankThreshold) => {
+              paymentId={draftId}
+              onSaved={(saved) => {
                 setRecording(false);
-                setNotice({ bankThreshold });
+                setDraftId(null);
+                setNotice(saved);
+              }}
+              onConflict={() => {
+                setDraftId(uuidv7());
               }}
               onCancel={() => {
                 setRecording(false);
@@ -419,6 +478,7 @@ export function LeasePage() {
               className={primaryButton}
               onClick={() => {
                 setNotice(null);
+                setDraftId((id) => id ?? uuidv7());
                 setRecording(true);
               }}
             >

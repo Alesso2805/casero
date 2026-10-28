@@ -433,6 +433,7 @@ describe("lease page", () => {
             method: "cash",
             note: null,
             bank_threshold_cents: 200000,
+            before_control: false,
           },
           201,
         ),
@@ -446,6 +447,7 @@ describe("lease page", () => {
 
     expect(await screen.findByText("Listo, guardamos el pago.")).toBeDefined();
     expect(screen.getByText(/Para alquileres desde S\/ 2,000.00 la ley exige/)).toBeDefined();
+    expect(screen.queryByText(/anterior al mes desde el que llevas el control/)).toBeNull();
     const [request] = api.requestsTo(PAYMENTS_PATH);
     expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
     const body = (await request?.json()) as Record<string, unknown>;
@@ -464,7 +466,7 @@ describe("lease page", () => {
 
   test("asks how the renter paid and shows a refused date on its field", async () => {
     const api = mockLease({
-      [PAYMENTS_PATH]: () => json({ detail: "received_before_control" }, 422),
+      [PAYMENTS_PATH]: () => json({ detail: "received_before_2026" }, 422),
     });
     await renderPage(`/app/contratos/${LEASE.id}`);
 
@@ -476,12 +478,96 @@ describe("lease page", () => {
     expect(api.requestsTo(PAYMENTS_PATH)).toHaveLength(0);
     await userEvent.selectOptions(screen.getByLabelText("¿Cómo te pagó?"), "Yape");
     fireEvent.change(screen.getByLabelText(/Fecha en que recibiste el dinero/), {
-      target: { value: "2026-08-31" },
+      target: { value: "2025-12-31" },
     });
     await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
 
-    expect(await screen.findByText(/anterior al mes desde el que llevas el control/)).toBeDefined();
+    expect(await screen.findByText(/no puede ser anterior al 1 de enero de 2026/)).toBeDefined();
     expect(screen.queryByText("Listo, guardamos el pago.")).toBeNull();
+  });
+
+  async function fillPayment(amount = "800") {
+    await userEvent.type(screen.getByLabelText("Monto recibido en soles"), amount);
+    await userEvent.selectOptions(screen.getByLabelText("¿Cómo te pagó?"), "Yape");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
+  }
+
+  async function sentIds(requests: Request[]) {
+    return Promise.all(
+      requests.map(async (request) => ((await request.json()) as { id: string }).id),
+    );
+  }
+
+  const SAVED = { ...PAYMENT, amount_cents: 80000, note: null, bank_threshold_cents: null };
+
+  test("warns when the payment was collected before the control month", async () => {
+    mockLease({ [PAYMENTS_PATH]: () => json({ ...SAVED, before_control: true }, 201) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await fillPayment();
+
+    expect(await screen.findByText(/anterior al mes desde el que llevas el control/)).toBeDefined();
+  });
+
+  test("a lost response keeps the payment's id when the form is opened again", async () => {
+    let calls = 0;
+    const api = mockLease({
+      [PAYMENTS_PATH]: () => {
+        calls += 1;
+        if (calls === 1) {
+          throw new TypeError("Failed to fetch");
+        }
+        return json({ ...SAVED, before_control: false });
+      },
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await fillPayment();
+    expect(await screen.findByText(/Algo salió mal/)).toBeDefined();
+    await vi.waitFor(() => {
+      expect(api.requestsTo(STATEMENT_PATH)).toHaveLength(2);
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await fillPayment();
+
+    expect(await screen.findByText("Listo, guardamos el pago.")).toBeDefined();
+    const [first, second] = await sentIds(api.requestsTo(PAYMENTS_PATH));
+    expect(second).toBe(first);
+  });
+
+  test("a payment already saved with other data asks to check the list", async () => {
+    let calls = 0;
+    const api = mockLease({
+      [PAYMENTS_PATH]: () => {
+        calls += 1;
+        return calls === 1
+          ? json({ detail: "Conflict" }, 409)
+          : json({ ...SAVED, before_control: false }, 201);
+      },
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await fillPayment();
+    expect(await screen.findByText(/ya se había guardado con otros datos/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar pago" }));
+
+    expect(await screen.findByText("Listo, guardamos el pago.")).toBeDefined();
+    const [first, second] = await sentIds(api.requestsTo(PAYMENTS_PATH));
+    expect(second).not.toBe(first);
+  });
+
+  test("an expired session while saving goes to the login", async () => {
+    mockLease({ [PAYMENTS_PATH]: () => new Response(null, { status: 401 }) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Registrar pago" }));
+    await fillPayment();
+
+    expect(await screen.findByRole("heading", { name: "Ingresa a Casero" })).toBeDefined();
   });
 
   test("voids a payment with its reason", async () => {
