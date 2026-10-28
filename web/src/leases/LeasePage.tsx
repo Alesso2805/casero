@@ -1,11 +1,17 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { primaryButton, secondaryButton, SelectField, TextField } from "../account/fields";
+import {
+  primaryButton,
+  secondaryButton,
+  SelectField,
+  TextField,
+  textLink,
+} from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
@@ -179,11 +185,15 @@ function PaymentForm({
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm<PaymentValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: { amount: "", receivedOn: limaToday(), note: "" },
   });
+  useEffect(() => {
+    setFocus("amount");
+  }, [setFocus]);
   const mutation = useMutation({
     mutationFn: async (values: PaymentValues): Promise<Saved> => {
       const { data, error, response } = await api.POST("/api/app/leases/{lease_id}/payments", {
@@ -310,6 +320,7 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
   const navigate = useNavigate();
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
+  const row = useRef<HTMLLIElement>(null);
   const mutation = useMutation({
     mutationFn: async () => {
       const { data, response } = await api.POST("/api/app/payments/{payment_id}/void", {
@@ -328,12 +339,14 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
     onSuccess: (result) => {
       if (result === "login") {
         void navigate({ to: "/ingresar" });
+        return;
       }
+      row.current?.focus();
     },
   });
   const reasonId = `void-reason-${payment.id}`;
   return (
-    <li className={`${itemClass(payment.voided)} gap-2`}>
+    <li ref={row} tabIndex={-1} className={`${itemClass(payment.voided)} gap-2`}>
       <div className="flex justify-between gap-3">
         <span>{formatDay(payment.received_on)}</span>
         <span className="font-semibold">{formatSoles(payment.amount_cents)}</span>
@@ -410,6 +423,10 @@ export function LeasePage() {
   const [draftId, setDraftId] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const noticeBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    noticeBox.current?.focus();
+  }, [notice]);
 
   if (statement.data?.kind === "login") {
     return <Navigate to="/ingresar" />;
@@ -439,12 +456,18 @@ export function LeasePage() {
         </p>
       )}
       {statement.data?.kind === "paused" && <p role="alert">{text.errors.paused}</p>}
-      {statement.data?.kind === "missing" && <p role="alert">{text.errors.failure}</p>}
+      {statement.isPending && <p role="status">{text.lease.loading}</p>}
+      {statement.data?.kind === "missing" && <p role="alert">{text.lease.missing}</p>}
       {statement.data?.kind === "statement" && (
         <>
           <Summary statement={statement.data.statement} />
           {notice && (
-            <div role="status" className="flex flex-col gap-2 rounded-lg bg-stone-100 p-4">
+            <div
+              ref={noticeBox}
+              role="status"
+              tabIndex={-1}
+              className="flex flex-col gap-2 rounded-lg bg-stone-100 p-4"
+            >
               <p>{text.payment.saved}</p>
               {notice.bankThreshold !== null && (
                 <p className="text-amber-900">
@@ -507,7 +530,7 @@ export function LeasePage() {
           </section>
         </>
       )}
-      <Link to="/app/contratos" className="text-brand underline">
+      <Link to="/app/contratos" className={textLink}>
         {text.lease.back}
       </Link>
     </div>

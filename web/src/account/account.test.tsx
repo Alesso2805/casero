@@ -173,6 +173,13 @@ describe("account home", () => {
     );
   });
 
+  test("says when the account could not be loaded", async () => {
+    mockApi({ "/api/app/me": 500 });
+    await renderPage("/app");
+
+    expect(await screen.findByText(/No pudimos cargar tu cuenta/)).toBeDefined();
+  });
+
   test("sends a signed-out visitor to the login and logs out", async () => {
     mockApi({ "/api/app/me": 401 });
     await renderPage("/app");

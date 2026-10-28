@@ -3,6 +3,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 
 import { api } from "../api/client";
 import { PublicFooter } from "./PublicFooter";
+import { textLink } from "../account/fields";
 
 type EmailKind = "daily_digest" | "tax_reminders";
 type Outcome = "done" | "invalid";
@@ -82,7 +83,7 @@ export function UnsubscribePage() {
           </button>
         </>
       )}
-      <Link to="/" className="text-brand underline">
+      <Link to="/" className={textLink}>
         {text.back}
       </Link>
       <PublicFooter />

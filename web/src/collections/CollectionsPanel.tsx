@@ -109,7 +109,10 @@ export function CollectionsPanel() {
       </p>
     );
   }
-  if (loaded.data?.kind !== "collections") {
+  if (loaded.isPending) {
+    return <p role="status">{text.loading}</p>;
+  }
+  if (loaded.data.kind !== "collections") {
     return null;
   }
   const { leases, due_by_month_end_cents, overdue_cents } = loaded.data.collections;

@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { accountCopy as text } from "./copy";
-import { primaryButton, secondaryButton } from "./fields";
+import { primaryButton, secondaryButton, textLink } from "./fields";
 
 type Me = components["schemas"]["MeResponse"];
 
@@ -86,20 +86,30 @@ export function AppHome() {
     return <Navigate to="/ingresar" />;
   }
   if (!me.data) {
-    return null;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10 text-base">
+        {me.isError ? (
+          <p role="alert" className="text-red-800">
+            {text.home.failure}
+          </p>
+        ) : (
+          <p role="status">{text.home.loading}</p>
+        )}
+      </div>
+    );
   }
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
       <CollectionsPanel />
-      <Link to="/app/inmuebles" className="text-brand underline">
+      <Link to="/app/inmuebles" className={textLink}>
         {text.home.properties}
       </Link>
-      <Link to="/app/contratos" className="text-brand underline">
+      <Link to="/app/contratos" className={textLink}>
         {text.home.leases}
       </Link>
-      <Link to="/app/mis-datos" className="text-brand underline">
+      <Link to="/app/mis-datos" className={textLink}>
         {text.home.profile}
       </Link>
       <div className="flex flex-col gap-3 sm:flex-row">

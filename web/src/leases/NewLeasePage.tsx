@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { ErrorText, primaryButton, SelectField, TextField } from "../account/fields";
+import { ErrorText, primaryButton, SelectField, TextField, textLink } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { parseSolesToCents } from "../landing/money";
@@ -246,7 +246,7 @@ function NewLeaseForm({
     return (
       <div className="flex flex-col gap-4">
         <p>{text.form.noUnits}</p>
-        <Link to="/app/inmuebles/nuevo" className="text-brand underline">
+        <Link to="/app/inmuebles/nuevo" className={textLink}>
           {text.form.addProperty}
         </Link>
       </div>
@@ -487,7 +487,7 @@ export function NewLeasePage() {
             leases={leases.data.data}
           />
         )}
-      <Link to="/app/contratos" className="text-brand underline">
+      <Link to="/app/contratos" className={textLink}>
         {text.form.cancel}
       </Link>
     </div>

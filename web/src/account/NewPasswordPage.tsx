@@ -7,7 +7,7 @@ import { z } from "zod";
 import { api } from "../api/client";
 import { PublicFooter } from "../landing/PublicFooter";
 import { accountCopy as text } from "./copy";
-import { PasswordField, primaryButton } from "./fields";
+import { PasswordField, primaryButton, textLink } from "./fields";
 import { hashToken } from "./hashToken";
 
 const MIN_PASSWORD_LENGTH = 10;
@@ -55,7 +55,7 @@ export function NewPasswordPage() {
     body = (
       <>
         <p role="alert">{text.newPassword.invalid}</p>
-        <Link to="/recuperar" className="text-brand underline">
+        <Link to="/recuperar" className={textLink}>
           {text.newPassword.askAgain}
         </Link>
       </>

@@ -3,7 +3,7 @@ import { Link, Navigate } from "@tanstack/react-router";
 
 import { api } from "../api/client";
 import type { components } from "../api/schema";
-import { primaryButton } from "../account/fields";
+import { primaryButton, textLink } from "../account/fields";
 import { propertiesCopy as text } from "./copy";
 
 type Property = components["schemas"]["PropertyResponse"];
@@ -98,7 +98,7 @@ export function PropertiesPage() {
           )}
         </>
       )}
-      <Link to="/app" className="text-brand underline">
+      <Link to="/app" className={textLink}>
         {text.list.back}
       </Link>
     </div>

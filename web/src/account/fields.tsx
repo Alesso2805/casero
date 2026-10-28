@@ -7,6 +7,8 @@ const inputClass = "min-h-11 w-full rounded-lg border border-stone-400 px-3 text
 
 export const primaryButton =
   "min-h-11 rounded-lg bg-brand px-5 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
+// Standalone links get a 44 px target; links inside a sentence keep the text's height.
+export const textLink = "inline-flex min-h-11 items-center text-brand underline";
 export const secondaryButton =
   "min-h-11 rounded-lg border border-brand px-5 text-base font-semibold text-brand disabled:opacity-60";
 

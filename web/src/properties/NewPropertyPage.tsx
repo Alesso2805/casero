@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useFieldArray, useForm } from "react-hook-form";
 
 import { fetchProfile } from "../account/ProfilePage";
-import { ErrorText, primaryButton, secondaryButton } from "../account/fields";
+import { ErrorText, primaryButton, secondaryButton, textLink } from "../account/fields";
 import { api } from "../api/client";
 import { propertiesCopy as text } from "./copy";
 import {
@@ -155,7 +155,7 @@ export function NewPropertyPage() {
       {profile.data?.kind === "profile" && (
         <NewPropertyForm estateAccount={profile.data.profile.taxpayer_kind === "estate"} />
       )}
-      <Link to="/app/inmuebles" className="text-brand underline">
+      <Link to="/app/inmuebles" className={textLink}>
         {text.form.cancel}
       </Link>
     </div>
