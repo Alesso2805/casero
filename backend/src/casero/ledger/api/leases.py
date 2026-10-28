@@ -136,7 +136,8 @@ def create_router(
                 " detail), `plan_limit`, `unit_archived` or `unit_occupied`"
             },
             422: {
-                "description": "Invalid data, `end_before_start`, `control_period_out_of_range`"
+                "description": "Invalid data, `end_before_start`, `control_period_out_of_range`,"
+                " `end_before_control`, `balance_pre_2026_without_months`"
                 " or `balance_2026_without_months`"
             },
         },

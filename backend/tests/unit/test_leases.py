@@ -76,7 +76,15 @@ def test_the_default_control_month_is_always_allowed(start: date) -> None:
             OpeningBalances(None, 50_000),
             "balance_2026_without_months",
         ),
-        (terms(), OpeningBalances(120_000, 50_000), None),
+        (terms(end_date=date(2026, 9, 30)), NO_BALANCES, "end_before_control"),
+        (terms(), OpeningBalances(120_000, None), "balance_pre_2026_without_months"),
+        (
+            terms(start_date=date(2026, 10, 1)),
+            OpeningBalances(None, 50_000),
+            "balance_2026_without_months",
+        ),
+        (terms(start_date=date(2025, 6, 1)), OpeningBalances(120_000, 50_000), None),
+        (terms(), OpeningBalances(None, 50_000), None),
     ],
 )
 def test_lease_problems(lease: LeaseTerms, opening: OpeningBalances, problem: str | None) -> None:

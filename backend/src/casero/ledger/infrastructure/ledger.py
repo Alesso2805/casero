@@ -12,6 +12,7 @@ from casero.ledger.domain.charges import RentChange
 from casero.shared.kernel.periods import Period
 
 LEASE = text("SELECT id, control_from_period FROM leases WHERE id = :lease_id")
+LOCK_LEASE = text("SELECT id FROM leases WHERE id = :lease_id FOR UPDATE")
 LEASES = text("SELECT id, ended_at IS NOT NULL AS ended FROM leases")
 RENT_CHANGES = text(
     "SELECT id, monthly_rent_cents, effective_period, created_at FROM lease_rent_changes"
@@ -68,6 +69,10 @@ class SqlLedger:
 
     def __init__(self, connection: AsyncConnection) -> None:
         self._connection = connection
+
+    async def lock_lease(self, lease_id: UUID) -> bool:
+        locked = await self._connection.execute(LOCK_LEASE, {"lease_id": lease_id})
+        return locked.first() is not None
 
     async def lease_ledger(self, lease_id: UUID) -> LeaseLedger | None:
         scope = {"lease_id": lease_id}

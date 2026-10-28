@@ -7,7 +7,11 @@ from casero.shared.kernel.periods import FIRST_CONTROL_PERIOD, Period
 
 TaxTreatment = Literal["standard", "company_tenant", "unsupported"]
 LeaseProblem = Literal[
-    "end_before_start", "control_period_out_of_range", "balance_2026_without_months"
+    "end_before_start",
+    "control_period_out_of_range",
+    "end_before_control",
+    "balance_pre_2026_without_months",
+    "balance_2026_without_months",
 ]
 
 END_NOTICE_DAYS = 15
@@ -45,7 +49,12 @@ def lease_problem(terms: LeaseTerms, opening: OpeningBalances, today: date) -> L
     low, high = control_period_range(terms.start_date, today)
     if not low <= terms.control_from <= high:
         return "control_period_out_of_range"
-    if opening.from_2026_cents and terms.control_from <= FIRST_CONTROL_PERIOD:
+    if terms.end_date is not None and terms.end_date < terms.control_from.first_day():
+        return "end_before_control"
+    if opening.pre_2026_cents and terms.start_date >= FIRST_CONTROL_PERIOD.first_day():
+        return "balance_pre_2026_without_months"
+    first_debt_period = max(Period.of(terms.start_date), FIRST_CONTROL_PERIOD)
+    if opening.from_2026_cents and first_debt_period >= terms.control_from:
         return "balance_2026_without_months"
     return None
 
