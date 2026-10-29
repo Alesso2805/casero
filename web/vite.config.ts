@@ -45,5 +45,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["src/test/setup.ts"],
+    // userEvent typing is slow under parallel load; 5 s timed out locally with 20 workers.
+    testTimeout: 15_000,
   },
 });

@@ -418,6 +418,13 @@ export function LeaseActions({
   onDone: (message: string) => void;
 }) {
   const [open, setOpen] = useState<Action | null>(null);
+  const returnTo = useRef<Action | null>(null);
+  useEffect(() => {
+    if (open === null && returnTo.current) {
+      document.getElementById(`lease-action-${returnTo.current}`)?.focus();
+      returnTo.current = null;
+    }
+  }, [open]);
   const eras = priorDebtEras(lease, statement.charges);
   const active = lease.ended_at === null;
   const done = (message: string) => {
@@ -425,6 +432,7 @@ export function LeaseActions({
     onDone(message);
   };
   const close = () => {
+    returnTo.current = open;
     setOpen(null);
   };
   const offered: { action: Action; label: string }[] = [
@@ -456,6 +464,7 @@ export function LeaseActions({
         offered.map(({ action, label }) => (
           <button
             key={action}
+            id={`lease-action-${action}`}
             type="button"
             className={secondaryButton}
             onClick={() => {

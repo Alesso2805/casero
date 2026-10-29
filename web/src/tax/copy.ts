@@ -46,7 +46,9 @@ export const taxCopy = {
     oldDebt: (amount: string) =>
       `Además cobraste ${amount} de deuda de 2025 o antes. No va en este formulario porque ese alquiler ya se gravó cuando venció; revísalo con tu contador.`,
     copy: "Copiar",
-    copyLabel: (field: string) => `Copiar ${field.toLowerCase()}`,
+    // Acronyms like RUC keep their capitals; other labels read in lower case after "Copiar".
+    copyLabel: (field: string) =>
+      `Copiar ${/^\p{Lu}{2}/u.test(field) ? field : field.charAt(0).toLowerCase() + field.slice(1)}`,
     copied: (field: string) => `${field} copiado.`,
   },
   complete: {

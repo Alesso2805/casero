@@ -60,7 +60,7 @@ export function WhatsAppButton({ leaseId, renterName }: { leaseId: string; rente
       <button
         type="button"
         className={secondaryButton}
-        aria-label={text.sendTo(renterName)}
+        aria-label={sending ? undefined : text.sendTo(renterName)}
         disabled={sending}
         onClick={() => {
           void send();
