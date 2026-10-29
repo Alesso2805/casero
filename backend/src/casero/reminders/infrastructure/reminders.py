@@ -17,6 +17,12 @@ ADD_RENT_REMINDER = text(
     " VALUES (:id, :account_id, 'rent', :charge_id, :renter_id, 'whatsapp_link', :created_at)"
 )
 
+LAST_RENT_REMINDERS = text(
+    "SELECT c.lease_id, max(g.created_at) AS sent_at FROM reminder_logs g"
+    " JOIN charges c ON c.account_id = g.account_id AND c.id = g.charge_id"
+    " WHERE g.kind = 'rent' GROUP BY c.lease_id"
+)
+
 
 class SqlRecipientStore:
     def __init__(self, connection: AsyncConnection) -> None:
@@ -46,3 +52,7 @@ class SqlReminderLog:
                 "created_at": at,
             },
         )
+
+    async def last_rent_reminders(self) -> dict[UUID, datetime]:
+        rows = await self._connection.execute(LAST_RENT_REMINDERS)
+        return {row.lease_id: row.sent_at for row in rows}

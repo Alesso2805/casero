@@ -17,6 +17,8 @@ export const collectionsCopy = {
   inFavor: (amount: string) => `Tiene ${amount} a favor`,
   nothingDue: "Sin cobros pendientes",
   ended: "Contrato terminado",
+  reminded: (days: number) =>
+    days === 0 ? "Recordado hoy" : days === 1 ? "Recordado ayer" : `Recordado hace ${String(days)} días`,
   empty: "Cuando registres un contrato, aquí verás quién te debe y cuánto.",
   addLease: "Registrar un contrato",
   failure: "No pudimos cargar tus cobros. Vuelve a intentarlo en unos minutos.",

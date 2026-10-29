@@ -941,6 +941,31 @@
         "title": "JoinWaitlistRequest",
         "type": "object"
       },
+      "LastReminderResponse": {
+        "properties": {
+          "days_ago": {
+            "title": "Days Ago",
+            "type": "integer"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "sent_on": {
+            "format": "date",
+            "title": "Sent On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lease_id",
+          "sent_on",
+          "days_ago"
+        ],
+        "title": "LastReminderResponse",
+        "type": "object"
+      },
       "LeaseCollectionResponse": {
         "properties": {
           "balance_cents": {
@@ -4368,6 +4393,35 @@
           }
         },
         "summary": "Archive Unit"
+      }
+    },
+    "/api/app/whatsapp-reminders": {
+      "get": {
+        "description": "When each lease was last reminded, for \"recordado hace N d\u00edas\".",
+        "operationId": "last_reminders_api_app_whatsapp_reminders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LastReminderResponse"
+                  },
+                  "title": "Response Last Reminders Api App Whatsapp Reminders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "Last Reminders"
       }
     },
     "/api/health": {

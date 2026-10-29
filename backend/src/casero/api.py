@@ -179,6 +179,7 @@ from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.reminders.api import reminders as reminders_api
 from casero.reminders.api import templates as templates_api
 from casero.reminders.application.reminders import (
+    ListLastReminders,
     PrepareReminder,
     RecipientStore,
     ReminderLog,
@@ -835,7 +836,15 @@ def create_app(
             app_clock,
         )
 
-    app.include_router(reminders_api.create_router(current_account, provide_prepare_reminder))
+    async def provide_last_reminders(connection: Transaction) -> ListLastReminders:
+        log: ReminderLog = SqlReminderLog(connection)
+        return ListLastReminders(log, app_clock)
+
+    app.include_router(
+        reminders_api.create_router(
+            current_account, provide_prepare_reminder, provide_last_reminders
+        )
+    )
 
     async def provide_declarations(
         connection: Transaction,

@@ -92,10 +92,11 @@ const COLLECTIONS = {
   ],
 };
 
-function mockHome(collections: unknown = COLLECTIONS) {
+function mockHome(collections: unknown = COLLECTIONS, reminders: unknown[] = []) {
   return mockApi({
     "/api/app/me": () => json(ME),
     "/api/app/collections": () => json(collections),
+    "/api/app/whatsapp-reminders": () => json(reminders),
     "/api/app/leases": () => json(LEASES),
     "/api/app/renters": () => json(RENTERS),
     "/api/app/properties": () => json([PROPERTY]),
@@ -131,6 +132,21 @@ describe("collections panel", () => {
     expect(screen.queryByRole("region", { name: "Vencen hoy" })).toBeNull();
   });
 
+  test("says when each lease that owes was last reminded", async () => {
+    mockHome(COLLECTIONS, [
+      { lease_id: LEASES[0]?.id, sent_on: "2026-10-27", days_ago: 0 },
+      { lease_id: LEASES[1]?.id, sent_on: "2026-10-26", days_ago: 1 },
+      { lease_id: LEASES[2]?.id, sent_on: "2026-10-20", days_ago: 7 },
+    ]);
+    await renderPage("/app");
+
+    const overdue = within(await screen.findByRole("region", { name: "Atrasados" }));
+    expect(await overdue.findByText("Recordado hoy")).toBeDefined();
+    expect(overdue.getByText("Recordado hace 7 días")).toBeDefined();
+    expect(within(screen.getByRole("region", { name: "Por vencer" })).getByText("Recordado ayer"))
+      .toBeDefined();
+  });
+
   test("tells due today, the next charge and money in favor apart", async () => {
     const [first, second, third] = COLLECTIONS.leases;
     mockHome({
@@ -161,6 +177,7 @@ describe("collections panel", () => {
     mockApi({
       "/api/app/me": () => json(ME),
       "/api/app/collections": () => json(COLLECTIONS),
+      "/api/app/whatsapp-reminders": () => json([]),
       "/api/app/leases": () => json(LEASES),
       "/api/app/renters": () => json(RENTERS),
       "/api/app/properties": () => json([PROPERTY]),

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
@@ -16,7 +16,7 @@ from casero.reminders.domain.messages import (
     uses_link,
     whatsapp_url,
 )
-from casero.shared.kernel.clock import Clock
+from casero.shared.kernel.clock import LIMA, Clock
 from casero.shared.kernel.money import format_soles
 
 UNPAID = ("overdue", "due_today", "due_soon", "pending")
@@ -46,6 +46,10 @@ class ReminderLog(Protocol):
     async def add_rent(
         self, account_id: UUID, charge_id: UUID, renter_id: UUID, at: datetime
     ) -> None: ...
+
+    async def last_rent_reminders(self) -> dict[UUID, datetime]:
+        """When each lease was last reminded by WhatsApp."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -119,3 +123,26 @@ class PrepareReminder:
         return PreparedReminder(
             kind, line.charge.id, message, whatsapp_url(recipient.phone_e164, message)
         )
+
+
+@dataclass(frozen=True)
+class LastReminder:
+    lease_id: UUID
+    sent_on: date
+    days_ago: int
+
+
+@dataclass(frozen=True)
+class ListLastReminders:
+    """For "recordado hace N días" in the panel (SPEC), in days of Lima."""
+
+    log: ReminderLog
+    clock: Clock
+
+    async def __call__(self) -> list[LastReminder]:
+        today = self.clock.today_lima()
+        reminders = []
+        for lease_id, at in (await self.log.last_rent_reminders()).items():
+            sent_on = at.astimezone(LIMA).date()
+            reminders.append(LastReminder(lease_id, sent_on, (today - sent_on).days))
+        return reminders
