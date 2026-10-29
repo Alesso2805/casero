@@ -176,6 +176,9 @@ from casero.properties.application.properties import (
     UpdateUnit,
 )
 from casero.properties.infrastructure.properties import SqlPropertyStore
+from casero.reminders.api import templates as templates_api
+from casero.reminders.application.templates import ListTemplates, SaveTemplate, TemplateStore
+from casero.reminders.infrastructure.templates import SqlTemplateStore
 from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import Transaction, create_engine, database_answers
@@ -788,6 +791,19 @@ def create_app(
         return GetCollections(books, app_clock)
 
     app.include_router(collections_api.create_router(current_account, provide_collections))
+
+    async def provide_list_templates(connection: Transaction) -> ListTemplates:
+        store: TemplateStore = SqlTemplateStore(connection)
+        return ListTemplates(store)
+
+    async def provide_save_template(connection: Transaction) -> SaveTemplate:
+        store: TemplateStore = SqlTemplateStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return SaveTemplate(store, audit, app_clock)
+
+    app.include_router(
+        templates_api.create_router(current_account, provide_list_templates, provide_save_template)
+    )
 
     async def provide_declarations(
         connection: Transaction,

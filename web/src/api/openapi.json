@@ -2224,6 +2224,49 @@
         "title": "StatementResponse",
         "type": "object"
       },
+      "TemplateRequest": {
+        "properties": {
+          "body": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "TemplateRequest",
+        "type": "object"
+      },
+      "TemplateResponse": {
+        "properties": {
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "default_body": {
+            "title": "Default Body",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "friendly",
+              "due_today",
+              "overdue"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "body",
+          "default_body"
+        ],
+        "title": "TemplateResponse",
+        "type": "object"
+      },
       "TenantChargeResponse": {
         "properties": {
           "amount_cents": {
@@ -3551,6 +3594,89 @@
           }
         },
         "summary": "Me"
+      }
+    },
+    "/api/app/message-templates": {
+      "get": {
+        "description": "The three collection messages, edited or SPEC's default.",
+        "operationId": "list_templates_api_app_message_templates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateResponse"
+                  },
+                  "title": "Response List Templates Api App Message Templates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or the email is unverified past its deadline"
+          }
+        },
+        "summary": "List Templates"
+      }
+    },
+    "/api/app/message-templates/{kind}": {
+      "put": {
+        "description": "Replace one message; sending the default body restores it.",
+        "operationId": "save_template_api_app_message_templates__kind__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "friendly",
+                "due_today",
+                "overdue"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "422": {
+            "description": "Invalid data, or `unknown_variable` in the body"
+          }
+        },
+        "summary": "Save Template"
       }
     },
     "/api/app/payments/{payment_id}/void": {
