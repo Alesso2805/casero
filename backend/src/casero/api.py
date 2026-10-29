@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 import httpx2
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -193,6 +193,7 @@ from casero.tax.application.calculator import (
 )
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
+from casero.tenant_portal.api import portal as tenant_portal_api
 from casero.tenant_portal.application.links import (
     GetLink,
     IssueLink,
@@ -201,12 +202,20 @@ from casero.tenant_portal.application.links import (
     LinkStore,
     RevokeLink,
 )
+from casero.tenant_portal.application.portal import (
+    GetTenantStatement,
+    OpenPortal,
+    PortalReader,
+    TenantGate,
+)
 from casero.tenant_portal.infrastructure.links import HmacLinkSigner, SqlLinks
+from casero.tenant_portal.infrastructure.portal import SqlPortalReader, SqlTenantGate
 
 WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
 CLIENT_ERRORS_PER_HOUR = 30
+TENANT_PORTAL_PER_HOUR = 60
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
 PASSWORD_RESETS_PER_IP_PER_HOUR = 10
@@ -747,6 +756,27 @@ def create_app(
             current_account, provide_get_link, provide_issue_link, provide_revoke_link
         )
     )
+
+    async def tenant_access(
+        request: Request,
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+        x_tenant_token: Annotated[str, Header()] = "",
+    ) -> tenant_portal_api.TenantAccess:
+        limiter = PostgresRateLimiter(
+            connection, config.rate_limit_key, app_clock, "tenant-portal", TENANT_PORTAL_PER_HOUR
+        )
+        if not await limiter.allow(request.client.host if request.client else "unknown"):
+            return "too_many_requests"
+        gate: TenantGate = SqlTenantGate(connection)
+        return await OpenPortal(gate, entitlements, app_clock)(x_tenant_token)
+
+    async def provide_tenant_statement(connection: Transaction) -> GetTenantStatement:
+        reader: PortalReader = SqlPortalReader(connection)
+        ledger: LedgerStore = SqlLedger(connection)
+        return GetTenantStatement(reader, GetStatement(ledger, app_clock))
+
+    app.include_router(tenant_portal_api.create_router(tenant_access, provide_tenant_statement))
 
     async def provide_collections(
         connection: Transaction,

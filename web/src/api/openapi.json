@@ -2035,6 +2035,94 @@
         "title": "StatementResponse",
         "type": "object"
       },
+      "TenantChargeResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "rent",
+              "rent_correction",
+              "opening_balance",
+              "adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "outstanding_cents": {
+            "title": "Outstanding Cents",
+            "type": "integer"
+          },
+          "partial": {
+            "title": "Partial",
+            "type": "boolean"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "pre_2026": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre 2026"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "paid",
+                  "overdue",
+                  "due_today",
+                  "due_soon",
+                  "pending"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "period",
+          "pre_2026",
+          "amount_cents",
+          "due_date",
+          "outstanding_cents",
+          "status",
+          "partial",
+          "voided"
+        ],
+        "title": "TenantChargeResponse",
+        "type": "object"
+      },
       "TenantLinkResponse": {
         "properties": {
           "created_at": {
@@ -2085,6 +2173,90 @@
           "link"
         ],
         "title": "TenantLinkStatus",
+        "type": "object"
+      },
+      "TenantPaymentResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "amount_cents",
+          "received_on",
+          "method",
+          "voided"
+        ],
+        "title": "TenantPaymentResponse",
+        "type": "object"
+      },
+      "TenantStatementResponse": {
+        "description": "An explicit DTO: never the landlord's RUC, email or notes (CS-18).",
+        "properties": {
+          "balance_cents": {
+            "title": "Balance Cents",
+            "type": "integer"
+          },
+          "charges": {
+            "items": {
+              "$ref": "#/components/schemas/TenantChargeResponse"
+            },
+            "title": "Charges",
+            "type": "array"
+          },
+          "credit_cents": {
+            "title": "Credit Cents",
+            "type": "integer"
+          },
+          "landlord_name": {
+            "title": "Landlord Name",
+            "type": "string"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/TenantPaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "renter_name": {
+            "title": "Renter Name",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "up_to_date": {
+            "title": "Up To Date",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "landlord_name",
+          "renter_name",
+          "unit",
+          "balance_cents",
+          "credit_cents",
+          "up_to_date",
+          "charges",
+          "payments"
+        ],
+        "title": "TenantStatementResponse",
         "type": "object"
       },
       "TerminationRequest": {
@@ -4203,6 +4375,56 @@
           }
         },
         "summary": "Join Waitlist"
+      }
+    },
+    "/api/tenant/statement": {
+      "get": {
+        "description": "The tenant's balance and history, with the token in the X-Tenant-Token header.",
+        "operationId": "statement_api_tenant_statement_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-tenant-token",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "X-Tenant-Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantStatementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "description": "`portal_unavailable`: the plan or the lease lost the portal"
+          },
+          "404": {
+            "description": "`link_not_found`: unknown, revoked or expired link"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "description": "`too_many_requests` from this client"
+          }
+        },
+        "summary": "Statement"
       }
     }
   }

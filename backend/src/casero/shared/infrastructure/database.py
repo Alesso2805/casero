@@ -42,3 +42,14 @@ async def database_answers(engine: AsyncEngine) -> bool:
     except OSError, SQLAlchemyError, TimeoutError:
         return False
     return True
+
+
+SET_TENANT = text(
+    "SELECT set_config('app.account_id', :account_id, true),"
+    " set_config('app.context', 'tenant', true), set_config('app.lease_id', :lease_id, true)"
+)
+
+
+async def set_tenant_context(connection: AsyncConnection, account_id: UUID, lease_id: UUID) -> None:
+    """One statement scopes RLS to the tenant's lease until the transaction ends (rule 3)."""
+    await connection.execute(SET_TENANT, {"account_id": str(account_id), "lease_id": str(lease_id)})
