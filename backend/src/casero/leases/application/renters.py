@@ -4,12 +4,27 @@ from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.profile import Profiles
-from casero.leases.domain.renters import Document, Renter, RenterDetails
+from casero.leases.domain.renters import DocType, Document, Renter, RenterDetails
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.ids import new_id
 
 DETAIL_FIELDS = ("full_name", "phone_e164")
+
+
+@dataclass(frozen=True)
+class RenterDocument:
+    """A renter's document in clear, read only for the SUNAT form (CLAUDE.md, rule 8)."""
+
+    renter_id: UUID
+    full_name: str
+    doc_type: DocType | None
+    doc_hmac: bytes | None
+    number: str | None
+
+
+class RenterDocuments(Protocol):
+    async def documents(self) -> list[RenterDocument]: ...
 
 
 class RenterStore(Protocol):
