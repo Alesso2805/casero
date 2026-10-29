@@ -35,3 +35,7 @@ Reunidas al redactar los borradores de octubre de 2026. Cada una indica el docum
 ## Contratos de alquiler
 
 22. **Contrato vencido.** Si el inquilino sigue en el inmueble y pagando después de la fecha de fin, ¿el arrendamiento continúa (art. 1700 del Código Civil)? Hoy Casero cierra el contrato en su fecha de fin si el arrendador no la extiende. ¿Conviene, en cambio, dejarlo activo como "vencido" hasta que el arrendador lo termine?
+
+## Portal del inquilino
+
+23. **Aviso en el portal del inquilino.** ¿Basta este texto para cumplir el art. 18 de la Ley N.° 29733 cuando los datos del inquilino los registra el arrendador? "{arrendador} registró tu nombre y tus pagos de alquiler en Casero, una herramienta para llevar el control de los cobros. Se usan solo para eso: Casero los guarda por encargo de {arrendador} y no los comparte con nadie más. Para pedir que se corrijan o se borren, habla con {arrendador} o escribe a {correo de privacidad}." (CS-18)
