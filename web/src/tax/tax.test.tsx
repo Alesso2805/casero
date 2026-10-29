@@ -32,6 +32,14 @@ const ROSA = {
   base_cents: 30000,
   tax_cents: 1500,
 };
+const ROSA_RENTER = {
+  id: ROSA.renter_id,
+  full_name: "Rosa Huamán",
+  phone_e164: "+51987654321",
+  doc_type: null,
+  doc_last4: null,
+};
+const RENTERS = "/api/app/renters";
 const SEPTEMBER = {
   period: "2026-09",
   ruc: "20131312955",
@@ -87,6 +95,7 @@ describe("Formularios de SUNAT", () => {
 
   test("flags a tenant without a document, old debt, companies and cases it does not calculate", async () => {
     mockApi({
+      [RENTERS]: () => json([ROSA_RENTER]),
       [PATH]: () =>
         json({
           ...SEPTEMBER,
@@ -118,10 +127,61 @@ describe("Formularios de SUNAT", () => {
     const rosa = within(card("Rosa Huamán"));
     expect(rosa.getByText(/Falta el documento de Rosa Huamán/)).toBeDefined();
     expect(rosa.getAllByText("Falta tu RUC")).toHaveLength(1);
-    expect(rosa.queryByRole("button", { name: /documento/ })).toBeNull();
+    expect(rosa.queryByRole("button", { name: /Copiar número de documento/ })).toBeNull();
     expect(rosa.getByText(/Además cobraste S\/ 1,200.00 de deuda de 2025 o antes/)).toBeDefined();
     expect(screen.getByText("Luis Rojas: cobraste S/ 300.00.")).toBeDefined();
     expect(screen.getByText(/El alquiler de Casa de Surco está por debajo del mínimo/)).toBeDefined();
+  });
+
+  test("completes a tenant's document from the card", async () => {
+    let saved = false;
+    const api = mockApi({
+      [RENTERS]: () => json([ROSA_RENTER]),
+      [`${RENTERS}/${ROSA.renter_id}`]: () => {
+        saved = true;
+        return json({ ...ROSA_RENTER, doc_type: "ce", doc_last4: "4567" });
+      },
+      [PATH]: () =>
+        json({
+          ...SEPTEMBER,
+          declarations: [
+            saved ? { ...ROSA, doc_type: "ce", doc_number: "001234567", incomplete: false } : ROSA,
+          ],
+        }),
+    });
+    await renderPage("/app/impuestos");
+    const rosa = within(await screen.findByRole("form", { name: "Completa el documento de Rosa Huamán" }));
+
+    await userEvent.click(rosa.getByRole("button", { name: "Guardar documento" }));
+    expect(await rosa.findByText("Escribe el número del documento.")).toBeDefined();
+    await userEvent.selectOptions(rosa.getByLabelText("Tipo de documento"), "ce");
+    await userEvent.type(rosa.getByLabelText("Número del documento"), " 001234567 ");
+    await userEvent.click(rosa.getByRole("button", { name: "Guardar documento" }));
+
+    expect(await within(card("Rosa Huamán")).findByText("001234567")).toBeDefined();
+    expect(screen.queryByRole("form", { name: /Completa el documento/ })).toBeNull();
+    const request = api.requestsTo(`${RENTERS}/${ROSA.renter_id}`)[0];
+    expect(request?.method).toBe("PUT");
+    expect(await request?.json()).toEqual({
+      full_name: "Rosa Huamán",
+      phone: "+51987654321",
+      document: { doc_type: "ce", number: "001234567" },
+    });
+  });
+
+  test("says when another tenant already has that document", async () => {
+    mockApi({
+      [RENTERS]: () => json([ROSA_RENTER]),
+      [`${RENTERS}/${ROSA.renter_id}`]: () => json({ detail: "duplicate_document" }, 409),
+      [PATH]: () => json({ ...SEPTEMBER, declarations: [ROSA] }),
+    });
+    await renderPage("/app/impuestos");
+    const rosa = within(await screen.findByRole("form", { name: "Completa el documento de Rosa Huamán" }));
+
+    await userEvent.type(rosa.getByLabelText("Número del documento"), "45678912");
+    await userEvent.click(rosa.getByRole("button", { name: "Guardar documento" }));
+
+    expect(await rosa.findByText(/Ya registraste a otro inquilino con ese documento/)).toBeDefined();
   });
 
   test("says when the schedule is not published and when nothing was collected", async () => {
