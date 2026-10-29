@@ -139,7 +139,7 @@
             "type": "array"
           },
           "period": {
-            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "pattern": "^([0-9]{4})-(0[1-9]|1[0-2])$",
             "title": "Period",
             "type": "string"
           },

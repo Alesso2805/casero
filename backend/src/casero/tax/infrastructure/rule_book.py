@@ -3,7 +3,7 @@ from datetime import date
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from casero.tax.application.calculator import period_year
+from casero.shared.kernel.periods import Period
 from casero.tax.domain.rules import RucGroup, TaxRules
 
 RULES = text(
@@ -28,9 +28,9 @@ class SqlTaxRuleBook:
         rules = await self.rules_for(year)
         return None if rules is None else rules.cash_threshold_cents
 
-    async def due_date(self, period: str, group: RucGroup) -> date | None:
+    async def due_date(self, period: Period, group: RucGroup) -> date | None:
         result = await self._connection.execute(
-            DUE_DATE, {"period": period, "ruc_group": group, "year": period_year(period)}
+            DUE_DATE, {"period": str(period), "ruc_group": group, "year": period.year}
         )
         due: date | None = result.scalar_one_or_none()
         return due

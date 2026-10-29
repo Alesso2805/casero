@@ -9,6 +9,9 @@ from casero.shared.kernel.periods import Period
 
 ChargeKind = Literal["rent", "rent_correction", "opening_balance", "adjustment"]
 ChargeStatus = Literal["paid", "overdue", "due_today", "due_soon", "pending"]
+MovementKind = Literal["payment", "credit"]
+# Payments and credits are separate tables whose client-generated ids could repeat.
+type Source = tuple[MovementKind, UUID]
 DUE_SOON = timedelta(days=3)
 
 
@@ -49,6 +52,10 @@ class Movement:
     created_at: datetime
 
     @property
+    def source(self) -> Source:
+        return ("credit" if self.is_credit else "payment", self.id)
+
+    @property
     def order(self) -> tuple[date, bool, datetime, UUID]:
         # Same date: every payment before every credit, each group by (created_at, id).
         return (self.effective_on, self.is_credit, self.created_at, self.id)
@@ -57,15 +64,15 @@ class Movement:
 @dataclass(frozen=True)
 class Allocation:
     outstanding: dict[UUID, int]
-    covered: dict[tuple[UUID, UUID], int]
+    covered: dict[tuple[Source, UUID], int]
     unapplied_cents: int
     balance_cents: int
 
-    def covered_by(self, movement_id: UUID) -> dict[UUID, int]:
+    def covered_by(self, source: Source) -> dict[UUID, int]:
         return {
             charge: cents
-            for (movement, charge), cents in self.covered.items()
-            if movement == movement_id
+            for (covering, charge), cents in self.covered.items()
+            if covering == source
         }
 
 
@@ -109,7 +116,7 @@ def allocate(charges: list[Charge], payments: list[Payment]) -> Allocation:
         key=debit_order,
     )
     outstanding = {debit.id: debit.amount_cents for debit in debits}
-    covered: defaultdict[tuple[UUID, UUID], int] = defaultdict(int)
+    covered: defaultdict[tuple[Source, UUID], int] = defaultdict(int)
     unapplied = 0
     for move in movements(charges, payments):
         remaining = move.amount_cents
@@ -119,7 +126,7 @@ def allocate(charges: list[Charge], payments: list[Payment]) -> Allocation:
             take = min(remaining, outstanding[debit.id])
             if take:
                 outstanding[debit.id] -= take
-                covered[(move.id, debit.id)] += take
+                covered[(move.source, debit.id)] += take
                 remaining -= take
         unapplied += remaining
     balance = sum(c.amount_cents for c in charges if not c.voided) - sum(
@@ -139,3 +146,19 @@ def charge_status(due_date: date, outstanding_cents: int, today: date) -> Charge
     if due_date - today <= DUE_SOON:
         return "due_soon"
     return "pending"
+
+
+def paid_toward_old_debt(allocation: Allocation, charges: list[Charge]) -> dict[UUID, int]:
+    """What each payment paid of the debt from 2025 or before.
+
+    That debt was taxed when it accrued, so collecting it is not taxed again (SPEC,
+    "Deudas de 2025 o antes"). Credits are never money collected and are left out.
+    """
+    old_debt = {
+        c.id for c in charges if c.kind == "opening_balance" and c.pre_2026 and not c.voided
+    }
+    paid: defaultdict[UUID, int] = defaultdict(int)
+    for ((kind, movement_id), charge_id), cents in allocation.covered.items():
+        if kind == "payment" and charge_id in old_debt:
+            paid[movement_id] += cents
+    return dict(paid)
