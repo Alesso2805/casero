@@ -138,6 +138,13 @@ const declarationsRoute = createRoute({
   component: lazyRouteComponent(() => import("./tax/DeclarationsPage"), "DeclarationsPage"),
 });
 
+const templatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/mensajes",
+  staticData: { title: "Mensajes de cobro" },
+  component: lazyRouteComponent(() => import("./reminders/TemplatesPage"), "TemplatesPage"),
+});
+
 const tenantRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/i",
@@ -197,6 +204,7 @@ export const routeTree = rootRoute.addChildren([
   newLeaseRoute,
   leaseRoute,
   declarationsRoute,
+  templatesRoute,
   tenantRoute,
   verifyRoute,
   forgotRoute,
