@@ -4,9 +4,17 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
+from casero.leases.application.leases import (
+    LeaseProblem,
+    LeaseStore,
+    OpeningBalances,
+    lease_problem,
+    opening_balance_due,
+)
 from casero.ledger.domain.allocation import Charge
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
+from casero.shared.kernel.periods import Period
 
 CORRECTABLE_KINDS = ("rent", "rent_correction")
 
@@ -26,6 +34,14 @@ class NewAdjustment:
 
 
 @dataclass(frozen=True)
+class NewPriorDebt:
+    id: UUID
+    lease_id: UUID
+    pre_2026: bool
+    amount_cents: int
+
+
+@dataclass(frozen=True)
 class NewCorrection:
     id: UUID
     lease_id: UUID
@@ -39,6 +55,8 @@ class ChargeStore(Protocol):
     async def charge(self, charge_id: UUID) -> ChargeRecord | None: ...
 
     async def correction_of(self, charge_id: UUID) -> UUID | None: ...
+
+    async def valid_prior_debt(self, lease_id: UUID, pre_2026: bool) -> bool: ...
 
     async def add_charge(self, account_id: UUID, record: ChargeRecord, created_by: UUID) -> bool:
         """False when the id already exists, in this account or another (rule 5)."""
@@ -164,12 +182,66 @@ class CorrectRent:
 
 
 @dataclass(frozen=True)
-class VoidCharge:
-    """Voiding is idempotent: doing it again returns the voided charge (rule 5).
+class RecordPriorDebt:
+    """A prior debt entered after the lease, usually to replace a voided wrong one.
 
-    A prior debt is not voided here: its unique index counts voided rows too, so a wrong one
-    could not be entered again.
+    At most one valid prior debt per lease and era, checked under the lease lock (CS-31).
     """
+
+    leases: LeaseStore
+    store: ChargeStore
+    audit: AuditLog
+    clock: Clock
+
+    async def __call__(
+        self, context: AccountContext, new: NewPriorDebt
+    ) -> ChargeCreated | LeaseProblem | Literal["lease_not_found", "conflict", "prior_debt_exists"]:
+        if not await self.store.lock_lease(new.lease_id):
+            return "lease_not_found"
+        existing = await self.store.charge(new.id)
+        if existing is not None:
+            matches = (
+                existing.lease_id,
+                existing.charge.kind,
+                existing.charge.pre_2026,
+                existing.charge.amount_cents,
+            ) == (new.lease_id, "opening_balance", new.pre_2026, new.amount_cents)
+            return ChargeCreated(existing, True) if matches else "conflict"
+        today = self.clock.today_lima()
+        lease = await self.leases.get(new.lease_id, Period.of(today))
+        if lease is None:
+            return "lease_not_found"
+        amount = new.amount_cents
+        opening = OpeningBalances(*((amount, None) if new.pre_2026 else (None, amount)))
+        problem = lease_problem(lease.terms, opening, today)
+        if problem is not None:
+            return problem
+        if await self.store.valid_prior_debt(new.lease_id, new.pre_2026):
+            return "prior_debt_exists"
+        now = self.clock.now()
+        due = opening_balance_due(new.pre_2026, lease.terms.control_from)
+        record = ChargeRecord(
+            Charge(new.id, "opening_balance", amount, due, new.pre_2026, now), new.lease_id, None
+        )
+        if not await self.store.add_charge(context.account_id, record, context.user_id):
+            return "conflict"
+        await self.audit.record(
+            AuditEntry.of(
+                context.account_id,
+                context.user_id,
+                "charge.prior_debt",
+                "charges",
+                new.id,
+                ["amount_cents", "pre_2026"],
+                now,
+            )
+        )
+        return ChargeCreated(record, False)
+
+
+@dataclass(frozen=True)
+class VoidCharge:
+    """Voiding is idempotent: doing it again returns the voided charge (rule 5)."""
 
     store: ChargeStore
     audit: AuditLog
@@ -177,12 +249,10 @@ class VoidCharge:
 
     async def __call__(
         self, context: AccountContext, charge_id: UUID, reason: str
-    ) -> ChargeRecord | Literal["charge_not_found", "charge_not_voidable"]:
+    ) -> ChargeRecord | Literal["charge_not_found"]:
         found = await self.store.charge(charge_id)
         if found is None:
             return "charge_not_found"
-        if found.charge.kind == "opening_balance":
-            return "charge_not_voidable"
         await self.store.lock_lease(found.lease_id)
         record = await self.store.charge(charge_id)
         if record is None:

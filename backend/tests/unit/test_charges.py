@@ -59,6 +59,14 @@ def test_the_rent_of_a_period_is_the_latest_change_up_to_it() -> None:
     assert rent_for(Period(2027, 3), changes) == 85_000
 
 
+def test_before_the_first_rent_its_latest_correction_applies() -> None:
+    corrected = RentChange(
+        UUID(int=13), 70_000, FIRST_RENT.effective_period, datetime(2026, 9, 3, tzinfo=UTC)
+    )
+
+    assert rent_for(Period(2026, 1), (FIRST_RENT, corrected)) == 70_000
+
+
 def test_missing_charges_run_from_the_control_month_to_today() -> None:
     charges = missing_rent_charges(lease(charged=frozenset({Period(2026, 9)})), date(2026, 11, 2))
 

@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid7
 
+import asyncpg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -65,6 +66,14 @@ def correct(client: TestClient, lease_id: str, **body: object) -> Any:
     return send(client, "POST", f"/api/app/leases/{lease_id}/charges/corrections", body)
 
 
+async def owner_execute(database: Database, query: str, *args: object) -> None:
+    connection = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        await connection.execute(query, *args)
+    finally:
+        await connection.close()
+
+
 def client_for(database: Database, request: pytest.FixtureRequest) -> Any:
     return api_client(
         database, address_for(request.node.name), FixedClock(NOW), registration_mode="open"
@@ -121,24 +130,89 @@ async def test_only_a_voided_rent_is_corrected_and_only_once(
     assert (twice.status_code, twice.json()["detail"]) == (422, "already_corrected")
 
 
-async def test_voiding_is_idempotent_spares_prior_debt_and_stays_in_the_account(
+async def test_voiding_is_idempotent_and_stays_in_the_account(
     database: Database, request: pytest.FixtureRequest
 ) -> None:
     with client_for(database, request) as ana, client_for(database, request) as luis:
-        lease_id = start_lease(ana, opening_balance_2026_cents=40_000)
+        lease_id = start_lease(ana)
         start_lease(luis)
-        charges = charges_by_period(ana, lease_id)
-        rent, prior = charges["2026-09"]["id"], charges[None]["id"]
+        rent = charges_by_period(ana, lease_id)["2026-09"]["id"]
         first = send(ana, "POST", f"/api/app/charges/{rent}/void", WRONG_AMOUNT)
         again = send(ana, "POST", f"/api/app/charges/{rent}/void", WRONG_AMOUNT)
-        prior_debt = send(ana, "POST", f"/api/app/charges/{prior}/void", WRONG_AMOUNT)
         intrusion = send(luis, "POST", f"/api/app/charges/{rent}/void", WRONG_AMOUNT)
         foreign = correct(luis, lease_id, id=str(uuid7()), corrects_charge_id=rent, amount_cents=1)
 
     assert (again.status_code, again.json()) == (200, first.json())
-    assert (prior_debt.status_code, prior_debt.json()["detail"]) == (422, "charge_not_voidable")
     assert (intrusion.status_code, intrusion.json()["detail"]) == (404, "charge_not_found")
     assert (foreign.status_code, foreign.json()["detail"]) == (404, "lease_not_found")
+
+
+def prior_debt(client: TestClient, lease_id: str, **body: object) -> Any:
+    return send(client, "POST", f"/api/app/leases/{lease_id}/charges/prior-debts", body)
+
+
+async def test_a_wrong_prior_debt_is_voided_and_entered_again_once_per_era(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as client:
+        lease_id = start_lease(client, opening_balance_2026_cents=40_000)
+        wrong = charges_by_period(client, lease_id)[None]["id"]
+        while_valid = prior_debt(
+            client, lease_id, id=str(uuid7()), pre_2026=False, amount_cents=35_000
+        )
+        send(client, "POST", f"/api/app/charges/{wrong}/void", WRONG_AMOUNT)
+        body = {"id": str(uuid7()), "pre_2026": False, "amount_cents": 35_000}
+        right = prior_debt(client, lease_id, **body)
+        again = prior_debt(client, lease_id, **body)
+        from_2025 = prior_debt(client, lease_id, id=str(uuid7()), pre_2026=True, amount_cents=1)
+        statement = client.get(f"/api/app/leases/{lease_id}/statement").json()
+
+    assert (while_valid.status_code, while_valid.json()["detail"]) == (422, "prior_debt_exists")
+    assert right.status_code == 201
+    assert (right.json()["kind"], right.json()["due_date"]) == ("opening_balance", "2026-08-31")
+    assert (again.status_code, again.json()) == (200, right.json())
+    assert (from_2025.status_code, from_2025.json()["detail"]) == (
+        422,
+        "balance_pre_2026_without_months",
+    )
+    assert statement["balance_cents"] == 160_000 + 35_000
+
+
+def change_rent(client: TestClient, lease_id: str, **body: object) -> Any:
+    return send(client, "POST", f"/api/app/leases/{lease_id}/rent-changes", body)
+
+
+async def test_a_new_rent_starts_with_the_next_period_not_yet_charged(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as client, client_for(database, request) as later:
+        lease_id = start_lease(client)
+        future_lease = start_lease(later, start_date="2026-12-01", control_from_period="2026-12")
+        body = {"id": str(uuid7()), "monthly_rent_cents": 90_000}
+        changed = change_rent(client, lease_id, **body)
+        again = change_rent(client, lease_id, **body)
+        other = change_rent(client, lease_id, **{**body, "monthly_rent_cents": 95_000})
+        not_started = change_rent(later, future_lease, id=str(uuid7()), monthly_rent_cents=70_000)
+        statement = client.get(f"/api/app/leases/{lease_id}/statement").json()
+
+    assert (changed.status_code, changed.json()["effective_period"]) == (201, "2026-11")
+    assert (again.status_code, again.json()) == (200, changed.json())
+    assert other.status_code == 409
+    assert not_started.json()["effective_period"] == "2026-12"
+    assert [c["amount_cents"] for c in statement["charges"]] == [80_000, 80_000]
+
+
+async def test_an_ended_lease_keeps_its_rent(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as client:
+        lease_id = start_lease(client)
+        await owner_execute(
+            database, "UPDATE leases SET ended_at = '2026-10-15' WHERE id = $1::uuid", lease_id
+        )
+        refused = change_rent(client, lease_id, id=str(uuid7()), monthly_rent_cents=90_000)
+
+    assert (refused.status_code, refused.json()["detail"]) == (422, "lease_ended")
 
 
 def adjust(client: TestClient, lease_id: str, **body: object) -> Any:

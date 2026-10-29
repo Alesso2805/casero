@@ -32,6 +32,14 @@ __all__ = [
 ]
 
 
+@dataclass(frozen=True)
+class RentChangeRecord:
+    id: UUID
+    lease_id: UUID
+    monthly_rent_cents: int
+    effective_period: Period
+
+
 class LeaseStore(Protocol):
     async def get(self, lease_id: UUID, period: Period) -> Lease | None: ...
 
@@ -56,7 +64,11 @@ class LeaseStore(Protocol):
         effective_period: Period,
         created_by: UUID,
         created_at: datetime,
-    ) -> None: ...
+    ) -> bool:
+        """False when the id already exists, in this account or another (rule 5)."""
+        ...
+
+    async def rent_change(self, change_id: UUID) -> RentChangeRecord | None: ...
 
 
 @dataclass(frozen=True)
