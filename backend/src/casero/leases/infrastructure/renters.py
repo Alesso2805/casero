@@ -110,3 +110,25 @@ class SqlRenterStore:
         await self._connection.execute(
             SET_DOCUMENT, {"id": renter_id, **self._sealed(account_id, renter_id, document)}
         )
+
+
+class SqlRenterHolders:
+    """Renters with their document's HMAC but never its number, for processes without keys.
+
+    The worker groups declarations by `doc_hmac` and doesn't need the decryption keys.
+    """
+
+    def __init__(self, connection: AsyncConnection) -> None:
+        self._connection = connection
+
+    async def documents(self) -> list[RenterDocument]:
+        return [
+            RenterDocument(
+                row.id,
+                row.full_name,
+                row.doc_type,
+                bytes(row.doc_hmac) if row.doc_hmac else None,
+                None,
+            )
+            for row in await self._connection.execute(DOCUMENTS)
+        ]
