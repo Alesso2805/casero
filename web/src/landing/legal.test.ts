@@ -1,13 +1,13 @@
 import { expect, test } from "vitest";
 
 import consent from "../../../docs/legal/sensitive-consent.md?raw";
-import privacyShort from "../../../docs/legal/privacy-short.md?raw";
 import privacy from "../../../docs/legal/privacy.md?raw";
 import terms from "../../../docs/legal/terms.md?raw";
 import { testBusiness } from "../test/api";
 import { withBusiness } from "./LegalArticle";
+import { LEGAL_DOCUMENTS, legalDocument } from "./legalDocuments";
 
-const DOCUMENTS = { terms, privacy, privacyShort, consent };
+const DOCUMENTS = { terms, privacy, consent };
 
 // Yours to fill in with the lawyer and the accountant. The landing is published only when this
 // list is empty and the draft notices are gone (SPEC, "Antes de publicar la landing").
@@ -16,12 +16,12 @@ const PENDING_BEFORE_PUBLISHING = [
   "privacy: fecha de publicación",
   "privacy: nombre del banco de datos",
   "privacy: código de inscripción",
-  "privacy: ⚑ plazo después de eliminarla",
   "privacy: plazo que indique el contador; propuesta: 5 años",
   "privacy: ⚑ base legal",
   "privacy: ⚑ cláusulas modelo",
-  "privacyShort: fecha de publicación",
-  "privacyShort: número de expediente",
+  "privacy: ⚑ confirmar domicilio",
+  "privacy: ⚑ confirmar domicilio",
+  "privacy: ⚑ confirmar domicilio",
   "terms: fecha de publicación",
   "terms: correo de atención",
   "terms: tipo de comprobante: boleta electrónica",
@@ -43,5 +43,20 @@ test("the business data fills its placeholders and only the known pending ones r
 
 test("the privacy contact comes from the server's environment", () => {
   expect(withBusiness(privacy, testBusiness)).toContain(testBusiness.privacy_inbox);
-  expect(withBusiness(privacyShort, testBusiness)).not.toContain("[correo de privacidad]");
+  expect(withBusiness(privacy, testBusiness)).not.toContain("[correo de privacidad]");
+});
+
+test("each listed version is the one its text says", () => {
+  for (const versions of Object.values(LEGAL_DOCUMENTS)) {
+    for (const [version, text] of Object.entries(versions)) {
+      expect(text).toContain(`Versión ${version} ·`);
+    }
+  }
+});
+
+test("a link to a version shows that version and an unknown one shows nothing", () => {
+  expect(legalDocument("terminos", "0.1")).toBe(terms);
+  expect(legalDocument("terminos")).toBe(terms);
+  expect(legalDocument("terminos", "0.2")).toBeUndefined();
+  expect(legalDocument("contrato")).toBeUndefined();
 });
