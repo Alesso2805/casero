@@ -28,6 +28,15 @@ CHARGES = text(SELECT_CHARGES + " WHERE c.lease_id = :lease_id")
 ALL_CHARGES = text(SELECT_CHARGES)
 CHARGE = text(SELECT_CHARGES + " WHERE c.id = :charge_id")
 CORRECTION_OF = text("SELECT id FROM charges WHERE corrects_charge_id = :charge_id")
+VALID_PRIOR_DEBT = text(
+    "SELECT EXISTS (SELECT 1 FROM charges c WHERE c.lease_id = :lease_id"
+    " AND c.kind = 'opening_balance' AND c.pre_2026 = :pre_2026"
+    " AND NOT EXISTS (SELECT 1 FROM charge_voids v WHERE v.charge_id = c.id))"
+)
+LAST_RENT_PERIOD = text(
+    "SELECT max(period) FROM charges WHERE lease_id = :lease_id"
+    " AND kind IN ('rent', 'rent_correction')"
+)
 ADD_CHARGE = text(
     "INSERT INTO charges (id, account_id, lease_id, kind, period, amount_cents, due_date,"
     " corrects_charge_id, pre_2026, created_by, created_at) VALUES (:id, :account_id, :lease_id,"
@@ -126,6 +135,18 @@ class SqlLedger:
         result = await self._connection.execute(CORRECTION_OF, {"charge_id": charge_id})
         correction: UUID | None = result.scalar_one_or_none()
         return correction
+
+    async def valid_prior_debt(self, lease_id: UUID, pre_2026: bool) -> bool:
+        result = await self._connection.execute(
+            VALID_PRIOR_DEBT, {"lease_id": lease_id, "pre_2026": pre_2026}
+        )
+        exists: bool = result.scalar_one()
+        return exists
+
+    async def last_rent_period(self, lease_id: UUID) -> Period | None:
+        result = await self._connection.execute(LAST_RENT_PERIOD, {"lease_id": lease_id})
+        period: str | None = result.scalar_one()
+        return Period.parse(period) if period else None
 
     async def add_charge(self, account_id: UUID, record: ChargeRecord, created_by: UUID) -> bool:
         new = record.charge

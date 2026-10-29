@@ -15,6 +15,8 @@ from casero.ledger.application.manual_charges import (
     CorrectRent,
     NewAdjustment,
     NewCorrection,
+    NewPriorDebt,
+    RecordPriorDebt,
     VoidCharge,
 )
 from casero.ledger.domain.allocation import ChargeKind
@@ -34,6 +36,12 @@ class AdjustmentRequest(BaseModel):
         Field(ge=-MAX_CENTS, le=MAX_CENTS, description="Positive is a debit, negative a credit"),
         AfterValidator(not_zero),
     ]
+
+
+class PriorDebtRequest(BaseModel):
+    id: Annotated[UUID, AfterValidator(client_generated)]
+    pre_2026: bool = Field(description="Debt from 2025 or before; its collection is not taxed")
+    amount_cents: Annotated[int, Field(gt=0, le=MAX_CENTS)]
 
 
 class CorrectionRequest(BaseModel):
@@ -71,6 +79,7 @@ def create_router(
     current_account: Callable[..., Awaitable[AccountContext]],
     provide_adjust: Callable[..., Awaitable[AdjustLease]],
     provide_correct: Callable[..., Awaitable[CorrectRent]],
+    provide_prior_debt: Callable[..., Awaitable[RecordPriorDebt]],
     provide_void: Callable[..., Awaitable[VoidCharge]],
 ) -> APIRouter:
     router = APIRouter()
@@ -142,7 +151,6 @@ def create_router(
         responses={
             **WRITE_ERRORS,
             404: {"description": "`charge_not_found`"},
-            422: {"description": "Invalid data or `charge_not_voidable` (a prior debt)"},
         },
     )
     async def void_charge(
@@ -155,8 +163,41 @@ def create_router(
         result = await void(context, charge_id, body.reason)
         if result == "charge_not_found":
             raise HTTPException(status_code=404, detail=result)
-        if result == "charge_not_voidable":
-            raise HTTPException(status_code=422, detail=result)
         return charge_response(result)
+
+    @router.post(
+        "/api/app/leases/{lease_id}/charges/prior-debts",
+        status_code=201,
+        dependencies=[Depends(require_csrf)],
+        responses={
+            **WRITE_ERRORS,
+            200: {"description": "The same id was already recorded with the same content"},
+            404: {"description": "`lease_not_found`"},
+            409: {"description": "The id exists with other content or in another account"},
+            422: {
+                "description": "Invalid data, `prior_debt_exists`,"
+                " `balance_pre_2026_without_months` or `balance_2026_without_months`"
+            },
+        },
+    )
+    async def record_prior_debt(
+        lease_id: UUID,
+        body: PriorDebtRequest,
+        response: Response,
+        context: Annotated[AccountContext, Depends(current_account)],
+        record: Annotated[RecordPriorDebt, Depends(provide_prior_debt)],
+    ) -> ChargeResponse:
+        """Record a prior debt, usually to replace a voided wrong one (one valid per era)."""
+        result = await record(
+            context, NewPriorDebt(body.id, lease_id, body.pre_2026, body.amount_cents)
+        )
+        if not isinstance(result, ChargeCreated):
+            if result == "conflict":
+                raise HTTPException(status_code=409)
+            status = 404 if result == "lease_not_found" else 422
+            raise HTTPException(status_code=status, detail=result)
+        if result.replayed:
+            response.status_code = 200
+        return charge_response(result.record)
 
     return router

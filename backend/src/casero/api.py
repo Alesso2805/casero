@@ -133,15 +133,18 @@ from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterStore
 from casero.ledger.api import charges as charges_api
 from casero.ledger.api import collections as collections_api
+from casero.ledger.api import lease_changes as lease_changes_api
 from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.collections import CollectionsStore, GetCollections
+from casero.ledger.application.lease_changes import ChangeRent, ChargedPeriods
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
 from casero.ledger.application.manual_charges import (
     AdjustLease,
     ChargeStore,
     CorrectRent,
+    RecordPriorDebt,
     VoidCharge,
 )
 from casero.ledger.application.payments import (
@@ -659,6 +662,18 @@ def create_app(
         audit: AuditLog = SqlAuditLog(connection)
         return CorrectRent(charges, audit, app_clock)
 
+    async def provide_prior_debt(connection: Transaction) -> RecordPriorDebt:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        charges: ChargeStore = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return RecordPriorDebt(leases, charges, audit, app_clock)
+
+    async def provide_change_rent(connection: Transaction) -> ChangeRent:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        periods: ChargedPeriods = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ChangeRent(leases, periods, audit, app_clock)
+
     async def provide_void_charge(connection: Transaction) -> VoidCharge:
         charges: ChargeStore = SqlLedger(connection)
         audit: AuditLog = SqlAuditLog(connection)
@@ -666,9 +681,14 @@ def create_app(
 
     app.include_router(
         charges_api.create_router(
-            current_account, provide_adjust_lease, provide_correct_rent, provide_void_charge
+            current_account,
+            provide_adjust_lease,
+            provide_correct_rent,
+            provide_prior_debt,
+            provide_void_charge,
         )
     )
+    app.include_router(lease_changes_api.create_router(current_account, provide_change_rent))
 
     async def provide_collections(
         connection: Transaction,

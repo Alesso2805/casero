@@ -1339,6 +1339,33 @@
         "title": "PaymentResponse",
         "type": "object"
       },
+      "PriorDebtRequest": {
+        "properties": {
+          "amount_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "pre_2026": {
+            "description": "Debt from 2025 or before; its collection is not taxed",
+            "title": "Pre 2026",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "pre_2026",
+          "amount_cents"
+        ],
+        "title": "PriorDebtRequest",
+        "type": "object"
+      },
       "ProfileRequest": {
         "properties": {
           "daily_digest": {
@@ -1737,6 +1764,58 @@
           "consent_sensitive_data"
         ],
         "title": "RegistrationRequest",
+        "type": "object"
+      },
+      "RentChangeRequest": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "monthly_rent_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Monthly Rent Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "monthly_rent_cents"
+        ],
+        "title": "RentChangeRequest",
+        "type": "object"
+      },
+      "RentChangeResponse": {
+        "properties": {
+          "effective_period": {
+            "description": "The first period not yet charged",
+            "title": "Effective Period",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "monthly_rent_cents": {
+            "title": "Monthly Rent Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "monthly_rent_cents",
+          "effective_period"
+        ],
+        "title": "RentChangeResponse",
         "type": "object"
       },
       "RenterRequest": {
@@ -2183,7 +2262,14 @@
             "description": "`charge_not_found`"
           },
           "422": {
-            "description": "Invalid data or `charge_not_voidable` (a prior debt)"
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Void Charge"
@@ -2442,6 +2528,65 @@
         "summary": "Correct Rent"
       }
     },
+    "/api/app/leases/{lease_id}/charges/prior-debts": {
+      "post": {
+        "description": "Record a prior debt, usually to replace a voided wrong one (one valid per era).",
+        "operationId": "record_prior_debt_api_app_leases__lease_id__charges_prior_debts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriorDebtRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChargeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "description": "Invalid data, `prior_debt_exists`, `balance_pre_2026_without_months` or `balance_2026_without_months`"
+          }
+        },
+        "summary": "Record Prior Debt"
+      }
+    },
     "/api/app/leases/{lease_id}/payments": {
       "post": {
         "description": "Record money the landlord received; the id comes from the client (rule 5).",
@@ -2499,6 +2644,65 @@
           }
         },
         "summary": "Record Payment"
+      }
+    },
+    "/api/app/leases/{lease_id}/rent-changes": {
+      "post": {
+        "description": "Change the rent from the next period not yet charged; the id comes from the client.",
+        "operationId": "change_rent_api_app_leases__lease_id__rent_changes_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RentChangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RentChangeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "description": "Invalid data or `lease_ended`"
+          }
+        },
+        "summary": "Change Rent"
       }
     },
     "/api/app/leases/{lease_id}/statement": {

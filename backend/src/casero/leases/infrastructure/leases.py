@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.leases.application.leases import RentChangeRecord
 from casero.leases.domain.leases import Lease, LeaseTerms
 from casero.shared.kernel.periods import Period
 
@@ -38,6 +39,11 @@ ADD_RENT_CHANGE = text(
     "INSERT INTO lease_rent_changes (id, account_id, lease_id, monthly_rent_cents,"
     " effective_period, created_by, created_at) VALUES (:id, :account_id, :lease_id,"
     " :monthly_rent_cents, :effective_period, :created_by, :created_at)"
+    " ON CONFLICT (id) DO NOTHING RETURNING id"
+)
+RENT_CHANGE = text(
+    "SELECT id, lease_id, monthly_rent_cents, effective_period FROM lease_rent_changes"
+    " WHERE id = :id"
 )
 
 
@@ -110,8 +116,8 @@ class SqlLeaseStore:
         effective_period: Period,
         created_by: UUID,
         created_at: datetime,
-    ) -> None:
-        await self._connection.execute(
+    ) -> bool:
+        inserted = await self._connection.execute(
             ADD_RENT_CHANGE,
             {
                 "id": change_id,
@@ -122,4 +128,13 @@ class SqlLeaseStore:
                 "created_by": created_by,
                 "created_at": created_at,
             },
+        )
+        return inserted.first() is not None
+
+    async def rent_change(self, change_id: UUID) -> RentChangeRecord | None:
+        row = (await self._connection.execute(RENT_CHANGE, {"id": change_id})).first()
+        if row is None:
+            return None
+        return RentChangeRecord(
+            row.id, row.lease_id, row.monthly_rent_cents, Period.parse(row.effective_period)
         )

@@ -177,6 +177,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/leases/{lease_id}/charges/prior-debts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Prior Debt
+         * @description Record a prior debt, usually to replace a voided wrong one (one valid per era).
+         */
+        post: operations["record_prior_debt_api_app_leases__lease_id__charges_prior_debts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/leases/{lease_id}/payments": {
         parameters: {
             query?: never;
@@ -191,6 +211,26 @@ export interface paths {
          * @description Record money the landlord received; the id comes from the client (rule 5).
          */
         post: operations["record_payment_api_app_leases__lease_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/leases/{lease_id}/rent-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change Rent
+         * @description Change the rent from the next period not yet charged; the id comes from the client.
+         */
+        post: operations["change_rent_api_app_leases__lease_id__rent_changes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1249,6 +1289,21 @@ export interface components {
             /** Voided */
             voided: boolean;
         };
+        /** PriorDebtRequest */
+        PriorDebtRequest: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Pre 2026
+             * @description Debt from 2025 or before; its collection is not taxed
+             */
+            pre_2026: boolean;
+        };
         /** ProfileRequest */
         ProfileRequest: {
             /** Daily Digest */
@@ -1399,6 +1454,36 @@ export interface components {
             invite_token?: string | null;
             /** Password */
             password: string;
+        };
+        /** RentChangeRequest */
+        RentChangeRequest: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Monthly Rent Cents */
+            monthly_rent_cents: number;
+        };
+        /** RentChangeResponse */
+        RentChangeResponse: {
+            /**
+             * Effective Period
+             * @description The first period not yet charged
+             */
+            effective_period: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Monthly Rent Cents */
+            monthly_rent_cents: number;
         };
         /** RenterRequest */
         RenterRequest: {
@@ -1682,12 +1767,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Invalid data or `charge_not_voidable` (a prior debt) */
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -2011,6 +2098,74 @@ export interface operations {
             };
         };
     };
+    record_prior_debt_api_app_leases__lease_id__charges_prior_debts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PriorDebtRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChargeResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `prior_debt_exists`, `balance_pre_2026_without_months` or `balance_2026_without_months` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     record_payment_api_app_leases__lease_id__payments_post: {
         parameters: {
             query?: never;
@@ -2071,6 +2226,74 @@ export interface operations {
                 content?: never;
             };
             /** @description Invalid data, `received_in_future` or `received_before_2026` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    change_rent_api_app_leases__lease_id__rent_changes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RentChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RentChangeResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data or `lease_ended` */
             422: {
                 headers: {
                     [name: string]: unknown;
