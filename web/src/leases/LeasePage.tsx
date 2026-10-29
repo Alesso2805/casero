@@ -18,6 +18,7 @@ import { formatDay } from "../landing/dates";
 import { formatSoles, parseSolesToCents } from "../landing/money";
 import { AdjustmentForm, ChargeActions } from "./ChargeActions";
 import { LeaseActions } from "./LeaseActions";
+import { SunatVoidNotice } from "./SunatVoidNotice";
 import { chargeLabel, statusText } from "./statementText";
 import { TenantLinkBlock } from "./TenantLinkBlock";
 import { fetchProperties } from "../properties/PropertiesPage";
@@ -332,7 +333,7 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
       if (!data) {
         throw new Error("Payment not voided");
       }
-      return "voided";
+      return data.paid_to_sunat;
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["statement", leaseId] }),
     onSuccess: (result) => {
@@ -355,7 +356,10 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
         {payment.note && ` · ${payment.note}`}
       </span>
       {payment.voided ? (
-        <span>{text.lease.voided}</span>
+        <>
+          <span>{text.lease.voided}</span>
+          {Array.isArray(mutation.data) && <SunatVoidNotice periods={mutation.data} />}
+        </>
       ) : voiding ? (
         <div className="flex flex-col gap-2">
           <label htmlFor={reasonId}>{text.payment.voidReason}</label>

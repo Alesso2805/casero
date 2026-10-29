@@ -119,6 +119,10 @@ export const leasesCopy = {
     renew: "Crear un enlace nuevo",
     renewHint: "Si creas uno nuevo, el anterior deja de funcionar.",
     revoke: "Desactivar el enlace",
+    revokeQuestion:
+      "Tu inquilino ya no podrá abrir este enlace, tampoco desde los mensajes que ya le enviaste. ¿Lo desactivas?",
+    revokeConfirm: "Sí, desactivar",
+    cancel: "Cancelar",
     revoked: "Listo, el enlace ya no funciona.",
     unavailable: "Tu plan no incluye el portal del inquilino para este contrato.",
   },
@@ -149,6 +153,9 @@ export const leasesCopy = {
     priorSaved: "Listo, guardamos la deuda anterior.",
     refundHint: "Cuando se lo devuelvas, regístralo aquí.",
     refund: "Registrar devolución",
+    refundQuestion: (amount: string) =>
+      `¿Ya le devolviste ${amount} a tu inquilino? Se registra con la fecha de hoy.`,
+    refundConfirm: "Sí, registrar devolución",
     refundSaved: "Listo, registramos la devolución.",
     save: "Guardar",
     cancel: "Cancelar",
@@ -174,6 +181,13 @@ export const leasesCopy = {
     correctConfirm: "Guardar corrección",
     corrected: (label: string) => `${label} (corregido)`,
     cancel: "Cancelar",
+  },
+  sunatChanged: {
+    one: (period: string) =>
+      `Ya registraste un pago a SUNAT de ${period}. Con esta anulación, lo que declaraste ya no coincide: revisa la tarjeta de ese mes en Formularios de SUNAT.`,
+    many: (periods: string) =>
+      `Ya registraste pagos a SUNAT de ${periods}. Con esta anulación, lo que declaraste ya no coincide: revisa las tarjetas de esos meses en Formularios de SUNAT.`,
+    open: "Ver Formularios de SUNAT",
   },
   adjustment: {
     add: "Agregar cargo o descuento",

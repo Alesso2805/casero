@@ -629,6 +629,49 @@ describe("lease page", () => {
     expect(await request?.json()).toEqual({ reason: "Lo registré dos veces" });
   });
 
+  test("warns when voiding a payment changes months already paid to SUNAT", async () => {
+    let voided = false;
+    mockLease({
+      [STATEMENT_PATH]: () => json({ ...STATEMENT, payments: [{ ...PAYMENT, voided }] }),
+      [VOID_PATH]: () => {
+        voided = true;
+        return json({ ...PAYMENT, voided: true, paid_to_sunat: ["2026-09", "2026-10"] });
+      },
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Anular" }));
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "Lo registré dos veces");
+    await userEvent.click(screen.getByRole("button", { name: "Anular pago" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Ya registraste pagos a SUNAT de setiembre de 2026 y octubre de 2026. Con esta anulación, lo que declaraste ya no coincide: revisa las tarjetas de esos meses en Formularios de SUNAT.",
+    );
+    expect(screen.getByRole("link", { name: "Ver Formularios de SUNAT" })).toHaveProperty(
+      "pathname",
+      "/app/impuestos",
+    );
+  });
+
+  test("warns when voiding a charge changes a month already paid to SUNAT", async () => {
+    const charge = "0195a0b0-0000-7000-8000-000000000030";
+    mockLease({
+      [`/api/app/charges/${charge}/void`]: () =>
+        json({ id: charge, voided: true, paid_to_sunat: ["2026-10"] }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Anular Deuda de 2025 o antes" }),
+    );
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "Ya me la pagó");
+    await userEvent.click(screen.getByRole("button", { name: "Anular cobro" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Ya registraste un pago a SUNAT de octubre de 2026. Con esta anulación, lo que declaraste ya no coincide: revisa la tarjeta de ese mes en Formularios de SUNAT.",
+    );
+  });
+
   test("says when the lease does not exist", async () => {
     mockLease({ [STATEMENT_PATH]: () => json({ detail: "lease_not_found" }, 404) });
     await renderPage(`/app/contratos/${LEASE.id}`);
@@ -845,6 +888,13 @@ describe("lease page", () => {
     expect(await screen.findByText("A devolver al inquilino: S/ 20.00")).toBeDefined();
     expect(screen.queryByRole("button", { name: "Terminar el contrato" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Registrar devolución" }));
+    const confirm = screen.getByRole("button", { name: "Sí, registrar devolución" });
+    expect(document.activeElement).toBe(confirm);
+    expect(
+      screen.getByText("¿Ya le devolviste S/ 20.00 a tu inquilino? Se registra con la fecha de hoy."),
+    ).toBeDefined();
+    expect(api.requestsTo(adjustments)).toHaveLength(0);
+    await userEvent.click(confirm);
 
     expect(await screen.findByText("Listo, registramos la devolución.")).toBeDefined();
     expect((await bodyOf(api, adjustments)).amount_cents).toBe(2000);
@@ -883,6 +933,13 @@ describe("lease page", () => {
 
     expect(await screen.findByText("Lo abrió por última vez el 26/10/2026.")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Desactivar el enlace" }),
+    );
+    expect(api.requestsTo(`${LINK_PATH}/revoke`)).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, desactivar" }));
 
     expect(await screen.findByText("Listo, el enlace ya no funciona.")).toBeDefined();
     expect(document.activeElement).toBe(screen.getByText("Listo, el enlace ya no funciona."));
