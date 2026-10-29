@@ -671,6 +671,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/whatsapp-reminders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Last Reminders
+         * @description When each lease was last reminded, for "recordado hace N días".
+         */
+        get: operations["last_reminders_api_app_whatsapp_reminders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -1303,6 +1323,21 @@ export interface components {
              * @enum {string}
              */
             source: "landing" | "calculator";
+        };
+        /** LastReminderResponse */
+        LastReminderResponse: {
+            /** Days Ago */
+            days_ago: number;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /**
+             * Sent On
+             * Format: date
+             */
+            sent_on: string;
         };
         /** LeaseCollectionResponse */
         LeaseCollectionResponse: {
@@ -3882,6 +3917,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    last_reminders_api_app_whatsapp_reminders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LastReminderResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

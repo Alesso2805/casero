@@ -184,6 +184,26 @@ async def test_a_lease_without_whatsapp_or_from_another_account_gets_none(
     assert await reminder_rows(database, lease_id) == []
 
 
+async def test_the_panel_knows_how_many_lima_days_ago_each_lease_was_reminded(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    clock = FixedClock(datetime(2026, 10, 29, 3, 0, tzinfo=UTC))
+    with client_for(database, request, clock) as ana, client_for(database, request, clock) as luis:
+        lease_id = start_lease(ana)
+        start_lease(luis)
+        before = ana.get("/api/app/whatsapp-reminders").json()
+        remind(ana, lease_id)
+        same_night = ana.get("/api/app/whatsapp-reminders").json()
+        clock.advance(timedelta(days=2))
+        later = ana.get("/api/app/whatsapp-reminders").json()
+        seen_by_luis = luis.get("/api/app/whatsapp-reminders").json()
+
+    assert before == []
+    assert same_night == [{"lease_id": lease_id, "sent_on": "2026-10-28", "days_ago": 0}]
+    assert later == [{"lease_id": lease_id, "sent_on": "2026-10-28", "days_ago": 2}]
+    assert seen_by_luis == []
+
+
 async def context_of(database: Database, lease_id: str) -> AccountContext:
     owner = await asyncpg.connect(database.dsn("casero_owner"))
     try:

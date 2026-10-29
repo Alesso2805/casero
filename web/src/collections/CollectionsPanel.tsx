@@ -17,6 +17,14 @@ type Loaded = { kind: "collections"; collections: Collections } | { kind: "unava
 
 const URGENCY: Line["status"][] = ["overdue", "due_today", "due_soon", "up_to_date"];
 
+async function fetchLastReminders(): Promise<Map<string, number>> {
+  const { data, response } = await api.GET("/api/app/whatsapp-reminders");
+  if (!data) {
+    throw new Error(`Unexpected status ${String(response.status)}`);
+  }
+  return new Map(data.map((reminder) => [reminder.lease_id, reminder.days_ago]));
+}
+
 async function fetchCollections(): Promise<Loaded> {
   const { data, response } = await api.GET("/api/app/collections");
   if (data) {
@@ -79,7 +87,17 @@ function useNames() {
     };
 }
 
-function LeaseLine({ line, renter, unit }: { line: Line; renter: string; unit: string }) {
+function LeaseLine({
+  line,
+  renter,
+  unit,
+  remindedDaysAgo,
+}: {
+  line: Line;
+  renter: string;
+  unit: string;
+  remindedDaysAgo: number | undefined;
+}) {
   return (
     <li className="rounded-lg border border-stone-300">
       <Link
@@ -93,6 +111,9 @@ function LeaseLine({ line, renter, unit }: { line: Line; renter: string; unit: s
           {detail(line)}
         </span>
         {line.ended && <span className="text-stone-600">{text.ended}</span>}
+        {remindedDaysAgo !== undefined && line.status !== "up_to_date" && (
+          <span className="text-stone-600">{text.reminded(remindedDaysAgo)}</span>
+        )}
       </Link>
     </li>
   );
@@ -101,6 +122,11 @@ function LeaseLine({ line, renter, unit }: { line: Line; renter: string; unit: s
 export function CollectionsPanel() {
   const loaded = useQuery({ queryKey: ["collections"], queryFn: fetchCollections });
   const names = useNames();
+  const reminded = useQuery({
+    queryKey: ["whatsapp-reminders"],
+    queryFn: fetchLastReminders,
+    enabled: loaded.data?.kind === "collections" && loaded.data.collections.leases.length > 0,
+  });
 
   if (loaded.isError) {
     return (
@@ -151,7 +177,12 @@ export function CollectionsPanel() {
                   </h3>
                   <ul className="flex flex-col gap-2">
                     {group.map((line) => (
-                      <LeaseLine key={line.lease_id} line={line} {...names(line.lease_id)} />
+                      <LeaseLine
+                        key={line.lease_id}
+                        line={line}
+                        remindedDaysAgo={reminded.data?.get(line.lease_id)}
+                        {...names(line.lease_id)}
+                      />
                     ))}
                   </ul>
                 </section>
