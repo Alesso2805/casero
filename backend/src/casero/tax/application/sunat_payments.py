@@ -14,6 +14,7 @@ class NewTaxPayment:
     amount_cents: int
     paid_on: date
     order_number: str
+    declared_base_cents: int
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,15 @@ class TaxPaymentRecord:
             self.amount_cents,
             self.paid_on,
             self.order_number,
-        ) == (new.period, new.renter_id, new.amount_cents, new.paid_on, new.order_number)
+            self.base_cents,
+        ) == (
+            new.period,
+            new.renter_id,
+            new.amount_cents,
+            new.paid_on,
+            new.order_number,
+            new.declared_base_cents,
+        )
 
 
 class TaxPaymentStore(Protocol):

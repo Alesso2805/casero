@@ -269,6 +269,9 @@ describe("pagos a SUNAT", () => {
     expect(ana.getByText("Falta pagar S/ 28.00")).toBeDefined();
     await userEvent.click(ana.getByRole("button", { name: "Registrar pago a SUNAT" }));
     expect(ana.getByLabelText("Monto pagado en soles")).toHaveProperty("value", "28");
+    expect(ana.getByLabelText("Monto declarado (base)")).toHaveProperty("value", "551");
+    await userEvent.clear(ana.getByLabelText("Monto declarado (base)"));
+    await userEvent.type(ana.getByLabelText("Monto declarado (base)"), "500");
     await userEvent.type(ana.getByLabelText("Número de orden"), "1234567890");
     await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
 
@@ -280,6 +283,7 @@ describe("pagos a SUNAT", () => {
       id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-7/) as unknown,
       period: "2026-09",
       renter_id: ANA.renter_id,
+      declared_base_cents: 50000,
       amount_cents: 2800,
       paid_on: "2026-10-27",
       order_number: "1234567890",
@@ -296,9 +300,12 @@ describe("pagos a SUNAT", () => {
 
     const ana = within(card("Ana Quispe"));
     await userEvent.click(ana.getByRole("button", { name: "Registrar pago a SUNAT" }));
+    await userEvent.clear(ana.getByLabelText("Monto declarado (base)"));
     await userEvent.type(ana.getByLabelText("Número de orden"), "12-34");
     await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
     expect(await ana.findByText("Escribe solo los números de la orden.")).toBeDefined();
+    expect(ana.getByText("Escribe el monto declarado en soles, por ejemplo: 551.")).toBeDefined();
+    await userEvent.type(ana.getByLabelText("Monto declarado (base)"), "551");
     await userEvent.clear(ana.getByLabelText("Número de orden"));
     await userEvent.type(ana.getByLabelText("Número de orden"), "1234");
     await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
