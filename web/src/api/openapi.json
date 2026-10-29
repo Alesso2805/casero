@@ -294,6 +294,78 @@
         "title": "ChargeLineResponse",
         "type": "object"
       },
+      "ChargeResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "corrects_charge_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Charge Id"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "rent",
+              "rent_correction",
+              "opening_balance",
+              "adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "kind",
+          "period",
+          "amount_cents",
+          "due_date",
+          "corrects_charge_id",
+          "voided"
+        ],
+        "title": "ChargeResponse",
+        "type": "object"
+      },
       "ClientError": {
         "properties": {
           "name": {
@@ -356,6 +428,33 @@
           "leases"
         ],
         "title": "CollectionsResponse",
+        "type": "object"
+      },
+      "CorrectionRequest": {
+        "properties": {
+          "amount_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "corrects_charge_id": {
+            "format": "uuid",
+            "title": "Corrects Charge Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "corrects_charge_id",
+          "amount_cents"
+        ],
+        "title": "CorrectionRequest",
         "type": "object"
       },
       "DocumentRequest": {
@@ -2015,6 +2114,59 @@
         "summary": "Update Profile"
       }
     },
+    "/api/app/charges/{charge_id}/void": {
+      "post": {
+        "description": "Void a charge with a reason; voiding it again returns it unchanged.",
+        "operationId": "void_charge_api_app_charges__charge_id__void_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "charge_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Charge Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChargeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`charge_not_found`"
+          },
+          "422": {
+            "description": "Invalid data or `charge_not_voidable` (a prior debt)"
+          }
+        },
+        "summary": "Void Charge"
+      }
+    },
     "/api/app/collections": {
       "get": {
         "description": "Who owes what today, for the collections panel.",
@@ -2141,6 +2293,65 @@
           }
         },
         "summary": "Create Lease"
+      }
+    },
+    "/api/app/leases/{lease_id}/charges/corrections": {
+      "post": {
+        "description": "Replace a voided rent with its corrected amount; the id comes from the client.",
+        "operationId": "correct_rent_api_app_leases__lease_id__charges_corrections_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChargeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "description": "Invalid data, `not_a_voided_rent` or `already_corrected`"
+          }
+        },
+        "summary": "Correct Rent"
       }
     },
     "/api/app/leases/{lease_id}/payments": {

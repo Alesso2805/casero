@@ -50,6 +50,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/charges/{charge_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Charge
+         * @description Void a charge with a reason; voiding it again returns it unchanged.
+         */
+        post: operations["void_charge_api_app_charges__charge_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/collections": {
         parameters: {
             query?: never;
@@ -111,6 +131,26 @@ export interface paths {
          *     (rule 5). A `conjugal_split` property forces the `unsupported` tax treatment.
          */
         post: operations["create_lease_api_app_leases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/leases/{lease_id}/charges/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Correct Rent
+         * @description Replace a voided rent with its corrected amount; the id comes from the client.
+         */
+        post: operations["correct_rent_api_app_leases__lease_id__charges_corrections_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -764,6 +804,37 @@ export interface components {
             /** Voided */
             voided: boolean;
         };
+        /** ChargeResponse */
+        ChargeResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /** Corrects Charge Id */
+            corrects_charge_id: string | null;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "rent" | "rent_correction" | "opening_balance" | "adjustment";
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Period */
+            period: string | null;
+            /** Voided */
+            voided: boolean;
+        };
         /** ClientError */
         ClientError: {
             /** Name */
@@ -787,6 +858,21 @@ export interface components {
             leases: components["schemas"]["LeaseCollectionResponse"][];
             /** Overdue Cents */
             overdue_cents: number;
+        };
+        /** CorrectionRequest */
+        CorrectionRequest: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Corrects Charge Id
+             * Format: uuid
+             */
+            corrects_charge_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
         };
         /** DocumentRequest */
         DocumentRequest: {
@@ -1518,6 +1604,60 @@ export interface operations {
             };
         };
     };
+    void_charge_api_app_charges__charge_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                charge_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChargeResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `charge_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data or `charge_not_voidable` (a prior debt) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     collections_api_app_collections_get: {
         parameters: {
             query?: never;
@@ -1692,6 +1832,74 @@ export interface operations {
                 content?: never;
             };
             /** @description Invalid data, `end_before_start`, `control_period_out_of_range`, `end_before_control`, `balance_pre_2026_without_months` or `balance_2026_without_months` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    correct_rent_api_app_leases__lease_id__charges_corrections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CorrectionRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChargeResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `not_a_voided_rent` or `already_corrected` */
             422: {
                 headers: {
                     [name: string]: unknown;
