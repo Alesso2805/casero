@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from casero.ledger.application.collections import LeaseBook
@@ -17,6 +17,7 @@ class CollectedPayment:
     received_on: date
     amount_cents: int
     old_debt_cents: int
+    created_at: datetime
 
     @property
     def taxable_cents(self) -> int:
@@ -38,6 +39,7 @@ def collected_payments(books: Iterable[LeaseBook], period: Period) -> list[Colle
                 payment.received_on,
                 payment.amount_cents,
                 old_debt.get(payment.id, 0),
+                payment.created_at,
             )
             for payment in book.payments
             if not payment.voided and Period.of(payment.received_on) == period

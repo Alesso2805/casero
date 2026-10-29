@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -96,6 +96,7 @@ class GetDeclarations:
         lease_terms = {lease.id: lease.terms for lease in await self.leases.all(period)}
         books = await self.books.lease_books()
         taxable: list[TaxablePayment] = []
+        last_collected: dict[UUID, datetime] = {}
         untaxed: defaultdict[UUID, int] = defaultdict(int)
         companies: set[UUID] = set()
         for payment in collected_payments(books, period):
@@ -106,6 +107,10 @@ class GetDeclarations:
             renter = documents[terms.renter_id]
             if terms.tax_treatment == "company_tenant":
                 companies.add(renter.renter_id)
+            if payment.taxable_cents > 0:
+                last_collected[renter.renter_id] = max(
+                    payment.created_at, last_collected.get(renter.renter_id, payment.created_at)
+                )
             taxable.append(
                 TaxablePayment(
                     Declarant(renter.doc_hmac, renter.renter_id),
@@ -128,8 +133,19 @@ class GetDeclarations:
             for renter_id in sorted({p.renter_id for p in paid} - declared)
         ]
         today = self.clock.today_lima()
+        declared_documents = {d.declarant.doc_hmac for d in found}
         cards = [
-            card(d, documents[d.declarant.renter_id], companies, paid, due_on, today) for d in found
+            card(
+                d,
+                documents[d.declarant.renter_id],
+                companies,
+                paid,
+                declared_documents,
+                last_collected.get(d.declarant.renter_id),
+                due_on,
+                today,
+            )
+            for d in found
         ]
         properties = await self.properties.all()
         property_of_unit = {unit.id: p.id for p in properties for unit in p.units}
@@ -173,11 +189,20 @@ def card(
     renter: RenterDocument,
     companies: set[UUID],
     paid: list[TaxPaymentRecord],
+    declared_documents: set[bytes | None],
+    last_collected_at: datetime | None,
     due_on: date | None,
     today: date,
 ) -> DeclarationCard:
     key = declaration.declarant.doc_hmac
-    own = [p for p in paid if key is not None and p.renter_doc_hmac == key]
+    # Paid with the tenant's previous document still counts, so the landlord isn't asked to pay
+    # twice; unless that document now belongs to another tenant's declaration this month.
+    own = [
+        p
+        for p in paid
+        if p.renter_doc_hmac == key
+        or (p.renter_id == renter.renter_id and p.renter_doc_hmac not in declared_documents)
+    ]
     other_document = any(p.renter_id == renter.renter_id and p.renter_doc_hmac != key for p in paid)
     paid_cents = sum(p.amount_cents for p in own)
     return DeclarationCard(
@@ -194,6 +219,7 @@ def card(
             declaration.tax_cents,
             [PaidDeclaration(p.base_cents, p.amount_cents, p.created_at) for p in own],
             other_document,
+            last_collected_at,
             due_on,
             today,
         ),

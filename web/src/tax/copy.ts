@@ -118,6 +118,8 @@ export const taxCopy = {
   after: {
     up: (difference: string, period: string, taxDifference: string) =>
       `Cobraste ${difference} más en ${period} después de declarar. Presenta una declaración rectificatoria del 1683 con la nueva base y paga la diferencia de ${taxDifference} con intereses. Consúltalo con tu contador.`,
+    base_up: (period: string, taxDifference: string) =>
+      `La base de ${period} subió después de declarar. Presenta una rectificatoria del 1683 con la nueva base y paga la diferencia de ${taxDifference} con intereses. Consúltalo con tu contador.`,
     down: (period: string) =>
       `La base de ${period} bajó después de declarar. Una rectificatoria que reduce el tributo la revisa SUNAT antes de surtir efecto; consulta con tu contador si conviene presentarla o pedir la devolución.`,
     document_changed:
