@@ -34,7 +34,7 @@ The tenant document is required only for leases that enter the tax module, becau
 - The HMAC groups declarations and identifies SUNAT payments in append-only tables (`tax_payments`, `reminder_logs`). The key is therefore permanent and is documented as not rotatable.
 - If the key is compromised, the response is a migration with its own ADR.
 - Because DNI numbers are an 8-digit space, a leaked key would allow a dictionary attack. The key is protected like the encryption keys.
-- `doc_last4` is kept for display. The full number is decrypted only in the 1683 card.
+- `doc_last4` is kept for display. The full number is decrypted only in the 1683 card and in the accountant's CSV export (the owner's decision of 2026-10-29), and each export is audited. The worker groups by `doc_hmac` and never receives the encryption keys.
 
 ### Logs and error tracking
 

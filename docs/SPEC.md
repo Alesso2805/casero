@@ -561,7 +561,7 @@ casero/
 | Día | Revisar alertas del monitor, respaldos, tareas fallidas y errores; responder soporte por el WhatsApp Business del negocio |
 | Semana | Revisar reclamos (respuesta en máximo 15 días hábiles), métricas de activación y conversión, y conversar con 2 clientes |
 | Mes | Probar una restauración desde cero; revisar costos; registrar ingresos para tus propios impuestos |
-| Año (diciembre) | Agregar al YAML del año siguiente el cronograma de SUNAT, las reglas (con la UIT) y los feriados, validados con el contador, y cargarlos con `make load-tax-config`; revisar términos y privacidad |
+| Año (diciembre) | Agregar al YAML del año siguiente el cronograma de SUNAT, las reglas (con la UIT) y los feriados, validados con el contador, y desplegarlos (el migrador los carga al arrancar; en local, `make load-tax-config`); revisar términos y privacidad |
 
 **Antes de comprar el dominio.** Verificar que "Casero" esté disponible como dominio y marca; si no, elegir otro nombre antes de comprar el dominio y antes de registrar la marca en Indecopi.
 
