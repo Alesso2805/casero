@@ -61,6 +61,15 @@ export const taxCopy = {
       "Ya registraste a otro inquilino con ese documento. Revisa que el número sea el correcto.",
     failure: "No pudimos guardar el documento. Vuelve a intentarlo en unos minutos.",
   },
+  dueNotice: {
+    today: (period: string, amount: string) =>
+      `Hoy vencen tus formularios 1683 de ${period}: falta pagar ${amount}.`,
+    tomorrow: (period: string, amount: string) =>
+      `Mañana vencen tus formularios 1683 de ${period}: falta pagar ${amount}.`,
+    soon: (period: string, date: string, days: number, amount: string) =>
+      `Tus formularios 1683 de ${period} vencen el ${date} (en ${String(days)} días): falta pagar ${amount}.`,
+    open: "Ver formularios",
+  },
   sunat: {
     title: "Pago a SUNAT",
     paid: (amount: string, date: string, order: string) =>

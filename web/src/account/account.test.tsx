@@ -14,6 +14,7 @@ const ME = {
 };
 
 const EMPTY_HOME = {
+  "/api/app/tax/upcoming": () => json(null),
   "/api/app/collections": () => json({ due_by_month_end_cents: 0, overdue_cents: 0, leases: [] }),
   "/api/app/leases": () => json([]),
   "/api/app/renters": () => json([]),
@@ -170,6 +171,32 @@ describe("account home", () => {
     expect((await screen.findByRole("status")).textContent).toContain("nuevo enlace");
     expect(api.requestsTo("/api/app/email-verification")[0]?.headers.get("X-CSRF-Token")).toBe(
       "csrf-token",
+    );
+  });
+
+  test.each([
+    [3, "Tus formularios 1683 de octubre de 2026 vencen el 19/11/2026 (en 3 días): falta pagar S/ 43.00."],
+    [1, "Mañana vencen tus formularios 1683 de octubre de 2026: falta pagar S/ 43.00."],
+    [0, "Hoy vencen tus formularios 1683 de octubre de 2026: falta pagar S/ 43.00."],
+  ])("warns %i days before the 1683 falls due", async (days, notice) => {
+    mockApi({
+      "/api/app/me": () => json({ ...ME, email_verified: true, verify_by: null }),
+      ...EMPTY_HOME,
+      "/api/app/tax/upcoming": () =>
+        json({
+          period: "2026-10",
+          due_on: "2026-11-19",
+          days_left: days,
+          pending_cents: 4300,
+          declarations: 2,
+        }),
+    });
+    await renderPage("/app");
+
+    expect(await screen.findByText(notice)).toBeDefined();
+    expect(screen.getByRole("link", { name: "Ver formularios" })).toHaveProperty(
+      "pathname",
+      "/app/impuestos",
     );
   });
 

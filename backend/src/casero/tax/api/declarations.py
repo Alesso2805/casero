@@ -10,6 +10,7 @@ from casero.accounts.application.context import AccountContext
 from casero.leases.application.renters import DocType
 from casero.shared.kernel.periods import PERIOD_PATTERN, Period
 from casero.tax.application.declarations import ChangeKind, DueStatus, GetDeclarations
+from casero.tax.application.upcoming import GetUpcomingDue
 
 
 class DeclaredPaymentResponse(BaseModel):
@@ -72,11 +73,45 @@ class MonthDeclarationsResponse(BaseModel):
     )
 
 
+class UpcomingDueResponse(BaseModel):
+    period: str
+    due_on: date
+    days_left: int
+    pending_cents: int
+    declarations: int
+
+
 def create_router(
     current_account: Callable[..., Awaitable[AccountContext]],
     provide_declarations: Callable[..., Awaitable[GetDeclarations]],
+    provide_upcoming: Callable[..., Awaitable[GetUpcomingDue]],
 ) -> APIRouter:
     router = APIRouter()
+
+    @router.get(
+        "/api/app/tax/upcoming",
+        responses={
+            401: {"description": "No valid session"},
+            403: {"description": "No account, or `tax_module_unavailable` in the plan"},
+        },
+    )
+    async def upcoming_due(
+        _: Annotated[AccountContext, Depends(current_account)],
+        get: Annotated[GetUpcomingDue, Depends(provide_upcoming)],
+    ) -> UpcomingDueResponse | None:
+        """What is still owed to SUNAT when a due date is 5 days away or less; null otherwise."""
+        result = await get()
+        if result == "tax_module_unavailable":
+            raise HTTPException(status_code=403, detail=result)
+        if result is None:
+            return None
+        return UpcomingDueResponse(
+            period=str(result.period),
+            due_on=result.due_on,
+            days_left=result.days_left,
+            pending_cents=result.pending_cents,
+            declarations=result.declarations,
+        )
 
     @router.get(
         "/api/app/tax/declarations",

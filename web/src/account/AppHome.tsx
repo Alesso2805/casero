@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { CollectionsPanel } from "../collections/CollectionsPanel";
+import { DueNotice } from "../tax/DueNotice";
 import { accountCopy as text } from "./copy";
 import { primaryButton, secondaryButton, textLink } from "./fields";
 
@@ -102,6 +103,7 @@ export function AppHome() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
+      <DueNotice />
       <CollectionsPanel />
       <Link to="/app/inmuebles" className={textLink}>
         {text.home.properties}

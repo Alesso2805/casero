@@ -2871,6 +2871,40 @@
         "title": "UntaxedResponse",
         "type": "object"
       },
+      "UpcomingDueResponse": {
+        "properties": {
+          "days_left": {
+            "title": "Days Left",
+            "type": "integer"
+          },
+          "declarations": {
+            "title": "Declarations",
+            "type": "integer"
+          },
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "pending_cents": {
+            "title": "Pending Cents",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "due_on",
+          "days_left",
+          "pending_cents",
+          "declarations"
+        ],
+        "title": "UpcomingDueResponse",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -4586,6 +4620,39 @@
           }
         },
         "summary": "Void Tax Payment"
+      }
+    },
+    "/api/app/tax/upcoming": {
+      "get": {
+        "description": "What is still owed to SUNAT when a due date is 5 days away or less; null otherwise.",
+        "operationId": "upcoming_due_api_app_tax_upcoming_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/UpcomingDueResponse"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Upcoming Due Api App Tax Upcoming Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or `tax_module_unavailable` in the plan"
+          }
+        },
+        "summary": "Upcoming Due"
       }
     },
     "/api/app/units/{unit_id}": {
