@@ -6,6 +6,7 @@ import type { components } from "../api/schema";
 import { parseSolesToCents } from "../landing/money";
 import { leasesCopy as text } from "./copy";
 import { uuidv7 } from "./terms";
+import { SunatVoidNotice } from "./SunatVoidNotice";
 import { inputClass, type Outcome, outcomeOf, useLeaseWrite } from "./writes";
 
 type ChargeLine = components["schemas"]["ChargeLineResponse"];
@@ -27,15 +28,16 @@ export function ChargeActions({
   const [reason, setReason] = useState("");
   const [amount, setAmount] = useState("");
   const [correctionId] = useState(uuidv7);
+  const [paidToSunat, setPaidToSunat] = useState<string[]>([]);
   const cents = parseSolesToCents(amount) ?? 0;
-  const voiding = useLeaseWrite(leaseId, () =>
-    outcomeOf(
-      api.POST("/api/app/charges/{charge_id}/void", {
-        params: { path: { charge_id: charge.id } },
-        body: { reason: reason.trim() },
-      }),
-    ),
-  );
+  const voiding = useLeaseWrite(leaseId, async () => {
+    const result = await api.POST("/api/app/charges/{charge_id}/void", {
+      params: { path: { charge_id: charge.id } },
+      body: { reason: reason.trim() },
+    });
+    setPaidToSunat(result.data?.paid_to_sunat ?? []);
+    return outcomeOf(Promise.resolve(result));
+  });
   const correcting = useLeaseWrite(leaseId, () =>
     outcomeOf(
       api.POST("/api/app/leases/{lease_id}/charges/corrections", {
@@ -149,21 +151,25 @@ export function ChargeActions({
       </div>
     );
   }
+  const notice = <SunatVoidNotice periods={paidToSunat} />;
   if (!charge.voided || canCorrect) {
     return (
-      <button
-        type="button"
-        className={`${secondaryButton} self-start`}
-        aria-label={charge.voided ? text.charge.correctOf(label) : text.charge.voidOf(label)}
-        onClick={() => {
-          setMode(charge.voided ? "correct" : "void");
-        }}
-      >
-        {charge.voided ? text.charge.correct : text.charge.void}
-      </button>
+      <>
+        {notice}
+        <button
+          type="button"
+          className={`${secondaryButton} self-start`}
+          aria-label={charge.voided ? text.charge.correctOf(label) : text.charge.voidOf(label)}
+          onClick={() => {
+            setMode(charge.voided ? "correct" : "void");
+          }}
+        >
+          {charge.voided ? text.charge.correct : text.charge.void}
+        </button>
+      </>
     );
   }
-  return null;
+  return notice;
 }
 
 export function AdjustmentForm({

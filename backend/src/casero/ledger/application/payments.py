@@ -4,6 +4,7 @@ from typing import Literal, Protocol
 from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
+from casero.ledger.application.declared import DeclaredMonths, months_a_void_changes
 from casero.ledger.domain.allocation import (
     Charge,
     Payment,
@@ -161,25 +162,39 @@ class RecordPayment:
 
 
 @dataclass(frozen=True)
+class VoidedPayment:
+    record: PaymentRecord
+    paid_to_sunat: list[Period]
+
+
+@dataclass(frozen=True)
 class VoidPayment:
-    """Voiding is idempotent: doing it again returns the voided payment (rule 5)."""
+    """Voiding is idempotent: doing it again returns the voided payment (rule 5).
+
+    Either way it says which months already paid to SUNAT it changed (SPEC, "Anulación").
+    """
 
     store: LedgerStore
+    declared: DeclaredMonths
     audit: AuditLog
     clock: Clock
 
     async def __call__(
         self, context: AccountContext, payment_id: UUID, reason: str
-    ) -> PaymentRecord | Literal["payment_not_found"]:
+    ) -> VoidedPayment | Literal["payment_not_found"]:
         found = await self.store.payment(payment_id)
         if found is None:
             return "payment_not_found"
         await self.store.lock_lease(found.lease_id)
         record = await self.store.payment(payment_id)
-        if record is None:
+        ledger = await self.store.lease_ledger(found.lease_id)
+        if record is None or ledger is None:
             return "payment_not_found"
+        payments = [r.payment for r in ledger.payments]
+        changed = months_a_void_changes(ledger.charges, payments, payment_id=payment_id)
+        paid = await self.declared.paid_to_sunat(record.lease_id, changed) if changed else []
         if record.payment.voided:
-            return record
+            return VoidedPayment(record, paid)
         now = self.clock.now()
         await self.store.void_payment(context.account_id, payment_id, reason, context.user_id, now)
         await self.audit.record(
@@ -193,7 +208,7 @@ class VoidPayment:
                 now,
             )
         )
-        return replace(record, payment=replace(record.payment, voided=True))
+        return VoidedPayment(replace(record, payment=replace(record.payment, voided=True)), paid)
 
 
 @dataclass(frozen=True)

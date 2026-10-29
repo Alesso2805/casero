@@ -45,3 +45,4 @@ Casos conocidos:
 - `accounts` pregunta a `properties` si la cuenta tiene inmuebles, para bloquear el tipo de declarante (`PropertyHoldings`, CS-08).
 - `properties` pregunta a `leases` si una unidad o un inmueble tiene un contrato activo antes de archivarlo o de cambiar su titularidad (`ActiveLeases`, CS-08).
 - `ledger` lee de `tax` el umbral de bancarización del año (`CashThresholds`, CS-12).
+- `ledger` pregunta a `tax` cuáles de los meses que cambia una anulación ya tienen un pago a SUNAT, para avisarlo (`DeclaredMonths`, CS-34).

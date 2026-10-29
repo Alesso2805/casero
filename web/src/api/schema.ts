@@ -2264,6 +2264,73 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** VoidedChargeResponse */
+        VoidedChargeResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /** Corrects Charge Id */
+            corrects_charge_id: string | null;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "rent" | "rent_correction" | "opening_balance" | "adjustment";
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /**
+             * Paid To Sunat
+             * @description Months (YYYY-MM) already paid to SUNAT whose declaration this void changed
+             */
+            paid_to_sunat: string[];
+            /** Period */
+            period: string | null;
+            /** Voided */
+            voided: boolean;
+        };
+        /** VoidedPaymentResponse */
+        VoidedPaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Method */
+            method: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Paid To Sunat
+             * @description Months (YYYY-MM) already paid to SUNAT whose declaration this void changed
+             */
+            paid_to_sunat: string[];
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+            /** Voided */
+            voided: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -2414,7 +2481,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChargeResponse"];
+                    "application/json": components["schemas"]["VoidedChargeResponse"];
                 };
             };
             /** @description No valid session */
@@ -3574,7 +3641,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaymentResponse"];
+                    "application/json": components["schemas"]["VoidedPaymentResponse"];
                 };
             };
             /** @description No valid session */
