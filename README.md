@@ -33,6 +33,14 @@ pnpm install
 pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build
 ```
 
+End-to-end tests (Playwright with axe) need a running stack that accepts registrations. CI runs them through the production edge at `https://localhost`. Locally:
+
+```sh
+REGISTRATION_MODE=open docker compose up --detach --build
+cd web && pnpm exec playwright install chromium
+CASERO_E2E_URL=http://localhost pnpm run e2e
+```
+
 After changing an endpoint, regenerate the API types:
 
 ```sh
