@@ -271,7 +271,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 - Vence hoy: "Hola {inquilino}, hoy vence el alquiler de {periodo} por {monto}. Tu detalle está aquí: {enlace}."
 - Atraso: "Hola {inquilino}, el alquiler de {periodo} por {monto} está pendiente desde el {fecha}. ¿Me confirmas cuándo podrías pagarlo? Tu detalle: {enlace}."
 
-`{enlace}` siempre es el mismo enlace vigente del contrato, así que los mensajes ya enviados siguen funcionando. La ayuda recomienda enviar entre las 8:00 y las 20:00. Cada envío queda registrado para mostrar "recordado hace N días".
+`{enlace}` siempre es el mismo enlace vigente del contrato, así que los mensajes ya enviados siguen funcionando; si el contrato aún no tiene enlace, Casero lo crea al preparar el mensaje (solo si la plantilla usa `{enlace}`). El mensaje es del alquiler impago más antiguo del contrato (renta o su corrección; los saldos anteriores no se recuerdan por WhatsApp), con lo que falta pagar de ese mes, y la plantilla sale de su estado: atraso si está atrasado, vence hoy si vence hoy y recordatorio amable en otro caso. Sin celular del inquilino, WhatsApp pide elegir el chat. La ayuda recomienda enviar entre las 8:00 y las 20:00. Cada envío queda registrado para mostrar "recordado hace N días".
 
 **Recordatorios de impuesto.** Por correo 5 días y 1 día antes del vencimiento, con aviso fijo en la app los últimos 5 días; tras el lanzamiento, también por notificación push si la app está instalada. Estos recordatorios no dependen del resumen diario y reintentan hasta 3 veces los errores transitorios del proveedor de correo. Si la declaración no tiene documento del inquilino, el correo pide completarlo.
 

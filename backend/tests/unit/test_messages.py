@@ -1,10 +1,15 @@
+from datetime import date
+
 from casero.reminders.domain.messages import (
     DEFAULT_BODIES,
+    day_label,
+    period_label,
     render,
     unknown_variables,
     uses_link,
     whatsapp_url,
 )
+from casero.shared.kernel.periods import Period
 
 
 def test_the_message_fills_each_variable_and_leaves_other_braces_alone() -> None:
@@ -41,3 +46,9 @@ def test_the_link_opens_whatsapp_with_the_number_without_plus_and_the_text_encod
         "%20%26%20gracias%20%231"
     )
     assert whatsapp_url(None, "Hola").startswith("https://wa.me/?text=")
+
+
+def test_months_read_as_in_peru_and_days_as_dd_mm_yyyy() -> None:
+    assert period_label(Period(2026, 9)) == "setiembre de 2026"
+    assert period_label(Period(2027, 1)) == "enero de 2027"
+    assert day_label(date(2026, 10, 5)) == "05/10/2026"
