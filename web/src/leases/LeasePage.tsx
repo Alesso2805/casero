@@ -21,6 +21,8 @@ import { LeaseActions } from "./LeaseActions";
 import { chargeLabel, statusText } from "./statementText";
 import { TenantLinkBlock } from "./TenantLinkBlock";
 import { fetchProperties } from "../properties/PropertiesPage";
+import { remindersCopy } from "../reminders/copy";
+import { WhatsAppButton } from "../reminders/WhatsAppButton";
 import { leasesCopy as text } from "./copy";
 import { fetchLeases, fetchRenters } from "./LeasesPage";
 import { limaToday, uuidv7 } from "./terms";
@@ -59,6 +61,15 @@ async function fetchStatement(leaseId: string): Promise<Loaded> {
     return { kind: "missing" };
   }
   throw new Error(`Unexpected status ${String(response.status)}`);
+}
+
+function hasUnpaidRent(statement: Statement): boolean {
+  return statement.charges.some(
+    (line) =>
+      (line.kind === "rent" || line.kind === "rent_correction") &&
+      line.status !== null &&
+      line.status !== "paid",
+  );
 }
 
 function Summary({ statement, ended }: { statement: Statement; ended: boolean }) {
@@ -497,6 +508,15 @@ export function LeasePage() {
             >
               {text.lease.record}
             </button>
+          )}
+          {hasUnpaidRent(statement.data.statement) && (
+            <div className="flex flex-col gap-2">
+              <WhatsAppButton
+                leaseId={leaseId}
+                renterName={renter?.full_name ?? text.list.unknownRenter}
+              />
+              <p className="text-stone-600">{remindersCopy.hint}</p>
+            </div>
           )}
           {adjusting && adjustmentId !== null ? (
             <AdjustmentForm

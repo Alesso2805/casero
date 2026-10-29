@@ -147,6 +147,67 @@ describe("collections panel", () => {
       .toBeDefined();
   });
 
+  test("opens WhatsApp with the message from an overdue line", async () => {
+    const tab = { opener: {}, location: { href: "" }, close: vi.fn() };
+    vi.stubGlobal("open", vi.fn(() => tab));
+    const path = `/api/app/leases/${String(LEASES[0]?.id)}/whatsapp-reminders`;
+    const url = "https://wa.me/51987654321?text=Hola%20Ana";
+    const api = mockApi({
+      "/api/app/me": () => json(ME),
+      "/api/app/collections": () => json(COLLECTIONS),
+      "/api/app/whatsapp-reminders": () => json([]),
+      "/api/app/leases": () => json(LEASES),
+      "/api/app/renters": () => json(RENTERS),
+      "/api/app/properties": () => json([PROPERTY]),
+      [path]: () =>
+        json(
+          { kind: "overdue", charge_id: "0195a0b0-0000-7000-8000-000000000099", message: "Hola Ana", url },
+          201,
+        ),
+    });
+    await renderPage("/app");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Enviar por WhatsApp a Ana Quispe" }),
+    );
+
+    await vi.waitFor(() => {
+      expect(tab.location.href).toBe(url);
+    });
+    expect(tab.opener).toBeNull();
+    expect(api.requestsTo(path)[0]?.method).toBe("POST");
+    await vi.waitFor(() => {
+      expect(api.requestsTo("/api/app/whatsapp-reminders").length).toBe(2);
+    });
+  });
+
+  test("explains why a lease can't be reminded and closes the tab it opened", async () => {
+    const tab = { opener: {}, location: { href: "" }, close: vi.fn() };
+    vi.stubGlobal("open", vi.fn(() => tab));
+    mockApi({
+      "/api/app/me": () => json(ME),
+      "/api/app/collections": () => json(COLLECTIONS),
+      "/api/app/whatsapp-reminders": () => json([]),
+      "/api/app/leases": () => json(LEASES),
+      "/api/app/renters": () => json(RENTERS),
+      "/api/app/properties": () => json([PROPERTY]),
+      [`/api/app/leases/${String(LEASES[0]?.id)}/whatsapp-reminders`]: () =>
+        json({ detail: "whatsapp_unavailable" }, 403),
+    });
+    await renderPage("/app");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Enviar por WhatsApp a Ana Quispe" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveProperty(
+      "textContent",
+      "Este contrato no tiene WhatsApp ni enlace del inquilino en tu plan actual.",
+    );
+    expect(tab.close).toHaveBeenCalled();
+    expect(tab.location.href).toBe("");
+  });
+
   test("tells due today, the next charge and money in favor apart", async () => {
     const [first, second, third] = COLLECTIONS.leases;
     mockHome({
