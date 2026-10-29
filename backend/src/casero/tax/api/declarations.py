@@ -31,6 +31,11 @@ class UntaxedResponse(BaseModel):
     collected_cents: int
 
 
+class MinimumRentResponse(BaseModel):
+    property_id: UUID
+    property_name: str
+
+
 class MonthDeclarationsResponse(BaseModel):
     period: str
     ruc: str | None
@@ -41,6 +46,9 @@ class MonthDeclarationsResponse(BaseModel):
     total_tax_cents: int
     declarations: list[DeclarationResponse]
     untaxed: list[UntaxedResponse]
+    minimum_rent: list[MinimumRentResponse] = Field(
+        description="Properties whose rent this year is under the autovalúo's minimum"
+    )
 
 
 def create_router(
@@ -97,6 +105,10 @@ def create_router(
                     collected_cents=u.collected_cents,
                 )
                 for u in result.untaxed
+            ],
+            minimum_rent=[
+                MinimumRentResponse(property_id=m.property_id, property_name=m.property_name)
+                for m in result.minimum_rent
             ],
         )
 

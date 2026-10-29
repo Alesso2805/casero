@@ -1266,6 +1266,25 @@
         "title": "MeResponse",
         "type": "object"
       },
+      "MinimumRentResponse": {
+        "properties": {
+          "property_id": {
+            "format": "uuid",
+            "title": "Property Id",
+            "type": "string"
+          },
+          "property_name": {
+            "title": "Property Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "property_id",
+          "property_name"
+        ],
+        "title": "MinimumRentResponse",
+        "type": "object"
+      },
       "MonthDeclarationsResponse": {
         "properties": {
           "declarations": {
@@ -1296,6 +1315,14 @@
             ],
             "title": "Due Status",
             "type": "string"
+          },
+          "minimum_rent": {
+            "description": "Properties whose rent this year is under the autoval\u00fao's minimum",
+            "items": {
+              "$ref": "#/components/schemas/MinimumRentResponse"
+            },
+            "title": "Minimum Rent",
+            "type": "array"
           },
           "period": {
             "title": "Period",
@@ -1331,7 +1358,8 @@
           "due_status",
           "total_tax_cents",
           "declarations",
-          "untaxed"
+          "untaxed",
+          "minimum_rent"
         ],
         "title": "MonthDeclarationsResponse",
         "type": "object"

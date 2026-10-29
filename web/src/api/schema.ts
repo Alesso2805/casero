@@ -1392,6 +1392,16 @@ export interface components {
             /** Verify By */
             verify_by: string | null;
         };
+        /** MinimumRentResponse */
+        MinimumRentResponse: {
+            /**
+             * Property Id
+             * Format: uuid
+             */
+            property_id: string;
+            /** Property Name */
+            property_name: string;
+        };
         /** MonthDeclarationsResponse */
         MonthDeclarationsResponse: {
             /** Declarations */
@@ -1404,6 +1414,11 @@ export interface components {
              * @enum {string}
              */
             due_status: "known" | "no_ruc" | "unknown_schedule";
+            /**
+             * Minimum Rent
+             * @description Properties whose rent this year is under the autovalúo's minimum
+             */
+            minimum_rent: components["schemas"]["MinimumRentResponse"][];
             /** Period */
             period: string;
             /** Ruc */

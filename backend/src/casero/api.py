@@ -138,7 +138,6 @@ from casero.ledger.api import lease_changes as lease_changes_api
 from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
-from casero.ledger.application.collected import CollectedPayments
 from casero.ledger.application.collections import CollectionsStore, GetCollections
 from casero.ledger.application.lease_changes import (
     ChangeRent,
@@ -795,6 +794,7 @@ def create_app(
         entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
     ) -> GetDeclarations:
         profiles: Profiles = SqlProfiles(connection)
+        properties: PropertyStore = SqlPropertyStore(connection)
         leases: LeaseStore = SqlLeaseStore(connection)
         renters: RenterDocuments = SqlRenterStore(
             connection, config.field_cipher, config.document_hasher
@@ -802,7 +802,7 @@ def create_app(
         books: CollectionsStore = SqlLedger(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
         return GetDeclarations(
-            entitlements, profiles, leases, renters, CollectedPayments(books), rule_book
+            entitlements, profiles, properties, leases, renters, books, rule_book
         )
 
     app.include_router(declarations_api.create_router(current_account, provide_declarations))
