@@ -51,6 +51,7 @@ export const accountCopy = {
     properties: "Mis inmuebles",
     leases: "Mis contratos",
     declarations: "Formularios de SUNAT",
+    templates: "Mensajes de cobro",
   },
   profile: {
     title: "Mis datos",

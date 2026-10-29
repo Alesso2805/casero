@@ -112,6 +112,9 @@ export function AppHome() {
       <Link to="/app/impuestos" className={textLink}>
         {text.home.declarations}
       </Link>
+      <Link to="/app/mensajes" className={textLink}>
+        {text.home.templates}
+      </Link>
       <Link to="/app/mis-datos" className={textLink}>
         {text.home.profile}
       </Link>
