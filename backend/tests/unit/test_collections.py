@@ -110,3 +110,17 @@ def test_what_is_due_never_exceeds_what_is_owed(
     assert result.due_by_month_end_cents <= max(result.balance_cents, 0)
     assert (result.status == "overdue") == (result.overdue_cents > 0)
     assert (result.next_due_on is None) == (result.next_due_cents == 0)
+
+
+def test_only_an_unpaid_rent_can_be_reminded_by_whatsapp() -> None:
+    prior_debt = opening(1, 30_000, False, date(2026, 8, 31))
+    october = rent(2, 80_000, date(2026, 10, 5))
+
+    only_prior_debt = collection([prior_debt], [], TODAY)
+    with_rent = collection([prior_debt, october], [], TODAY)
+    paid = collection([october], [payment(10, 80_000, date(2026, 10, 5))], TODAY)
+
+    assert only_prior_debt.status == "overdue"
+    assert not only_prior_debt.rent_to_remind
+    assert with_rent.rent_to_remind
+    assert not paid.rent_to_remind

@@ -12,6 +12,8 @@ export const tenantCopy = {
   privacyTitle: "Tus datos",
   privacy: (landlord: string, inbox: string) =>
     `${landlord} registró tu nombre y tus pagos de alquiler en Casero, una herramienta para llevar el control de los cobros. Se usan solo para eso: Casero los guarda por encargo de ${landlord} y no los comparte con nadie más. Para pedir que se corrijan o se borren, habla con ${landlord} o escribe a ${inbox}.`,
+  privacyWithoutInbox: (landlord: string) =>
+    `${landlord} registró tu nombre y tus pagos de alquiler en Casero, una herramienta para llevar el control de los cobros. Se usan solo para eso: Casero los guarda por encargo de ${landlord} y no los comparte con nadie más. Para pedir que se corrijan o se borren, habla con ${landlord}.`,
   loading: "Cargando…",
   errors: {
     link_not_found: "Este enlace no funciona o ya venció. Pide uno nuevo a quien te alquila.",

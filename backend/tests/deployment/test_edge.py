@@ -31,11 +31,17 @@ def test_the_app_installs_and_its_worker_is_revalidated_and_caches_nothing() -> 
     manifest = get("/manifest.webmanifest")
     worker = get("/sw.js")
 
+    register = get("/registerSW.js")
+
     assert manifest.headers["content-type"].startswith("application/manifest+json")
     assert manifest.json()["start_url"] == "/app"
+    # A missing file falls back to index.html with 200, so the type and body are what count.
+    assert worker.headers["content-type"].startswith("text/javascript")
+    assert "skipWaiting" in worker.text
     assert worker.headers["cache-control"] == "no-cache"
     assert "fetch" not in worker.text
-    assert get("/registerSW.js").status_code == 200
+    assert register.headers["content-type"].startswith("text/javascript")
+    assert "serviceWorker" in register.text
 
 
 def test_pages_send_the_security_headers() -> None:
@@ -106,6 +112,7 @@ def test_the_edge_serves_the_business_identity_from_its_environment() -> None:
     [
         ("/", True),
         ("/privacidad", False),
+        ("/baja", False),
         ("/legal/terminos", False),
         ("/libro-de-reclamaciones", False),
         ("/api/health", False),

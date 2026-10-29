@@ -667,7 +667,7 @@ describe("lease page", () => {
     await renderPage(`/app/contratos/${LEASE.id}`);
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Corregir el monto de Octubre de 2026" }),
+      await screen.findByRole("button", { name: "Corregir monto de Octubre de 2026" }),
     );
     await userEvent.type(screen.getByLabelText("Monto correcto en soles"), "750");
     await userEvent.click(screen.getByRole("button", { name: "Guardar corrección" }));
@@ -684,12 +684,47 @@ describe("lease page", () => {
     });
   });
 
+  test("a refused correction keeps its form open and says why", async () => {
+    const corrections = `/api/app/leases/${LEASE.id}/charges/corrections`;
+    mockLease({
+      [STATEMENT_PATH]: () =>
+        json({
+          ...STATEMENT,
+          charges: STATEMENT.charges.filter((charge) => charge.kind !== "rent_correction"),
+        }),
+      [corrections]: () => json({ detail: "already_corrected" }, 422),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Corregir monto de Octubre de 2026" }),
+    );
+    expect(document.activeElement).toBe(screen.getByLabelText("Monto correcto en soles"));
+    await userEvent.type(screen.getByLabelText("Monto correcto en soles"), "750");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar corrección" }));
+
+    expect(
+      await screen.findByText("Ese cobro ya tiene una corrección. Revisa los cobros del contrato."),
+    ).toBeDefined();
+    expect(screen.getByLabelText("Monto correcto en soles")).toBeDefined();
+  });
+
+  test("cancelling a lease action returns to its button", async () => {
+    mockLease();
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cambiar el alquiler" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Cambiar el alquiler" }));
+  });
+
   test("a rent that already has its correction offers no other", async () => {
     mockLease();
     await renderPage(`/app/contratos/${LEASE.id}`);
 
     expect(await screen.findByText("Octubre de 2026 (corregido)")).toBeDefined();
-    expect(screen.queryByRole("button", { name: /Corregir el monto/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Corregir monto/ })).toBeNull();
   });
 
   test("records a discount as a credit", async () => {
@@ -850,6 +885,7 @@ describe("lease page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
 
     expect(await screen.findByText("Listo, el enlace ya no funciona.")).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByText("Listo, el enlace ya no funciona."));
     expect(screen.getByRole("button", { name: "Crear enlace" })).toBeDefined();
     expect(api.requestsTo(`${LINK_PATH}/revoke`)[0]?.headers.get("X-CSRF-Token")).toBe(
       "csrf-token",

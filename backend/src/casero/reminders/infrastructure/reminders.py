@@ -23,6 +23,10 @@ ADD_TAX_REMINDER = text(
     " channel, created_at) VALUES (:id, :account_id, 'tax_due', :period, :renter_id,"
     " :renter_doc_hmac, 'email', :created_at)"
 )
+TAX_REMINDED_SINCE = text(
+    "SELECT EXISTS (SELECT 1 FROM reminder_logs WHERE kind = 'tax_due' AND period = :period"
+    " AND created_at >= :since)"
+)
 LAST_RENT_REMINDERS = text(
     "SELECT c.lease_id, max(g.created_at) AS sent_at FROM reminder_logs g"
     " JOIN charges c ON c.account_id = g.account_id AND c.id = g.charge_id"
@@ -78,6 +82,14 @@ class SqlReminderLog:
                 "created_at": at,
             },
         )
+
+    async def reminded_since(self, period: Period, since: datetime) -> bool:
+        sent: bool = (
+            await self._connection.execute(
+                TAX_REMINDED_SINCE, {"period": str(period), "since": since}
+            )
+        ).scalar_one()
+        return sent
 
     async def last_rent_reminders(self) -> dict[UUID, datetime]:
         rows = await self._connection.execute(LAST_RENT_REMINDERS)

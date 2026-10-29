@@ -18,6 +18,7 @@ class LeaseCollection:
     next_due_cents: int
     due_by_month_end_cents: int
     balance_cents: int
+    rent_to_remind: bool
 
 
 def collection(charges: list[Charge], payments: list[Payment], today: date) -> LeaseCollection:
@@ -27,10 +28,12 @@ def collection(charges: list[Charge], payments: list[Payment], today: date) -> L
     oldest_overdue: date | None = None
     overdue = by_month_end = 0
     upcoming: dict[date, int] = {}
+    rent_to_remind = False
     for charge in charges:
         if charge.voided or charge.is_credit or allocation.outstanding[charge.id] == 0:
             continue
         left = allocation.outstanding[charge.id]
+        rent_to_remind = rent_to_remind or charge.kind in ("rent", "rent_correction")
         if charge.due_date <= month_end:
             by_month_end += left
         if charge_status(charge.due_date, left, today) == "overdue":
@@ -47,6 +50,7 @@ def collection(charges: list[Charge], payments: list[Payment], today: date) -> L
         next_due_cents=upcoming.get(next_due_on, 0) if next_due_on else 0,
         due_by_month_end_cents=by_month_end,
         balance_cents=allocation.balance_cents,
+        rent_to_remind=rent_to_remind,
     )
 
 

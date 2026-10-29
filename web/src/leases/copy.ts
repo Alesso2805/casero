@@ -169,7 +169,7 @@ export const leasesCopy = {
     voidReason: "¿Por qué lo anulas?",
     voidConfirm: "Anular cobro",
     correct: "Corregir monto",
-    correctOf: (label: string) => `Corregir el monto de ${label}`,
+    correctOf: (label: string) => `Corregir monto de ${label}`,
     correctAmount: "Monto correcto en soles",
     correctConfirm: "Guardar corrección",
     corrected: (label: string) => `${label} (corregido)`,
@@ -220,6 +220,7 @@ export const leasesCopy = {
   errors: {
     paused: "Tu cuenta está pausada hasta que confirmes tu correo.",
     failure: "Algo salió mal. Vuelve a intentarlo en unos minutos.",
+    alreadyCorrected: "Ese cobro ya tiene una corrección. Revisa los cobros del contrato.",
     required: "Completa este dato.",
     amount: "Escribe el monto en soles, sin comas de miles. Por ejemplo: 800.",
     dueDay: "Escribe un día del 1 al 31.",

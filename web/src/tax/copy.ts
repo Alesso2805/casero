@@ -46,7 +46,9 @@ export const taxCopy = {
     oldDebt: (amount: string) =>
       `Además cobraste ${amount} de deuda de 2025 o antes. No va en este formulario porque ese alquiler ya se gravó cuando venció; revísalo con tu contador.`,
     copy: "Copiar",
-    copyLabel: (field: string) => `Copiar ${field.toLowerCase()}`,
+    // Acronyms like RUC keep their capitals; other labels read in lower case after "Copiar".
+    copyLabel: (field: string) =>
+      `Copiar ${/^\p{Lu}{2}/u.test(field) ? field : field.charAt(0).toLowerCase() + field.slice(1)}`,
     copied: (field: string) => `${field} copiado.`,
   },
   complete: {
@@ -75,6 +77,7 @@ export const taxCopy = {
     soon: (period: string, date: string, days: number, amount: string) =>
       `Tus formularios 1683 de ${period} vencen el ${date} (en ${String(days)} días): falta pagar ${amount}.`,
     open: "Ver formularios",
+    failure: "No pudimos revisar tus vencimientos de SUNAT. Vuelve a intentarlo en unos minutos.",
   },
   sunat: {
     title: "Pago a SUNAT",

@@ -1,11 +1,14 @@
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 from uuid import UUID, uuid7
 
 import pytest
 
 from casero.identity.application.sessions import (
     AuthenticateSession,
+    CheckLogin,
+    CompleteLogin,
     LoggedIn,
     LogIn,
     LogOut,
@@ -120,6 +123,22 @@ class Sleeper:
         self.slept.append(seconds)
 
 
+class Steps:
+    """Both login steps in memory; the API runs each in its own transaction."""
+
+    def __init__(self, check: CheckLogin, complete: CompleteLogin) -> None:
+        self._check = check
+        self._complete = complete
+
+    async def check(self, email: str, client: str) -> int | Literal["limited"]:
+        return await self._check(email, client)
+
+    async def complete(
+        self, email: str, password: str, previous_token: str | None
+    ) -> LoggedIn | Literal["invalid"]:
+        return await self._complete(email, password, previous_token)
+
+
 def login(
     store: Store | None = None,
     throttle: Throttle | None = None,
@@ -128,9 +147,9 @@ def login(
     clock: Clock | None = None,
 ) -> LogIn:
     start = StartSession(Tokens(), store or Store(), clock or Clock())
-    return LogIn(
-        Credentials(), hasher or Hasher(), start, throttle or Throttle(), sleeper or Sleeper()
-    )
+    throttle = throttle or Throttle()
+    complete = CompleteLogin(Credentials(), hasher or Hasher(), start, throttle)
+    return LogIn(Steps(CheckLogin(throttle), complete), sleeper or Sleeper())
 
 
 @pytest.mark.parametrize(

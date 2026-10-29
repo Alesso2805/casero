@@ -8,6 +8,8 @@ const ANA_DNI = "45678912";
 // rules being published (they arrive each December; docs/ops/tax-config.md).
 const MONTH = "2026-01";
 const PAID_ON = "2026-01-15";
+// The service worker is registered by the production build that CI serves through the edge.
+const PRODUCTION_EDGE = (process.env.CASERO_E2E_URL ?? "https://localhost").startsWith("https");
 
 async function expectAccessible(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
@@ -44,13 +46,17 @@ async function recordPayment(page: Page, lease: number, amount: string) {
   await expect(page.getByText("Listo, guardamos el pago.")).toBeVisible();
 }
 
-test("a landlord registers, rents two rooms to one tenant and gets one 1683", async ({ page }) => {
-  const blocked: string[] = [];
+function watchCsp(page: Page, blocked: string[]) {
   page.on("console", (message) => {
     if (message.text().includes("Content Security Policy")) {
       blocked.push(message.text());
     }
   });
+}
+
+test("a landlord registers, rents two rooms to one tenant and gets one 1683", async ({ page }) => {
+  const blocked: string[] = [];
+  watchCsp(page, blocked);
 
   await page.goto("/registro");
   await page.getByLabel("¿Cómo te llamamos?").fill("Casera de Prueba");
@@ -81,6 +87,27 @@ test("a landlord registers, rents two rooms to one tenant and gets one 1683", as
   await addLease(page, "Cuarto 2", "100.50", "existing");
   await recordPayment(page, 0, "450.50");
   await recordPayment(page, 1, "100.50");
+  await expectAccessible(page);
+
+  await page.getByRole("button", { name: "Crear enlace" }).click();
+  const link = await page.locator("#tenant-link-url").inputValue();
+  const tenant = await page.context().newPage();
+  watchCsp(tenant, blocked);
+  await tenant.goto(link);
+  await expect(tenant.getByText(/Hola, Ana Prueba/)).toBeVisible();
+  await expectAccessible(tenant);
+  await tenant.close();
+
+  await page.goto("/app/mensajes");
+  await expect(page.getByLabel("Atraso")).toBeVisible();
+  await expectAccessible(page);
+  if (PRODUCTION_EDGE) {
+    const active = await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.ready;
+      return registration.active !== null;
+    });
+    expect(active).toBe(true);
+  }
 
   await page.goto("/app/impuestos");
   const shown = page.getByRole("heading", { name: /^Cobros de / });

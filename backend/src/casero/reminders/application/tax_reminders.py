@@ -1,17 +1,18 @@
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 from typing import Literal, Protocol
 from uuid import UUID
 
 from casero.accounts.application.entitlements import GetEntitlements
 from casero.accounts.application.profile import Profiles
 from casero.reminders.domain.tax_reminders import (
-    REMINDER_DAYS_BEFORE,
+    FIRST_REMINDER_DAYS,
     DueMonth,
     OwedDeclaration,
+    reminder_due,
     tax_reminder_email,
 )
-from casero.shared.kernel.clock import Clock
+from casero.shared.kernel.clock import LIMA, Clock
 from casero.shared.kernel.email import Email
 from casero.shared.kernel.periods import Period
 from casero.tax.application.calculator import TaxRuleBook
@@ -52,6 +53,8 @@ class TaxReminderLog(Protocol):
         at: datetime,
     ) -> None: ...
 
+    async def reminded_since(self, period: Period, since: datetime) -> bool: ...
+
 
 class TaxReminderMailer(Protocol):
     async def send(self, email: Email) -> None: ...
@@ -87,7 +90,12 @@ class SendTaxReminders:
         due: tuple[Period, date] | None = None
         for period in (Period.of(today).previous(), Period.of(today).previous().previous()):
             due_on = await self.rule_book.due_date(period, group)
-            if due_on is not None and (due_on - today).days in REMINDER_DAYS_BEFORE:
+            if due_on is None:
+                continue
+            first_day = due_on - timedelta(days=FIRST_REMINDER_DAYS)
+            since = datetime.combine(first_day, time(0), tzinfo=LIMA)
+            sent = await self.log.reminded_since(period, since)
+            if reminder_due((due_on - today).days, sent):
                 due = (period, due_on)
         if due is None:
             return

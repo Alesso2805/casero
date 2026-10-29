@@ -305,7 +305,9 @@ export function DeclarationsPage() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.title}</h1>
       <p>{text.intro}</p>
-      <h2 className="text-2xl font-semibold">{text.month(periodLabel(period))}</h2>
+      <h2 className="text-2xl font-semibold" aria-live="polite">
+        {text.month(periodLabel(period))}
+      </h2>
       <nav aria-label={text.month(periodLabel(period))} className="grid grid-cols-2 gap-3">
         <button
           type="button"
