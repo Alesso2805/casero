@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -35,6 +35,8 @@ ADD_LEASE = text(
     " :control_from_period, :end_date, :tax_treatment, :created_at)"
     " ON CONFLICT (id) DO NOTHING RETURNING id"
 )
+SET_END_DATE = text("UPDATE leases SET end_date = :end_date WHERE id = :id")
+END_LEASE = text("UPDATE leases SET ended_at = :ended_on WHERE id = :id AND ended_at IS NULL")
 ADD_RENT_CHANGE = text(
     "INSERT INTO lease_rent_changes (id, account_id, lease_id, monthly_rent_cents,"
     " effective_period, created_by, created_at) VALUES (:id, :account_id, :lease_id,"
@@ -130,6 +132,12 @@ class SqlLeaseStore:
             },
         )
         return inserted.first() is not None
+
+    async def set_end_date(self, lease_id: UUID, end_date: date | None) -> None:
+        await self._connection.execute(SET_END_DATE, {"id": lease_id, "end_date": end_date})
+
+    async def end(self, lease_id: UUID, ended_on: date) -> None:
+        await self._connection.execute(END_LEASE, {"id": lease_id, "ended_on": ended_on})
 
     async def rent_change(self, change_id: UUID) -> RentChangeRecord | None:
         row = (await self._connection.execute(RENT_CHANGE, {"id": change_id})).first()

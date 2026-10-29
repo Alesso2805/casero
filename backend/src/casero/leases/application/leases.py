@@ -70,6 +70,10 @@ class LeaseStore(Protocol):
 
     async def rent_change(self, change_id: UUID) -> RentChangeRecord | None: ...
 
+    async def set_end_date(self, lease_id: UUID, end_date: date | None) -> None: ...
+
+    async def end(self, lease_id: UUID, ended_on: date) -> None: ...
+
 
 @dataclass(frozen=True)
 class LeaseView:

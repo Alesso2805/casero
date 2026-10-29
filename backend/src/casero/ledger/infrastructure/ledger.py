@@ -33,6 +33,11 @@ VALID_PRIOR_DEBT = text(
     " AND c.kind = 'opening_balance' AND c.pre_2026 = :pre_2026"
     " AND NOT EXISTS (SELECT 1 FROM charge_voids v WHERE v.charge_id = c.id))"
 )
+RENTS_AFTER = text(
+    "SELECT c.id FROM charges c WHERE c.lease_id = :lease_id"
+    " AND c.kind IN ('rent', 'rent_correction') AND c.period > :period"
+    " AND NOT EXISTS (SELECT 1 FROM charge_voids v WHERE v.charge_id = c.id) ORDER BY c.period"
+)
 LAST_RENT_PERIOD = text(
     "SELECT max(period) FROM charges WHERE lease_id = :lease_id"
     " AND kind IN ('rent', 'rent_correction')"
@@ -142,6 +147,12 @@ class SqlLedger:
         )
         exists: bool = result.scalar_one()
         return exists
+
+    async def rents_after(self, lease_id: UUID, period: Period) -> list[UUID]:
+        rows = await self._connection.execute(
+            RENTS_AFTER, {"lease_id": lease_id, "period": str(period)}
+        )
+        return [row.id for row in rows]
 
     async def last_rent_period(self, lease_id: UUID) -> Period | None:
         result = await self._connection.execute(LAST_RENT_PERIOD, {"lease_id": lease_id})

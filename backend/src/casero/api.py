@@ -138,7 +138,12 @@ from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.collections import CollectionsStore, GetCollections
-from casero.ledger.application.lease_changes import ChangeRent, ChargedPeriods
+from casero.ledger.application.lease_changes import (
+    ChangeRent,
+    ChargedPeriods,
+    EndLease,
+    SetEndDate,
+)
 from casero.ledger.application.leases import CreateLease, OpeningBalanceStore
 from casero.ledger.application.manual_charges import (
     AdjustLease,
@@ -674,6 +679,18 @@ def create_app(
         audit: AuditLog = SqlAuditLog(connection)
         return ChangeRent(leases, periods, audit, app_clock)
 
+    async def provide_set_end_date(connection: Transaction) -> SetEndDate:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        periods: ChargedPeriods = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return SetEndDate(leases, periods, audit, app_clock)
+
+    async def provide_end_lease(connection: Transaction) -> EndLease:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        charges: ChargeStore = SqlLedger(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return EndLease(leases, charges, audit, app_clock)
+
     async def provide_void_charge(connection: Transaction) -> VoidCharge:
         charges: ChargeStore = SqlLedger(connection)
         audit: AuditLog = SqlAuditLog(connection)
@@ -688,7 +705,11 @@ def create_app(
             provide_void_charge,
         )
     )
-    app.include_router(lease_changes_api.create_router(current_account, provide_change_rent))
+    app.include_router(
+        lease_changes_api.create_router(
+            current_account, provide_change_rent, provide_set_end_date, provide_end_lease
+        )
+    )
 
     async def provide_collections(
         connection: Transaction,
