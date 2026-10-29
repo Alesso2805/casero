@@ -58,6 +58,10 @@ class ChargeStore(Protocol):
 
     async def valid_prior_debt(self, lease_id: UUID, pre_2026: bool) -> bool: ...
 
+    async def rents_after(self, lease_id: UUID, period: Period) -> list[UUID]:
+        """Valid rents and corrections of the periods after the given one."""
+        ...
+
     async def add_charge(self, account_id: UUID, record: ChargeRecord, created_by: UUID) -> bool:
         """False when the id already exists, in this account or another (rule 5)."""
         ...

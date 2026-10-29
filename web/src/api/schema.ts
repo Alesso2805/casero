@@ -197,6 +197,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/leases/{lease_id}/end-date": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set End Date
+         * @description Renew: extend, move or remove the planned end of an active lease.
+         */
+        post: operations["set_end_date_api_app_leases__lease_id__end_date_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/leases/{lease_id}/payments": {
         parameters: {
             query?: never;
@@ -251,6 +271,26 @@ export interface paths {
         get: operations["statement_api_app_leases__lease_id__statement_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/leases/{lease_id}/termination": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End Lease
+         * @description End a lease on a date up to today, voiding the rents of later periods.
+         */
+        post: operations["end_lease_api_app_leases__lease_id__termination_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -947,6 +987,19 @@ export interface components {
              */
             id: string;
         };
+        /** CreditRequest */
+        CreditRequest: {
+            /**
+             * Amount Cents
+             * @description Recorded as a credit (negative adjustment)
+             */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+        };
         /** DocumentRequest */
         DocumentRequest: {
             /**
@@ -956,6 +1009,14 @@ export interface components {
             doc_type: "dni" | "ce" | "passport" | "ruc";
             /** Number */
             number: string;
+        };
+        /** EndDateRequest */
+        EndDateRequest: {
+            /**
+             * End Date
+             * @description The new planned end; null leaves it open
+             */
+            end_date: string | null;
         };
         /** FileComplaintRequest */
         FileComplaintRequest: {
@@ -1537,6 +1598,15 @@ export interface components {
             payments: components["schemas"]["PaymentResponse"][];
             /** Up To Date */
             up_to_date: boolean;
+        };
+        /** TerminationRequest */
+        TerminationRequest: {
+            credit?: components["schemas"]["CreditRequest"] | null;
+            /**
+             * Ended On
+             * Format: date
+             */
+            ended_on: string;
         };
         /** TokenRequest */
         TokenRequest: {
@@ -2166,6 +2236,60 @@ export interface operations {
             };
         };
     };
+    set_end_date_api_app_leases__lease_id__end_date_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EndDateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `lease_ended`, `end_in_past` or `end_before_start` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     record_payment_api_app_leases__lease_id__payments_post: {
         parameters: {
             query?: never;
@@ -2351,6 +2475,67 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    end_lease_api_app_leases__lease_id__termination_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                lease_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TerminationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaseResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The credit's id exists with other content or elsewhere */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `lease_ended`, `end_in_future`, `end_before_start` or `end_before_control` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

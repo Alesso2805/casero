@@ -479,6 +479,28 @@
         "title": "CorrectionRequest",
         "type": "object"
       },
+      "CreditRequest": {
+        "properties": {
+          "amount_cents": {
+            "description": "Recorded as a credit (negative adjustment)",
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount_cents"
+        ],
+        "title": "CreditRequest",
+        "type": "object"
+      },
       "DocumentRequest": {
         "properties": {
           "doc_type": {
@@ -503,6 +525,28 @@
           "number"
         ],
         "title": "DocumentRequest",
+        "type": "object"
+      },
+      "EndDateRequest": {
+        "properties": {
+          "end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The new planned end; null leaves it open",
+            "title": "End Date"
+          }
+        },
+        "required": [
+          "end_date"
+        ],
+        "title": "EndDateRequest",
         "type": "object"
       },
       "FileComplaintRequest": {
@@ -1977,6 +2021,30 @@
         "title": "StatementResponse",
         "type": "object"
       },
+      "TerminationRequest": {
+        "properties": {
+          "credit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreditRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ended_on": {
+            "format": "date",
+            "title": "Ended On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ended_on"
+        ],
+        "title": "TerminationRequest",
+        "type": "object"
+      },
       "TokenRequest": {
         "properties": {
           "token": {
@@ -2587,6 +2655,59 @@
         "summary": "Record Prior Debt"
       }
     },
+    "/api/app/leases/{lease_id}/end-date": {
+      "post": {
+        "description": "Renew: extend, move or remove the planned end of an active lease.",
+        "operationId": "set_end_date_api_app_leases__lease_id__end_date_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndDateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "422": {
+            "description": "Invalid data, `lease_ended`, `end_in_past` or `end_before_start`"
+          }
+        },
+        "summary": "Set End Date"
+      }
+    },
     "/api/app/leases/{lease_id}/payments": {
       "post": {
         "description": "Record money the landlord received; the id comes from the client (rule 5).",
@@ -2753,6 +2874,62 @@
           }
         },
         "summary": "Statement"
+      }
+    },
+    "/api/app/leases/{lease_id}/termination": {
+      "post": {
+        "description": "End a lease on a date up to today, voiding the rents of later periods.",
+        "operationId": "end_lease_api_app_leases__lease_id__termination_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TerminationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, or `csrf`"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "The credit's id exists with other content or elsewhere"
+          },
+          "422": {
+            "description": "Invalid data, `lease_ended`, `end_in_future`, `end_before_start` or `end_before_control`"
+          }
+        },
+        "summary": "End Lease"
       }
     },
     "/api/app/me": {
