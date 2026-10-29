@@ -18,11 +18,12 @@ import { formatDay } from "../landing/dates";
 import { formatSoles, parseSolesToCents } from "../landing/money";
 import { AdjustmentForm, ChargeActions } from "./ChargeActions";
 import { LeaseActions } from "./LeaseActions";
+import { chargeLabel, statusText } from "./statementText";
 import { TenantLinkBlock } from "./TenantLinkBlock";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 import { fetchLeases, fetchRenters } from "./LeasesPage";
-import { limaToday, periodLabel, uuidv7 } from "./terms";
+import { limaToday, uuidv7 } from "./terms";
 
 type Statement = components["schemas"]["StatementResponse"];
 type ChargeLine = components["schemas"]["ChargeLineResponse"];
@@ -35,7 +36,6 @@ type Loaded =
   | { kind: "missing" };
 
 const METHODS = ["cash", "yape", "plin", "transfer", "bank_deposit"] as const satisfies Method[];
-const DAY_MS = 86_400_000;
 const METHOD_LABELS: Record<string, string | undefined> = text.payment.methods;
 
 function itemClass(voided: boolean): string {
@@ -59,42 +59,6 @@ async function fetchStatement(leaseId: string): Promise<Loaded> {
     return { kind: "missing" };
   }
   throw new Error(`Unexpected status ${String(response.status)}`);
-}
-
-function daysBetween(from: string, to: string): number {
-  return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS);
-}
-
-function chargeLabel(charge: ChargeLine): string {
-  if (charge.kind === "opening_balance") {
-    return charge.pre_2026 ? text.lease.preDebt : text.lease.debt2026;
-  }
-  if (charge.kind === "adjustment") {
-    return charge.amount_cents < 0 ? text.lease.credit : text.lease.adjustment;
-  }
-  const label = periodLabel(charge.period ?? "");
-  const month = label.charAt(0).toUpperCase() + label.slice(1);
-  return charge.kind === "rent_correction" ? text.charge.corrected(month) : month;
-}
-
-function statusText(charge: ChargeLine, today: string): string {
-  if (charge.voided) {
-    return text.lease.voided;
-  }
-  switch (charge.status) {
-    case "paid":
-      return text.lease.statuses.paid;
-    case "overdue":
-      return text.lease.statuses.overdue(daysBetween(charge.due_date, today));
-    case "due_today":
-      return text.lease.statuses.due_today;
-    case "due_soon":
-      return text.lease.statuses.due_soon(formatDay(charge.due_date));
-    case "pending":
-      return text.lease.statuses.pending(formatDay(charge.due_date));
-    default:
-      return "";
-  }
 }
 
 function Summary({ statement, ended }: { statement: Statement; ended: boolean }) {
