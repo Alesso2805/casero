@@ -6,7 +6,16 @@ from casero.shared.kernel.email import Email
 from casero.shared.kernel.money import format_soles
 from casero.shared.kernel.periods import Period
 
-REMINDER_DAYS_BEFORE = (5, 1)
+FIRST_REMINDER_DAYS = 5
+LAST_REMINDER_DAYS = 1
+
+
+def reminder_due(days_left: int, first_already_sent: bool) -> bool:
+    """The last reminder the day before; the first 5 days before, or as soon as the worker
+    can until 2 days before if it was down that day (SPEC, rule 12)."""
+    if days_left == LAST_REMINDER_DAYS:
+        return True
+    return LAST_REMINDER_DAYS < days_left <= FIRST_REMINDER_DAYS and not first_already_sent
 
 
 @dataclass(frozen=True)

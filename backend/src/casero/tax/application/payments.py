@@ -4,6 +4,7 @@ from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.entitlements import GetEntitlements
+from casero.accounts.application.profile import Profiles
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
 from casero.tax.application.declarations import GetDeclarations
@@ -37,6 +38,7 @@ TaxPaymentRefusal = Literal[
 class RecordTaxPayment:
     """A payment of one declaration's 1683, with the base Casero showed for it (SPEC)."""
 
+    profiles: Profiles
     declarations: GetDeclarations
     store: TaxPaymentStore
     audit: AuditLog
@@ -45,6 +47,8 @@ class RecordTaxPayment:
     async def __call__(
         self, context: AccountContext, new: NewTaxPayment
     ) -> RecordedTaxPayment | TaxPaymentRefusal:
+        # The same payment sent twice at once: the second waits here and replays (rule 5).
+        await self.profiles.lock_current()
         month = await self.declarations(new.period)
         if isinstance(month, str):
             return month

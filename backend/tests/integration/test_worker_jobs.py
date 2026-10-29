@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from api_client import FixedClock, address_for, api_client
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.jobs import MAX_DAILY_ATTEMPTS, DailyAccountJob
-from casero.worker import serve
+from casero.shared.infrastructure.mail import SmtpSettings
+from casero.shared.infrastructure.settings import BusinessSettings, WorkerSettings
+from casero.worker import build_jobs, serve
 from database import Database
 
 pytestmark = pytest.mark.anyio
@@ -185,3 +187,29 @@ async def test_the_heartbeat_follows_only_ticks_without_a_crash() -> None:
     await serve({"job": job}, Lock(), stop, 0, heartbeat)  # type: ignore[arg-type]
 
     assert beats == [1, 3]
+
+
+async def test_the_tax_reminder_job_starts_at_eight_in_lima(
+    database: Database, worker_engine: AsyncEngine
+) -> None:
+    settings = WorkerSettings(
+        database_url=database.dsn("casero_worker"),
+        smtp=SmtpSettings("smtp.invalid", 25, "none", None, None, "Casero <no-reply@example.com>"),
+        business=BusinessSettings("Negocio de Prueba", "10000000001", "Av. Ficticia 100, Lima"),
+        complaints_inbox="reclamos@example.com",
+        email_hash_key=b"test-email-hash-key",
+        unsubscribe_key=b"test-unsubscribe-key",
+        public_url="https://casero.example",
+    )
+    # 3 November: October's 1683 is due from the 16th, so no account has a reminder to send.
+    clock = FixedClock(datetime(2026, 11, 3, 12, 59, tzinfo=UTC))
+    reminders = build_jobs(settings, worker_engine, clock)["tax_reminders"]
+
+    await reminders()
+    before_eight = await runs(database, "tax_reminders")
+    clock.advance(timedelta(minutes=1))
+    await reminders()
+    at_eight = await runs(database, "tax_reminders")
+
+    assert None not in before_eight
+    assert at_eight[None] == ("done", 1)

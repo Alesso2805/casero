@@ -1,14 +1,25 @@
 import asyncio
 import hashlib
 import secrets
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
-from casero.identity.application.sessions import UserCredentials
+from casero.identity.application.sessions import (
+    CheckLogin,
+    CompleteLogin,
+    Credentials,
+    LoggedIn,
+    LoginThrottle,
+    PasswordHasher,
+    StartSession,
+    UserCredentials,
+)
 from casero.identity.domain.sessions import Session
 from casero.shared.infrastructure.rate_limits import PostgresCounter, PostgresRateLimiter
 from casero.shared.kernel.clock import Clock
@@ -122,6 +133,40 @@ class PostgresLoginThrottle:
 
     async def record_failure(self, email: str) -> None:
         await self._email.hit(email)
+
+
+class EngineLoginSteps:
+    """Opens a short transaction per login step; the anonymous context needs no account."""
+
+    def __init__(
+        self,
+        engine: AsyncEngine,
+        throttle_for: Callable[[AsyncConnection], LoginThrottle],
+        credentials_for: Callable[[AsyncConnection], Credentials],
+        sessions_for: Callable[[AsyncConnection], StartSession],
+        hasher: PasswordHasher,
+    ) -> None:
+        self._engine = engine
+        self._throttle_for = throttle_for
+        self._credentials_for = credentials_for
+        self._sessions_for = sessions_for
+        self._hasher = hasher
+
+    async def check(self, email: str, client: str) -> int | Literal["limited"]:
+        async with self._engine.begin() as connection:
+            return await CheckLogin(self._throttle_for(connection))(email, client)
+
+    async def complete(
+        self, email: str, password: str, previous_token: str | None
+    ) -> LoggedIn | Literal["invalid"]:
+        async with self._engine.begin() as connection:
+            complete = CompleteLogin(
+                self._credentials_for(connection),
+                self._hasher,
+                self._sessions_for(connection),
+                self._throttle_for(connection),
+            )
+            return await complete(email, password, previous_token)
 
 
 class AsyncioSleeper:

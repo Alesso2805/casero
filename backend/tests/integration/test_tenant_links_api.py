@@ -8,12 +8,15 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api_client import FixedClock, address_for, api_client
+from casero.shared.infrastructure.crypto import HmacKeyring
 from database import Database
 
 pytestmark = pytest.mark.anyio
 
 NOW = datetime(2026, 10, 27, 15, 0, tzinfo=UTC)
 CSRF = "__Host-casero_csrf"
+# After an incident the old key is retired and a new one signs every link.
+ROTATED_KEYS = HmacKeyring({"next": bytes(range(64, 96))}, "next")
 
 
 def send(client: TestClient, method: str, path: str, body: object = None) -> Any:
@@ -149,3 +152,39 @@ async def test_another_account_or_a_lease_without_the_portal_gets_no_link(
         403,
         "portal_unavailable",
     )
+
+
+async def test_after_retiring_the_signing_key_a_link_is_issued_again_instead_of_failing(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as before:
+        lease_id = start_lease(before)
+        first = send(before, "POST", f"/api/app/leases/{lease_id}/tenant-link").json()["url"]
+        with api_client(
+            database,
+            address_for(request.node.name),
+            FixedClock(NOW),
+            registration_mode="open",
+            tenant_link_keys=ROTATED_KEYS,
+        ) as rotated:
+            rotated.cookies.update(before.cookies)
+            shown = rotated.get(f"/api/app/leases/{lease_id}/tenant-link")
+            reminder = send(rotated, "POST", f"/api/app/leases/{lease_id}/whatsapp-reminders")
+            again = rotated.get(f"/api/app/leases/{lease_id}/tenant-link").json()["link"]["url"]
+
+    assert (shown.status_code, shown.json()) == (200, {"link": None})
+    assert reminder.status_code == 201
+    assert again != first
+    assert again in reminder.json()["message"]
+
+
+def test_api_answers_are_never_stored_by_a_browser_or_proxy(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as client:
+        lease_id = start_lease(client)
+        link = send(client, "POST", f"/api/app/leases/{lease_id}/tenant-link")
+        missing = client.get("/api/app/nothing-here")
+
+    assert link.headers["cache-control"] == "no-store"
+    assert missing.headers["cache-control"] == "no-store"
