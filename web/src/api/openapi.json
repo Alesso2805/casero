@@ -1097,6 +1097,11 @@
             "title": "Overdue Days",
             "type": "integer"
           },
+          "rent_to_remind": {
+            "description": "An unpaid rent the WhatsApp message can remind (prior debts are not)",
+            "title": "Rent To Remind",
+            "type": "boolean"
+          },
           "status": {
             "enum": [
               "overdue",
@@ -1116,7 +1121,8 @@
           "overdue_cents",
           "next_due_on",
           "next_due_cents",
-          "balance_cents"
+          "balance_cents",
+          "rent_to_remind"
         ],
         "title": "LeaseCollectionResponse",
         "type": "object"

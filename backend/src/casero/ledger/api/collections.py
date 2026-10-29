@@ -21,6 +21,9 @@ class LeaseCollectionResponse(BaseModel):
     next_due_on: date | None = Field(description="The next charge not yet overdue, if any")
     next_due_cents: int
     balance_cents: int
+    rent_to_remind: bool = Field(
+        description="An unpaid rent the WhatsApp message can remind (prior debts are not)"
+    )
 
 
 class CollectionsResponse(BaseModel):
@@ -58,6 +61,7 @@ def create_router(
                     next_due_on=line.collection.next_due_on,
                     next_due_cents=line.collection.next_due_cents,
                     balance_cents=line.collection.balance_cents,
+                    rent_to_remind=line.collection.rent_to_remind,
                 )
                 for line in result.leases
             ],

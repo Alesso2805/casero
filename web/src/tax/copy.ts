@@ -77,6 +77,7 @@ export const taxCopy = {
     soon: (period: string, date: string, days: number, amount: string) =>
       `Tus formularios 1683 de ${period} vencen el ${date} (en ${String(days)} días): falta pagar ${amount}.`,
     open: "Ver formularios",
+    failure: "No pudimos revisar tus vencimientos de SUNAT. Vuelve a intentarlo en unos minutos.",
   },
   sunat: {
     title: "Pago a SUNAT",
