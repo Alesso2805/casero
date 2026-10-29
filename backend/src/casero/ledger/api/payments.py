@@ -88,6 +88,12 @@ class StatementResponse(BaseModel):
     payments: list[PaymentResponse]
 
 
+class VoidedPaymentResponse(PaymentResponse):
+    paid_to_sunat: list[str] = Field(
+        description="Months (YYYY-MM) already paid to SUNAT whose declaration this void changed"
+    )
+
+
 def payment_response(record: PaymentRecord) -> PaymentResponse:
     payment = record.payment
     return PaymentResponse(
@@ -156,12 +162,15 @@ def create_router(
         body: VoidRequest,
         context: Annotated[AccountContext, Depends(current_account)],
         void: Annotated[VoidPayment, Depends(provide_void)],
-    ) -> PaymentResponse:
+    ) -> VoidedPaymentResponse:
         """Void a payment with a reason; voiding it again returns it unchanged."""
         result = await void(context, payment_id, body.reason)
         if result == "payment_not_found":
             raise HTTPException(status_code=404, detail=result)
-        return payment_response(result)
+        return VoidedPaymentResponse(
+            **payment_response(result.record).model_dump(),
+            paid_to_sunat=[str(p) for p in result.paid_to_sunat],
+        )
 
     @router.get(
         "/api/app/leases/{lease_id}/statement",

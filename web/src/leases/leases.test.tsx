@@ -629,6 +629,49 @@ describe("lease page", () => {
     expect(await request?.json()).toEqual({ reason: "Lo registré dos veces" });
   });
 
+  test("warns when voiding a payment changes months already paid to SUNAT", async () => {
+    let voided = false;
+    mockLease({
+      [STATEMENT_PATH]: () => json({ ...STATEMENT, payments: [{ ...PAYMENT, voided }] }),
+      [VOID_PATH]: () => {
+        voided = true;
+        return json({ ...PAYMENT, voided: true, paid_to_sunat: ["2026-09", "2026-10"] });
+      },
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Anular" }));
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "Lo registré dos veces");
+    await userEvent.click(screen.getByRole("button", { name: "Anular pago" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Ya registraste pagos a SUNAT de setiembre de 2026 y octubre de 2026. Con esta anulación, lo que declaraste ya no coincide: revisa las tarjetas de esos meses en Formularios de SUNAT.",
+    );
+    expect(screen.getByRole("link", { name: "Ver Formularios de SUNAT" })).toHaveProperty(
+      "pathname",
+      "/app/impuestos",
+    );
+  });
+
+  test("warns when voiding a charge changes a month already paid to SUNAT", async () => {
+    const charge = "0195a0b0-0000-7000-8000-000000000030";
+    mockLease({
+      [`/api/app/charges/${charge}/void`]: () =>
+        json({ id: charge, voided: true, paid_to_sunat: ["2026-10"] }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Anular Deuda de 2025 o antes" }),
+    );
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "Ya me la pagó");
+    await userEvent.click(screen.getByRole("button", { name: "Anular cobro" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Ya registraste un pago a SUNAT de octubre de 2026. Con esta anulación, lo que declaraste ya no coincide: revisa la tarjeta de ese mes en Formularios de SUNAT.",
+    );
+  });
+
   test("says when the lease does not exist", async () => {
     mockLease({ [STATEMENT_PATH]: () => json({ detail: "lease_not_found" }, 404) });
     await renderPage(`/app/contratos/${LEASE.id}`);

@@ -17,6 +17,7 @@ from casero.ledger.application.payments import NewPayment, Recorded, RecordPayme
 from casero.ledger.infrastructure.ledger import SqlLedger
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import create_engine, set_account_context
+from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from database import Database
 
@@ -282,7 +283,12 @@ def record_with(connection: AsyncConnection) -> RecordPayment:
 
 
 def void_with(connection: AsyncConnection) -> VoidPayment:
-    return VoidPayment(SqlLedger(connection), SqlAuditLog(connection), FixedClock(NOW))
+    return VoidPayment(
+        SqlLedger(connection),
+        SqlTaxPayments(connection),
+        SqlAuditLog(connection),
+        FixedClock(NOW),
+    )
 
 
 async def test_the_same_payment_sent_twice_at_once_is_replayed_not_refused(
