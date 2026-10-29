@@ -35,6 +35,9 @@ class TaxPaymentRequest(BaseModel):
     amount_cents: Annotated[int, Field(gt=0, le=MAX_CENTS)]
     paid_on: date
     order_number: OrderNumber = Field(description="SUNAT's número de orden, digits only")
+    declared_base_cents: Annotated[int, Field(ge=0, le=MAX_CENTS)] = Field(
+        description="The base the landlord filed in the 1683"
+    )
 
 
 class VoidTaxPaymentRequest(BaseModel):
@@ -48,7 +51,7 @@ class TaxPaymentResponse(BaseModel):
     amount_cents: int
     paid_on: date
     order_number: str
-    base_cents: int = Field(description="The declaration's base when the payment was recorded")
+    base_cents: int = Field(description="The base the landlord confirmed they declared")
     voided: bool
 
 
@@ -101,6 +104,7 @@ def create_router(
             body.amount_cents,
             body.paid_on,
             body.order_number,
+            body.declared_base_cents,
         )
         result = await record(context, new)
         if isinstance(result, str):

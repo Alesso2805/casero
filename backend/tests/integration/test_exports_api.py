@@ -50,6 +50,7 @@ def a_year_of_collections(client: TestClient) -> str:
         "amount_cents": 1_500,
         "paid_on": "2026-10-27",
         "order_number": "1234567890",
+        "declared_base_cents": 30_000,
     }
     assert send(client, "POST", "/api/app/tax/payments", tax_payment).status_code == 201
     return ana

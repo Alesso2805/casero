@@ -14,7 +14,14 @@ from casero.tax.application.sunat_payments import (
     TaxPaymentStore,
 )
 
-TAX_PAYMENT_FIELDS = ("period", "renter_id", "amount_cents", "paid_on", "order_number")
+TAX_PAYMENT_FIELDS = (
+    "period",
+    "renter_id",
+    "amount_cents",
+    "paid_on",
+    "order_number",
+    "base_cents",
+)
 
 
 @dataclass(frozen=True)
@@ -36,7 +43,7 @@ TaxPaymentRefusal = Literal[
 
 @dataclass(frozen=True)
 class RecordTaxPayment:
-    """A payment of one declaration's 1683, with the base Casero showed for it (SPEC)."""
+    """A payment of one declaration's 1683, with the base the landlord says they filed (SPEC)."""
 
     profiles: Profiles
     declarations: GetDeclarations
@@ -68,7 +75,9 @@ class RecordTaxPayment:
         if new.paid_on > self.clock.today_lima():
             return "paid_in_future"
         now = self.clock.now()
-        base = card.declaration.base_cents
+        # Not today's base: a collection recorded between filing and recording this payment
+        # must still show up as collected after declaring.
+        base = new.declared_base_cents
         if not await self.store.add(context.account_id, new, doc_hmac, base, context.user_id, now):
             return "conflict"
         await self.audit.record(
