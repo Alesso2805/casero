@@ -25,6 +25,7 @@ Tú eres el oficial de datos personales y quien responde. Todo se anota en el re
    - `CASERO_ENCRYPTION_KEYS`: agregar una clave nueva, activarla y volver a cifrar las columnas `*_enc` (ADR-0007). El trabajo de recifrado se escribe en ese momento si todavía no existe.
    - `CASERO_DOC_HMAC_KEY` y `CASERO_EMAIL_HASH_KEY` **no se rotan**: si se comprometen, hace falta una migración con su propio ADR (ADR-0007 y ADR-0010).
    - `CASERO_UNSUBSCRIBE_KEY` y `CASERO_RATE_LIMIT_KEY` se pueden cambiar en cualquier momento. Los enlaces de baja ya enviados dejan de funcionar.
+   - `CASERO_TENANT_LINK_KEYS`: **primero revocar todos los enlaces** con `UPDATE tenant_links SET revoked_at = <ahora UTC> WHERE revoked_at IS NULL;` como `casero_owner`. Rotar la clave sola no basta, porque el portal resuelve cada enlace por el hash de su token. Después, agregar una clave nueva, activarla (`CASERO_TENANT_LINK_ACTIVE_KEY`) y retirar la anterior. Cada arrendador vuelve a crear el enlace desde la página del contrato, o se crea solo al preparar el próximo mensaje de WhatsApp.
 4. **Preservar la evidencia:**
    - copias de los registros del servidor, la lista de accesos del proveedor y la hora de cada hallazgo;
    - antes de borrar o restaurar algo, guardar una copia del estado actual.
