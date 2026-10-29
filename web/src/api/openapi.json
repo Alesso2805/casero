@@ -515,6 +515,91 @@
         "title": "CreditRequest",
         "type": "object"
       },
+      "DeclarationResponse": {
+        "properties": {
+          "base_cents": {
+            "title": "Base Cents",
+            "type": "integer"
+          },
+          "collected_cents": {
+            "title": "Collected Cents",
+            "type": "integer"
+          },
+          "company_tenant": {
+            "title": "Company Tenant",
+            "type": "boolean"
+          },
+          "doc_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In clear only here, to copy into the 1683",
+            "title": "Doc Number"
+          },
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "incomplete": {
+            "description": "Without the tenant's document it cannot be filed",
+            "title": "Incomplete",
+            "type": "boolean"
+          },
+          "lease_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Lease Ids",
+            "type": "array"
+          },
+          "old_debt_cents": {
+            "description": "Debt from 2025 or before: outside the base",
+            "title": "Old Debt Cents",
+            "type": "integer"
+          },
+          "renter_id": {
+            "format": "uuid",
+            "title": "Renter Id",
+            "type": "string"
+          },
+          "renter_name": {
+            "title": "Renter Name",
+            "type": "string"
+          },
+          "tax_cents": {
+            "title": "Tax Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "renter_id",
+          "renter_name",
+          "doc_type",
+          "doc_number",
+          "incomplete",
+          "company_tenant",
+          "lease_ids",
+          "collected_cents",
+          "old_debt_cents",
+          "base_cents",
+          "tax_cents"
+        ],
+        "title": "DeclarationResponse",
+        "type": "object"
+      },
       "DocumentRequest": {
         "properties": {
           "doc_type": {
@@ -1179,6 +1264,76 @@
           "blocked_until_verified"
         ],
         "title": "MeResponse",
+        "type": "object"
+      },
+      "MonthDeclarationsResponse": {
+        "properties": {
+          "declarations": {
+            "items": {
+              "$ref": "#/components/schemas/DeclarationResponse"
+            },
+            "title": "Declarations",
+            "type": "array"
+          },
+          "due_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due On"
+          },
+          "due_status": {
+            "description": "`no_ruc` without a RUC; `unknown_schedule` until the year is loaded",
+            "enum": [
+              "known",
+              "no_ruc",
+              "unknown_schedule"
+            ],
+            "title": "Due Status",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "ruc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ruc"
+          },
+          "total_tax_cents": {
+            "title": "Total Tax Cents",
+            "type": "integer"
+          },
+          "untaxed": {
+            "items": {
+              "$ref": "#/components/schemas/UntaxedResponse"
+            },
+            "title": "Untaxed",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period",
+          "ruc",
+          "due_on",
+          "due_status",
+          "total_tax_cents",
+          "declarations",
+          "untaxed"
+        ],
+        "title": "MonthDeclarationsResponse",
         "type": "object"
       },
       "NewPasswordRequest": {
@@ -2367,6 +2522,30 @@
           "archived"
         ],
         "title": "UnitResponse",
+        "type": "object"
+      },
+      "UntaxedResponse": {
+        "properties": {
+          "collected_cents": {
+            "title": "Collected Cents",
+            "type": "integer"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "renter_name": {
+            "title": "Renter Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lease_id",
+          "renter_name",
+          "collected_cents"
+        ],
+        "title": "UntaxedResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -3786,6 +3965,46 @@
           }
         },
         "summary": "Log Out Everywhere"
+      }
+    },
+    "/api/app/tax/declarations": {
+      "get": {
+        "description": "The month's Formulario 1683 declarations: one per tenant document.",
+        "operationId": "month_declarations_api_app_tax_declarations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period",
+            "required": true,
+            "schema": {
+              "pattern": "^([0-9]{4})-(0[1-9]|1[0-2])$",
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthDeclarationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or `tax_module_unavailable` in the plan"
+          },
+          "422": {
+            "description": "Invalid period, or `unknown_year` without its tax rules"
+          }
+        },
+        "summary": "Month Declarations"
       }
     },
     "/api/app/units/{unit_id}": {

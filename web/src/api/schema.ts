@@ -551,6 +551,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/tax/declarations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Month Declarations
+         * @description The month's Formulario 1683 declarations: one per tenant document.
+         */
+        get: operations["month_declarations_api_app_tax_declarations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/units/{unit_id}": {
         parameters: {
             query?: never;
@@ -1069,6 +1089,43 @@ export interface components {
              */
             id: string;
         };
+        /** DeclarationResponse */
+        DeclarationResponse: {
+            /** Base Cents */
+            base_cents: number;
+            /** Collected Cents */
+            collected_cents: number;
+            /** Company Tenant */
+            company_tenant: boolean;
+            /**
+             * Doc Number
+             * @description In clear only here, to copy into the 1683
+             */
+            doc_number: string | null;
+            /** Doc Type */
+            doc_type: string | null;
+            /**
+             * Incomplete
+             * @description Without the tenant's document it cannot be filed
+             */
+            incomplete: boolean;
+            /** Lease Ids */
+            lease_ids: string[];
+            /**
+             * Old Debt Cents
+             * @description Debt from 2025 or before: outside the base
+             */
+            old_debt_cents: number;
+            /**
+             * Renter Id
+             * Format: uuid
+             */
+            renter_id: string;
+            /** Renter Name */
+            renter_name: string;
+            /** Tax Cents */
+            tax_cents: number;
+        };
         /** DocumentRequest */
         DocumentRequest: {
             /**
@@ -1334,6 +1391,27 @@ export interface components {
             user_id: string;
             /** Verify By */
             verify_by: string | null;
+        };
+        /** MonthDeclarationsResponse */
+        MonthDeclarationsResponse: {
+            /** Declarations */
+            declarations: components["schemas"]["DeclarationResponse"][];
+            /** Due On */
+            due_on: string | null;
+            /**
+             * Due Status
+             * @description `no_ruc` without a RUC; `unknown_schedule` until the year is loaded
+             * @enum {string}
+             */
+            due_status: "known" | "no_ruc" | "unknown_schedule";
+            /** Period */
+            period: string;
+            /** Ruc */
+            ruc: string | null;
+            /** Total Tax Cents */
+            total_tax_cents: number;
+            /** Untaxed */
+            untaxed: components["schemas"]["UntaxedResponse"][];
         };
         /** NewPasswordRequest */
         NewPasswordRequest: {
@@ -1795,6 +1873,18 @@ export interface components {
              * Format: uuid
              */
             property_id: string;
+        };
+        /** UntaxedResponse */
+        UntaxedResponse: {
+            /** Collected Cents */
+            collected_cents: number;
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Renter Name */
+            renter_name: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3374,6 +3464,49 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    month_declarations_api_app_tax_declarations_get: {
+        parameters: {
+            query: {
+                period: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthDeclarationsResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or `tax_module_unavailable` in the plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid period, or `unknown_year` without its tax rules */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
