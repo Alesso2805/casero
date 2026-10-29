@@ -207,7 +207,8 @@ from casero.tax.application.calculator import (
     TaxRuleBook,
 )
 from casero.tax.application.declarations import GetDeclarations
-from casero.tax.application.payments import RecordTaxPayment, TaxPaymentStore, VoidTaxPayment
+from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
+from casero.tax.application.sunat_payments import TaxPaymentStore
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
@@ -861,8 +862,17 @@ def create_app(
         )
         books: CollectionsStore = SqlLedger(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        tax_payments: TaxPaymentStore = SqlTaxPayments(connection)
         return GetDeclarations(
-            entitlements, profiles, properties, leases, renters, books, rule_book
+            entitlements,
+            profiles,
+            properties,
+            leases,
+            renters,
+            books,
+            rule_book,
+            tax_payments,
+            app_clock,
         )
 
     app.include_router(declarations_api.create_router(current_account, provide_declarations))

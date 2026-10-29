@@ -49,6 +49,10 @@ async def test_one_tenant_with_two_leases_has_one_form_with_its_due_date(
                 "old_debt_cents": 0,
                 "base_cents": 55_100,
                 "tax_cents": 2_800,
+                "payments": [],
+                "paid_cents": 0,
+                "pending_cents": 2_800,
+                "after_declaring": None,
             }
         ],
         "untaxed": [],

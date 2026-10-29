@@ -76,9 +76,10 @@ def start_leases(
     return ids
 
 
-def pay(client: TestClient, lease_id: str, cents: int, on: str) -> None:
+def pay(client: TestClient, lease_id: str, cents: int, on: str) -> str:
     body = {"id": str(uuid7()), "amount_cents": cents, "received_on": on, "method": "yape"}
     assert send(client, "POST", f"/api/app/leases/{lease_id}/payments", body).status_code == 201
+    return str(body["id"])
 
 
 def client_for(database: Database, request: pytest.FixtureRequest, clock: FixedClock) -> Any:

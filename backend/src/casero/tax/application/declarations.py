@@ -11,8 +11,18 @@ from casero.leases.application.renters import DocType, RenterDocument, RenterDoc
 from casero.ledger.application.collected import collected_payments, rents_charged
 from casero.ledger.application.collections import CollectionsStore
 from casero.properties.application.properties import PropertyStore
+from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.periods import Period
 from casero.tax.application.calculator import TaxRuleBook
+from casero.tax.application.sunat_payments import TaxPaymentRecord, TaxPaymentStore
+from casero.tax.domain.after_declaring import (
+    AfterDeclaring,
+    PaidDeclaration,
+    after_declaring,
+)
+from casero.tax.domain.after_declaring import (
+    ChangeKind as ChangeKind,
+)
 from casero.tax.domain.declarations import Declarant, Declaration, TaxablePayment, declarations
 from casero.tax.domain.minimum_rent import RentedProperty, below_minimum_rent
 
@@ -27,6 +37,10 @@ class DeclarationCard:
     doc_type: DocType | None
     doc_number: str | None
     company_tenant: bool
+    payments: list[TaxPaymentRecord]
+    paid_cents: int
+    pending_cents: int
+    after: AfterDeclaring | None
 
 
 @dataclass(frozen=True)
@@ -67,6 +81,8 @@ class GetDeclarations:
     renters: RenterDocuments
     books: CollectionsStore
     rule_book: TaxRuleBook
+    tax_payments: TaxPaymentStore
+    clock: Clock
 
     async def __call__(
         self, period: Period
@@ -99,9 +115,21 @@ class GetDeclarations:
                     payment.old_debt_cents,
                 )
             )
+        profile = await self.profiles.current()
+        due_on = (
+            await self.rule_book.due_date(period, profile.ruc_group) if profile.ruc_group else None
+        )
+        paid = [p for p in await self.tax_payments.of_period(period) if not p.voided]
+        found = declarations(taxable, period, rules)
+        declared = {d.declarant.renter_id for d in found}
+        # Paid to SUNAT and then nothing left collected: the card stays, to say it went down.
+        found += [
+            Declaration(Declarant(documents[renter_id].doc_hmac, renter_id), period, (), 0, 0, 0, 0)
+            for renter_id in sorted({p.renter_id for p in paid} - declared)
+        ]
+        today = self.clock.today_lima()
         cards = [
-            card(declaration, documents[declaration.declarant.renter_id], companies)
-            for declaration in declarations(taxable, period, rules)
+            card(d, documents[d.declarant.renter_id], companies, paid, due_on, today) for d in found
         ]
         properties = await self.properties.all()
         property_of_unit = {unit.id: p.id for p in properties for unit in p.units}
@@ -113,10 +141,6 @@ class GetDeclarations:
             if terms.tax_treatment in TAXED:
                 for month, cents in months.items():
                     rent_by_property[property_of_unit[terms.unit_id]][month] += cents
-        profile = await self.profiles.current()
-        due_on = (
-            await self.rule_book.due_date(period, profile.ruc_group) if profile.ruc_group else None
-        )
         return MonthDeclarations(
             period=period,
             ruc=profile.ruc,
@@ -144,13 +168,35 @@ class GetDeclarations:
         )
 
 
-def card(declaration: Declaration, renter: RenterDocument, companies: set[UUID]) -> DeclarationCard:
+def card(
+    declaration: Declaration,
+    renter: RenterDocument,
+    companies: set[UUID],
+    paid: list[TaxPaymentRecord],
+    due_on: date | None,
+    today: date,
+) -> DeclarationCard:
+    key = declaration.declarant.doc_hmac
+    own = [p for p in paid if key is not None and p.renter_doc_hmac == key]
+    other_document = any(p.renter_id == renter.renter_id and p.renter_doc_hmac != key for p in paid)
+    paid_cents = sum(p.amount_cents for p in own)
     return DeclarationCard(
         declaration,
         renter.full_name,
         renter.doc_type,
         renter.number,
         renter.renter_id in companies,
+        own,
+        paid_cents,
+        max(declaration.tax_cents - paid_cents, 0),
+        after_declaring(
+            declaration.base_cents,
+            declaration.tax_cents,
+            [PaidDeclaration(p.base_cents, p.amount_cents, p.created_at) for p in own],
+            other_document,
+            due_on,
+            today,
+        ),
     )
 
 
