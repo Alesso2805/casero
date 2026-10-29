@@ -209,6 +209,7 @@ from casero.tax.application.calculator import (
 from casero.tax.application.declarations import GetDeclarations
 from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
 from casero.tax.application.sunat_payments import TaxPaymentStore
+from casero.tax.application.upcoming import GetUpcomingDue
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
@@ -875,7 +876,17 @@ def create_app(
             app_clock,
         )
 
-    app.include_router(declarations_api.create_router(current_account, provide_declarations))
+    async def provide_upcoming(
+        connection: Transaction,
+        declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
+    ) -> GetUpcomingDue:
+        profiles: Profiles = SqlProfiles(connection)
+        rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        return GetUpcomingDue(declarations, profiles, rule_book, app_clock)
+
+    app.include_router(
+        declarations_api.create_router(current_account, provide_declarations, provide_upcoming)
+    )
 
     async def provide_record_tax_payment(
         connection: Transaction,

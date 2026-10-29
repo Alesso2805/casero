@@ -671,6 +671,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/tax/upcoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Upcoming Due
+         * @description What is still owed to SUNAT when a due date is 5 days away or less; null otherwise.
+         */
+        get: operations["upcoming_due_api_app_tax_upcoming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/units/{unit_id}": {
         parameters: {
             query?: never;
@@ -2164,6 +2184,22 @@ export interface components {
             lease_id: string;
             /** Renter Name */
             renter_name: string;
+        };
+        /** UpcomingDueResponse */
+        UpcomingDueResponse: {
+            /** Days Left */
+            days_left: number;
+            /** Declarations */
+            declarations: number;
+            /**
+             * Due On
+             * Format: date
+             */
+            due_on: string;
+            /** Pending Cents */
+            pending_cents: number;
+            /** Period */
+            period: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -4057,6 +4093,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    upcoming_due_api_app_tax_upcoming_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingDueResponse"] | null;
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or `tax_module_unavailable` in the plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

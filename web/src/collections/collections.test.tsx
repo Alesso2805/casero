@@ -95,6 +95,7 @@ const COLLECTIONS = {
 function mockHome(collections: unknown = COLLECTIONS, reminders: unknown[] = []) {
   return mockApi({
     "/api/app/me": () => json(ME),
+    "/api/app/tax/upcoming": () => json(null),
     "/api/app/collections": () => json(collections),
     "/api/app/whatsapp-reminders": () => json(reminders),
     "/api/app/leases": () => json(LEASES),
@@ -154,6 +155,7 @@ describe("collections panel", () => {
     const url = "https://wa.me/51987654321?text=Hola%20Ana";
     const api = mockApi({
       "/api/app/me": () => json(ME),
+      "/api/app/tax/upcoming": () => json(null),
       "/api/app/collections": () => json(COLLECTIONS),
       "/api/app/whatsapp-reminders": () => json([]),
       "/api/app/leases": () => json(LEASES),
@@ -186,6 +188,7 @@ describe("collections panel", () => {
     vi.stubGlobal("open", vi.fn(() => tab));
     mockApi({
       "/api/app/me": () => json(ME),
+      "/api/app/tax/upcoming": () => json(null),
       "/api/app/collections": () => json(COLLECTIONS),
       "/api/app/whatsapp-reminders": () => json([]),
       "/api/app/leases": () => json(LEASES),
@@ -237,6 +240,7 @@ describe("collections panel", () => {
   test("opens a lease's charges from the panel", async () => {
     mockApi({
       "/api/app/me": () => json(ME),
+      "/api/app/tax/upcoming": () => json(null),
       "/api/app/collections": () => json(COLLECTIONS),
       "/api/app/whatsapp-reminders": () => json([]),
       "/api/app/leases": () => json(LEASES),
