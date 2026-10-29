@@ -91,3 +91,23 @@ class DocumentHasher:
     def digest(self, doc_type: str, normalized_number: str) -> bytes:
         message = f"{doc_type}:{normalized_number}".encode()
         return hmac.new(self.key, message, hashlib.sha256).digest()
+
+
+@dataclass(frozen=True)
+class HmacKeyring:
+    """HMAC-SHA256 keys by id, so a key can be rotated while old ids still verify."""
+
+    keys: Mapping[str, bytes]
+    active_key_id: str
+
+    def __post_init__(self) -> None:
+        if self.active_key_id not in self.keys:
+            raise ValueError("the active HMAC key is not among the keys")
+        for key_id, key in self.keys.items():
+            if ":" in key_id or len(key) < MIN_HMAC_KEY_BYTES:
+                raise ValueError(
+                    f"HMAC key {key_id!r} must have at least {MIN_HMAC_KEY_BYTES} bytes"
+                )
+
+    def sign(self, key_id: str, message: bytes) -> bytes:
+        return hmac.new(self.keys[key_id], message, hashlib.sha256).digest()

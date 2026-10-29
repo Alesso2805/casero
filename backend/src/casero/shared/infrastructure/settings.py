@@ -3,7 +3,13 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal, cast
 
-from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, b64decode, parse_keys
+from casero.shared.infrastructure.crypto import (
+    DocumentHasher,
+    FieldCipher,
+    HmacKeyring,
+    b64decode,
+    parse_keys,
+)
 from casero.shared.infrastructure.mail import SmtpSecurity, SmtpSettings
 
 SMTP_SECURITY_MODES = ("none", "starttls", "tls")
@@ -40,6 +46,7 @@ class ApiSettings:
     public_url: str
     field_cipher: FieldCipher
     document_hasher: DocumentHasher
+    tenant_link_keys: HmacKeyring
     sentry_dsn: str | None = None
     sentry_environment: str = "production"
 
@@ -60,6 +67,10 @@ class ApiSettings:
                 os.environ["CASERO_ENCRYPTION_ACTIVE_KEY"],
             ),
             document_hasher=DocumentHasher(b64decode(os.environ["CASERO_DOC_HMAC_KEY"])),
+            tenant_link_keys=HmacKeyring(
+                parse_keys(os.environ["CASERO_TENANT_LINK_KEYS"]),
+                os.environ["CASERO_TENANT_LINK_ACTIVE_KEY"],
+            ),
             sentry_dsn=os.environ.get("SENTRY_DSN") or None,
             sentry_environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         )
