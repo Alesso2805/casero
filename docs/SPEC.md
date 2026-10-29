@@ -63,7 +63,7 @@ Fuentes: [preguntas y respuestas de SUNAT 2026](https://personas.sunat.gob.pe/si
 - Incidentes: aviso a la Autoridad en 48 horas, a los afectados sin demora cuando afecte sus derechos y al Centro Nacional de Seguridad Digital si es un incidente digital ([Pérez-Llorca](https://www.perezllorca.com/es-pe/actualidad/articulos/se-aprueba-nuevo-reglamento-de-la-ley-de-proteccion-de-datos-personales/), [La Cámara](https://lacamara.pe/nuevo-reglamento-refuerza-la-proteccion-de-datos-personales/)).
 - Exportación de los datos en formato estructurado y eliminación de la cuenta.
 - Si un arrendador persona natural debe inscribir su propio banco de datos de inquilinos es una consulta pendiente para el abogado.
-- Los borradores de términos (con el anexo de encargo de tratamiento), la política de privacidad de la aplicación y el consentimiento de datos sensibles están en `docs/legal/`, y las preguntas abiertas para el abogado en `docs/legal/lawyer-questions.md`.
+- Los borradores de términos (con el anexo de encargo de tratamiento), la política de privacidad (una sola, que cubre también la lista de espera, las entrevistas, la preventa y el servicio para fundadores) y el consentimiento de datos sensibles están en `docs/legal/`, y cada enlace `/legal/{documento}/{versión}` muestra el texto de esa versión, y las preguntas abiertas para el abogado en `docs/legal/lawyer-questions.md`.
 
 **Tu formalización como emprendedor**
 
@@ -461,6 +461,7 @@ Casero guarda ingresos, deudas y documentos de personas reales: una fuga o un sa
 | Dato | Se conserva | Al eliminar la cuenta |
 | --- | --- | --- |
 | Inmuebles, contratos, inquilinos, cobros y declaraciones | Mientras la cuenta exista | Se purgan a los 30 días |
+| Aceptaciones legales, con la huella cifrada de la IP (prueba del consentimiento) | Mientras la cuenta exista | Se purgan con la cuenta a los 30 días |
 | Vouchers rechazados | 90 días | Se purgan con la cuenta |
 | Versiones antiguas de archivos en S3 | 30 días | Se borran con todas sus versiones antes de purgar las filas |
 | Correo de contacto para la eliminación (`deletion_contact_enc`) | Solo durante los 30 días de espera | Se borra en la purga |
