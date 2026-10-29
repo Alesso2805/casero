@@ -205,7 +205,7 @@ describe("Formularios de SUNAT", () => {
 
     expect(
       await screen.findByText(
-        "No registraste cobros en octubre de 2026, así que no hay formularios 1683 de ese mes.",
+        "No registraste pagos recibidos en octubre de 2026, así que no hay formularios 1683 de ese mes.",
       ),
     ).toBeDefined();
     expect(screen.getByRole("button", { name: "Mes siguiente" })).toHaveProperty("disabled", true);
@@ -215,7 +215,7 @@ describe("Formularios de SUNAT", () => {
     mockApi({ [PATH]: () => json(SEPTEMBER) });
     await renderPage("/app/impuestos");
 
-    const payments = await screen.findByRole("link", { name: "Cobros de 2026 (CSV)" });
+    const payments = await screen.findByRole("link", { name: "Pagos recibidos en 2026 (CSV)" });
     expect(payments.getAttribute("href")).toBe("/api/app/exports/payments.csv?year=2026");
     expect(
       screen.getByRole("link", { name: "Formularios de 2026 (CSV)" }).getAttribute("href"),

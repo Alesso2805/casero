@@ -2,7 +2,7 @@ export const taxCopy = {
   title: "Formularios de SUNAT",
   intro:
     "Un Formulario 1683 por cada inquilino que te pagó en el mes, sumando todos sus contratos. Preséntalo cuando termine el mes, no apenas cobres.",
-  month: (month: string) => `Cobros de ${month}`,
+  month: (month: string) => `Pagos recibidos en ${month}`,
   previousMonth: "Mes anterior",
   nextMonth: "Mes siguiente",
   loading: "Cargando tus formularios…",
@@ -25,7 +25,7 @@ export const taxCopy = {
       ? `Total del mes: ${amount} en 1 Formulario 1683.`
       : `Total del mes: ${amount} en ${String(count)} formularios 1683, uno por inquilino.`,
   empty: (month: string) =>
-    `No registraste cobros en ${month}, así que no hay formularios 1683 de ese mes.`,
+    `No registraste pagos recibidos en ${month}, así que no hay formularios 1683 de ese mes.`,
   card: {
     company: "Inquilino empresa",
     companyNotice:
@@ -65,8 +65,8 @@ export const taxCopy = {
   },
   accountant: {
     title: "Para tu contador",
-    intro: "Descarga los cobros y los formularios del año en archivos que se abren en Excel.",
-    payments: (year: string) => `Cobros de ${year} (CSV)`,
+    intro: "Descarga los pagos recibidos y los formularios del año en archivos que se abren en Excel.",
+    payments: (year: string) => `Pagos recibidos en ${year} (CSV)`,
     declarations: (year: string) => `Formularios de ${year} (CSV)`,
   },
   dueNotice: {
@@ -151,5 +151,5 @@ export const taxCopy = {
     neverSol: "Casero nunca te pide tu Clave SOL.",
   },
   disclaimer:
-    "Casero calcula con los cobros que registraste. No presenta ni paga por ti; confírmalo con tu contador.",
+    "Casero calcula con los pagos recibidos que registraste. No presenta ni paga por ti; confírmalo con tu contador.",
 } as const;

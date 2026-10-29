@@ -845,6 +845,13 @@ describe("lease page", () => {
     expect(await screen.findByText("A devolver al inquilino: S/ 20.00")).toBeDefined();
     expect(screen.queryByRole("button", { name: "Terminar el contrato" })).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Registrar devolución" }));
+    const confirm = screen.getByRole("button", { name: "Sí, registrar devolución" });
+    expect(document.activeElement).toBe(confirm);
+    expect(
+      screen.getByText("¿Ya le devolviste S/ 20.00 a tu inquilino? Se registra con la fecha de hoy."),
+    ).toBeDefined();
+    expect(api.requestsTo(adjustments)).toHaveLength(0);
+    await userEvent.click(confirm);
 
     expect(await screen.findByText("Listo, registramos la devolución.")).toBeDefined();
     expect((await bodyOf(api, adjustments)).amount_cents).toBe(2000);
@@ -883,6 +890,13 @@ describe("lease page", () => {
 
     expect(await screen.findByText("Lo abrió por última vez el 26/10/2026.")).toBeDefined();
     await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "Desactivar el enlace" }),
+    );
+    expect(api.requestsTo(`${LINK_PATH}/revoke`)).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, desactivar" }));
 
     expect(await screen.findByText("Listo, el enlace ya no funciona.")).toBeDefined();
     expect(document.activeElement).toBe(screen.getByText("Listo, el enlace ya no funciona."));
