@@ -361,6 +361,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/message-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Templates
+         * @description The three collection messages, edited or SPEC's default.
+         */
+        get: operations["list_templates_api_app_message_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/message-templates/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Template
+         * @description Replace one message; sending the default body restores it.
+         */
+        put: operations["save_template_api_app_message_templates__kind__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/payments/{payment_id}/void": {
         parameters: {
             query?: never;
@@ -1761,6 +1801,23 @@ export interface components {
             /** Up To Date */
             up_to_date: boolean;
         };
+        /** TemplateRequest */
+        TemplateRequest: {
+            /** Body */
+            body: string;
+        };
+        /** TemplateResponse */
+        TemplateResponse: {
+            /** Body */
+            body: string;
+            /** Default Body */
+            default_body: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "friendly" | "due_today" | "overdue";
+        };
         /** TenantChargeResponse */
         TenantChargeResponse: {
             /** Amount Cents */
@@ -2971,6 +3028,87 @@ export interface operations {
             };
             /** @description No valid session */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_templates_api_app_message_templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, or the email is unverified past its deadline */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    save_template_api_app_message_templates__kind__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "friendly" | "due_today" | "overdue";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `unknown_variable` in the body */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
