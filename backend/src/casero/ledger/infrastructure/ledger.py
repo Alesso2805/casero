@@ -84,6 +84,7 @@ def charge(row: Row[Any]) -> Charge:
         row.created_at,
         row.voided,
         Period.parse(row.period) if row.period else None,
+        row.corrects_charge_id,
     )
 
 

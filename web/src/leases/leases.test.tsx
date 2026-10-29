@@ -294,7 +294,14 @@ describe("lease page", () => {
   const PAYMENTS_PATH = `/api/app/leases/${LEASE.id}/payments`;
   const PAYMENT_ID = "0195a0b0-0000-7000-8000-000000000040";
   const VOID_PATH = `/api/app/payments/${PAYMENT_ID}/void`;
-  const rent = { kind: "rent", pre_2026: null, voided: false, partial: false, amount_cents: 80000 };
+  const rent = {
+    kind: "rent",
+    pre_2026: null,
+    corrects_charge_id: null,
+    voided: false,
+    partial: false,
+    amount_cents: 80000,
+  };
   const PAYMENT = {
     id: PAYMENT_ID,
     lease_id: LEASE.id,
@@ -343,6 +350,7 @@ describe("lease page", () => {
         ...rent,
         id: "0195a0b0-0000-7000-8000-000000000033",
         kind: "rent_correction",
+        corrects_charge_id: "0195a0b0-0000-7000-8000-000000000032",
         period: "2026-10",
         due_date: "2026-10-29",
         outstanding_cents: 80000,
@@ -404,7 +412,8 @@ describe("lease page", () => {
     expect(screen.getByText("Setiembre de 2026")).toBeDefined();
     expect(screen.getByText("Atrasado 52 días")).toBeDefined();
     expect(screen.getByText("Pagó S/ 500.00 de S/ 800.00")).toBeDefined();
-    expect(screen.getAllByText("Octubre de 2026")).toHaveLength(2);
+    expect(screen.getByText("Octubre de 2026")).toBeDefined();
+    expect(screen.getByText("Octubre de 2026 (corregido)")).toBeDefined();
     expect(screen.getByText("Anulado")).toBeDefined();
     expect(screen.getByText("Vence pronto: 29/10/2026")).toBeDefined();
     expect(screen.getByText("Descuento")).toBeDefined();
@@ -596,6 +605,78 @@ describe("lease page", () => {
     await renderPage(`/app/contratos/${LEASE.id}`);
 
     expect(await screen.findByText(/No encontramos este contrato/)).toBeDefined();
+  });
+
+  test("voids a charge with its reason", async () => {
+    const charge = "0195a0b0-0000-7000-8000-000000000031";
+    const api = mockLease({ [`/api/app/charges/${charge}/void`]: () => json({ id: charge }) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Anular Setiembre de 2026" }));
+    await userEvent.type(screen.getByLabelText("¿Por qué lo anulas?"), "El monto estaba mal");
+    await userEvent.click(screen.getByRole("button", { name: "Anular cobro" }));
+
+    await vi.waitFor(() => {
+      expect(api.requestsTo(STATEMENT_PATH)).toHaveLength(2);
+    });
+    const [request] = api.requestsTo(`/api/app/charges/${charge}/void`);
+    expect(request?.headers.get("X-CSRF-Token")).toBe("csrf-token");
+    expect(await request?.json()).toEqual({ reason: "El monto estaba mal" });
+  });
+
+  test("corrects a voided rent only until it has its correction", async () => {
+    const voided = "0195a0b0-0000-7000-8000-000000000032";
+    const corrections = `/api/app/leases/${LEASE.id}/charges/corrections`;
+    const withoutCorrection = {
+      ...STATEMENT,
+      charges: STATEMENT.charges.filter((charge) => charge.kind !== "rent_correction"),
+    };
+    const api = mockLease({
+      [STATEMENT_PATH]: () => json(withoutCorrection),
+      [corrections]: () => json({ id: "x" }, 201),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Corregir el monto de Octubre de 2026" }),
+    );
+    await userEvent.type(screen.getByLabelText("Monto correcto en soles"), "750");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar corrección" }));
+
+    await vi.waitFor(() => {
+      expect(api.requestsTo(corrections)).toHaveLength(1);
+    });
+    const body = (await api.requestsTo(corrections)[0]?.json()) as Record<string, unknown>;
+    expect(body.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/);
+    expect({ ...body, id: "generated" }).toEqual({
+      id: "generated",
+      corrects_charge_id: voided,
+      amount_cents: 75000,
+    });
+  });
+
+  test("a rent that already has its correction offers no other", async () => {
+    mockLease();
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText("Octubre de 2026 (corregido)")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Corregir el monto/ })).toBeNull();
+  });
+
+  test("records a discount as a credit", async () => {
+    const adjustments = `/api/app/leases/${LEASE.id}/charges/adjustments`;
+    const api = mockLease({ [adjustments]: () => json({ id: "x" }, 201) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Agregar cargo o descuento" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Monto en soles"));
+    await userEvent.click(screen.getByLabelText("Un descuento"));
+    await userEvent.type(screen.getByLabelText("Monto en soles"), "50");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByText("Listo, guardamos el cargo o descuento.")).toBeDefined();
+    const body = (await api.requestsTo(adjustments)[0]?.json()) as Record<string, unknown>;
+    expect(body.amount_cents).toBe(-5000);
   });
 
   test("sends visitors without a session to log in", async () => {

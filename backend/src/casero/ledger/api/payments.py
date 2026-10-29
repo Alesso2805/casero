@@ -76,6 +76,7 @@ class ChargeLineResponse(BaseModel):
     kind: ChargeKind
     period: str | None
     pre_2026: bool | None = Field(description="Set on prior debt: from 2025 or before, or not")
+    corrects_charge_id: UUID | None = Field(description="The voided rent this one replaces")
     amount_cents: int
     due_date: date
     outstanding_cents: int
@@ -192,6 +193,7 @@ def create_router(
                     kind=line.charge.kind,
                     period=str(line.charge.period) if line.charge.period else None,
                     pre_2026=line.charge.pre_2026,
+                    corrects_charge_id=line.charge.corrects_charge_id,
                     amount_cents=line.charge.amount_cents,
                     due_date=line.charge.due_date,
                     outstanding_cents=line.outstanding_cents,

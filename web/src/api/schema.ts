@@ -884,6 +884,11 @@ export interface components {
             /** Amount Cents */
             amount_cents: number;
             /**
+             * Corrects Charge Id
+             * @description The voided rent this one replaces
+             */
+            corrects_charge_id: string | null;
+            /**
              * Due Date
              * Format: date
              */

@@ -22,6 +22,7 @@ class Charge:
     created_at: datetime
     voided: bool = False
     period: Period | None = None
+    corrects_charge_id: UUID | None = None
 
     @property
     def is_credit(self) -> bool:
