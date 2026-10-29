@@ -33,6 +33,7 @@ No role used by the API, the worker or the panel owns tables or has `BYPASSRLS`.
   - Tables without `lease_id` use `EXISTS` on their parent: voids, deposit movements and files. `renters`, `units` and `properties` use `EXISTS` on the lease.
   - `accounts` and `subscriptions` stay visible while `app.lease_id` is set, because the portal needs the landlord's name and the plan features. The `/api/tenant/*` endpoints still read only `display_name` and the plan features, through an explicit DTO. Every other account table is invisible in the tenant context.
   - When `app.context = 'tenant'` and `app.lease_id` is missing, the comparison is `NULL` and nothing is visible: the context fails closed.
+  - The tenant context is read-only (migration 0009, the owner's D7 decision). Every RLS table has `AS RESTRICTIVE` policies that refuse INSERT, UPDATE and DELETE when `app.context = 'tenant'`. The one exception is `tenant_links`, where the portal records `last_used_at`. Migration 0011 also requires an updated link to still be in use, so the portal can never revoke it. Vouchers and their files will get their own exception in CS-19.
 - `casero_admin` policies: `TO casero_admin` policies exist only on `accounts`, `subscriptions` and `subscription_payments`, for the commands its grants allow. On every other account table it sees no rows even if a grant is added by mistake.
 
 ### Contexts
