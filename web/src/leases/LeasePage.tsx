@@ -16,6 +16,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
 import { formatSoles, parseSolesToCents } from "../landing/money";
+import { AdjustmentForm, ChargeActions } from "./ChargeActions";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 import { fetchLeases, fetchRenters } from "./LeasesPage";
@@ -70,7 +71,8 @@ function chargeLabel(charge: ChargeLine): string {
     return charge.amount_cents < 0 ? text.lease.credit : text.lease.adjustment;
   }
   const label = periodLabel(charge.period ?? "");
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  const month = label.charAt(0).toUpperCase() + label.slice(1);
+  return charge.kind === "rent_correction" ? text.charge.corrected(month) : month;
 }
 
 function statusText(charge: ChargeLine, today: string): string {
@@ -110,7 +112,16 @@ function Summary({ statement }: { statement: Statement }) {
   );
 }
 
-function Charges({ charges, today }: { charges: ChargeLine[]; today: string }) {
+function Charges({
+  charges,
+  today,
+  leaseId,
+}: {
+  charges: ChargeLine[];
+  today: string;
+  leaseId: string;
+}) {
+  const corrected = new Set(charges.map((charge) => charge.corrects_charge_id));
   return (
     <ul className="flex flex-col gap-2">
       {[...charges].reverse().map((charge) => (
@@ -133,6 +144,12 @@ function Charges({ charges, today }: { charges: ChargeLine[]; today: string }) {
               )}
             </span>
           )}
+          <ChargeActions
+            charge={charge}
+            label={chargeLabel(charge)}
+            leaseId={leaseId}
+            corrected={corrected.has(charge.id)}
+          />
         </li>
       ))}
     </ul>
@@ -151,11 +168,12 @@ const paymentSchema = z.object({
 
 type PaymentValues = z.input<typeof paymentSchema>;
 interface Notice {
+  message: string;
   bankThreshold: number | null;
   beforeControl: boolean;
 }
 type Saved =
-  | ({ kind: "saved" } & Notice)
+  | ({ kind: "saved" } & Omit<Notice, "message">)
   | { kind: "refused"; detail: string }
   | { kind: "conflict" }
   | { kind: "login" };
@@ -230,7 +248,11 @@ function PaymentForm({
     onSuccess: (result) => {
       switch (result.kind) {
         case "saved":
-          onSaved({ bankThreshold: result.bankThreshold, beforeControl: result.beforeControl });
+          onSaved({
+            message: text.payment.saved,
+            bankThreshold: result.bankThreshold,
+            beforeControl: result.beforeControl,
+          });
           return;
         case "refused":
           setError("receivedOn", { message: RECEIPT_ERRORS[result.detail] ?? text.errors.failure });
@@ -422,6 +444,8 @@ export function LeasePage() {
   // Kept until a save is confirmed: reopening after a lost response replays the same payment.
   const [draftId, setDraftId] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const noticeBox = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -468,7 +492,7 @@ export function LeasePage() {
               tabIndex={-1}
               className="flex flex-col gap-2 rounded-lg bg-stone-100 p-4"
             >
-              <p>{text.payment.saved}</p>
+              <p>{notice.message}</p>
               {notice.bankThreshold !== null && (
                 <p className="text-amber-900">
                   {text.payment.bank(formatSoles(notice.bankThreshold))}
@@ -508,11 +532,44 @@ export function LeasePage() {
               {text.lease.record}
             </button>
           )}
+          {adjusting && adjustmentId !== null ? (
+            <AdjustmentForm
+              leaseId={leaseId}
+              adjustmentId={adjustmentId}
+              onSaved={() => {
+                setAdjusting(false);
+                setAdjustmentId(null);
+                setNotice({
+                  message: text.adjustment.saved,
+                  bankThreshold: null,
+                  beforeControl: false,
+                });
+              }}
+              onConflict={() => {
+                setAdjustmentId(uuidv7());
+              }}
+              onCancel={() => {
+                setAdjusting(false);
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={secondaryButton}
+              onClick={() => {
+                setNotice(null);
+                setAdjustmentId((id) => id ?? uuidv7());
+                setAdjusting(true);
+              }}
+            >
+              {text.adjustment.add}
+            </button>
+          )}
           <section aria-labelledby="charges-title" className="flex flex-col gap-3">
             <h2 id="charges-title" className="text-2xl font-bold">
               {text.lease.charges}
             </h2>
-            <Charges charges={statement.data.statement.charges} today={today} />
+            <Charges charges={statement.data.statement.charges} today={today} leaseId={leaseId} />
           </section>
           <section aria-labelledby="payments-title" className="flex flex-col gap-3">
             <h2 id="payments-title" className="text-2xl font-bold">

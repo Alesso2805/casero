@@ -108,6 +108,7 @@ async def test_a_voided_rent_is_replaced_by_its_correction(
         ("rent_correction", "2026-10", False),
     ]
     assert statement["balance_cents"] == 150_000
+    assert statement["charges"][2]["corrects_charge_id"] == october["id"]
 
 
 async def test_only_a_voided_rent_is_corrected_and_only_once(

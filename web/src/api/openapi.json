@@ -226,6 +226,19 @@
             "title": "Amount Cents",
             "type": "integer"
           },
+          "corrects_charge_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The voided rent this one replaces",
+            "title": "Corrects Charge Id"
+          },
           "due_date": {
             "format": "date",
             "title": "Due Date",
@@ -306,6 +319,7 @@
           "kind",
           "period",
           "pre_2026",
+          "corrects_charge_id",
           "amount_cents",
           "due_date",
           "outstanding_cents",
