@@ -9,14 +9,31 @@ from pydantic import AfterValidator, BaseModel, Field
 from casero.accounts.application.context import AccountContext
 from casero.ledger.api.payments import MAX_CENTS, WRITE_ERRORS, VoidRequest, client_generated
 from casero.ledger.application.manual_charges import (
+    AdjustLease,
+    ChargeCreated,
     ChargeRecord,
-    Corrected,
     CorrectRent,
+    NewAdjustment,
     NewCorrection,
     VoidCharge,
 )
 from casero.ledger.domain.allocation import ChargeKind
 from casero.shared.infrastructure.csrf import require_csrf
+
+
+def not_zero(cents: int) -> int:
+    if cents == 0:
+        raise ValueError("an adjustment is a debit (positive) or a credit (negative), never zero")
+    return cents
+
+
+class AdjustmentRequest(BaseModel):
+    id: Annotated[UUID, AfterValidator(client_generated)]
+    amount_cents: Annotated[
+        int,
+        Field(ge=-MAX_CENTS, le=MAX_CENTS, description="Positive is a debit, negative a credit"),
+        AfterValidator(not_zero),
+    ]
 
 
 class CorrectionRequest(BaseModel):
@@ -52,10 +69,39 @@ def charge_response(record: ChargeRecord) -> ChargeResponse:
 
 def create_router(
     current_account: Callable[..., Awaitable[AccountContext]],
+    provide_adjust: Callable[..., Awaitable[AdjustLease]],
     provide_correct: Callable[..., Awaitable[CorrectRent]],
     provide_void: Callable[..., Awaitable[VoidCharge]],
 ) -> APIRouter:
     router = APIRouter()
+
+    @router.post(
+        "/api/app/leases/{lease_id}/charges/adjustments",
+        status_code=201,
+        dependencies=[Depends(require_csrf)],
+        responses={
+            **WRITE_ERRORS,
+            200: {"description": "The same id was already recorded with the same content"},
+            404: {"description": "`lease_not_found`"},
+            409: {"description": "The id exists with other content or in another account"},
+        },
+    )
+    async def adjust(
+        lease_id: UUID,
+        body: AdjustmentRequest,
+        response: Response,
+        context: Annotated[AccountContext, Depends(current_account)],
+        adjust_lease: Annotated[AdjustLease, Depends(provide_adjust)],
+    ) -> ChargeResponse:
+        """Record a debit or a credit by hand, due today; the id comes from the client."""
+        result = await adjust_lease(context, NewAdjustment(body.id, lease_id, body.amount_cents))
+        if result == "conflict":
+            raise HTTPException(status_code=409)
+        if result == "lease_not_found":
+            raise HTTPException(status_code=404, detail=result)
+        if result.replayed:
+            response.status_code = 200
+        return charge_response(result.record)
 
     @router.post(
         "/api/app/leases/{lease_id}/charges/corrections",
@@ -81,7 +127,7 @@ def create_router(
             context,
             NewCorrection(body.id, lease_id, body.corrects_charge_id, body.amount_cents),
         )
-        if not isinstance(result, Corrected):
+        if not isinstance(result, ChargeCreated):
             if result == "conflict":
                 raise HTTPException(status_code=409)
             status = 404 if result == "lease_not_found" else 422

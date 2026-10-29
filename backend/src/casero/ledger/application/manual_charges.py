@@ -19,6 +19,13 @@ class ChargeRecord:
 
 
 @dataclass(frozen=True)
+class NewAdjustment:
+    id: UUID
+    lease_id: UUID
+    amount_cents: int
+
+
+@dataclass(frozen=True)
 class NewCorrection:
     id: UUID
     lease_id: UUID
@@ -43,12 +50,56 @@ class ChargeStore(Protocol):
 
 
 @dataclass(frozen=True)
-class Corrected:
+class ChargeCreated:
     record: ChargeRecord
     replayed: bool
 
 
 CorrectionRefusal = Literal["lease_not_found", "conflict", "not_a_voided_rent", "already_corrected"]
+
+
+@dataclass(frozen=True)
+class AdjustLease:
+    """A debit (positive) or a credit (negative) entered by hand; a credit is never money
+    collected, so it stays out of the tax base (SPEC, "Ajustes negativos")."""
+
+    store: ChargeStore
+    audit: AuditLog
+    clock: Clock
+
+    async def __call__(
+        self, context: AccountContext, new: NewAdjustment
+    ) -> ChargeCreated | Literal["lease_not_found", "conflict"]:
+        if not await self.store.lock_lease(new.lease_id):
+            return "lease_not_found"
+        existing = await self.store.charge(new.id)
+        if existing is not None:
+            matches = (
+                existing.lease_id,
+                existing.charge.kind,
+                existing.charge.amount_cents,
+            ) == (new.lease_id, "adjustment", new.amount_cents)
+            return ChargeCreated(existing, True) if matches else "conflict"
+        now = self.clock.now()
+        record = ChargeRecord(
+            Charge(new.id, "adjustment", new.amount_cents, self.clock.today_lima(), None, now),
+            new.lease_id,
+            None,
+        )
+        if not await self.store.add_charge(context.account_id, record, context.user_id):
+            return "conflict"
+        await self.audit.record(
+            AuditEntry.of(
+                context.account_id,
+                context.user_id,
+                "charge.adjusted",
+                "charges",
+                new.id,
+                ["amount_cents"],
+                now,
+            )
+        )
+        return ChargeCreated(record, False)
 
 
 @dataclass(frozen=True)
@@ -61,7 +112,7 @@ class CorrectRent:
 
     async def __call__(
         self, context: AccountContext, new: NewCorrection
-    ) -> Corrected | CorrectionRefusal:
+    ) -> ChargeCreated | CorrectionRefusal:
         if not await self.store.lock_lease(new.lease_id):
             return "lease_not_found"
         existing = await self.store.charge(new.id)
@@ -71,7 +122,7 @@ class CorrectRent:
                 existing.corrects_charge_id,
                 existing.charge.amount_cents,
             ) == (new.lease_id, new.corrects_charge_id, new.amount_cents)
-            return Corrected(existing, True) if matches else "conflict"
+            return ChargeCreated(existing, True) if matches else "conflict"
         target = await self.store.charge(new.corrects_charge_id)
         if (
             target is None
@@ -109,7 +160,7 @@ class CorrectRent:
                 now,
             )
         )
-        return Corrected(record, False)
+        return ChargeCreated(record, False)
 
 
 @dataclass(frozen=True)

@@ -139,3 +139,42 @@ async def test_voiding_is_idempotent_spares_prior_debt_and_stays_in_the_account(
     assert (prior_debt.status_code, prior_debt.json()["detail"]) == (422, "charge_not_voidable")
     assert (intrusion.status_code, intrusion.json()["detail"]) == (404, "charge_not_found")
     assert (foreign.status_code, foreign.json()["detail"]) == (404, "lease_not_found")
+
+
+def adjust(client: TestClient, lease_id: str, **body: object) -> Any:
+    return send(client, "POST", f"/api/app/leases/{lease_id}/charges/adjustments", body)
+
+
+async def test_debits_and_credits_by_hand_change_the_balance_from_today(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as client:
+        lease_id = start_lease(client)
+        debit = {"id": str(uuid7()), "amount_cents": 5_000}
+        charged = adjust(client, lease_id, **debit)
+        again = adjust(client, lease_id, **debit)
+        changed = adjust(client, lease_id, **{**debit, "amount_cents": 6_000})
+        credited = adjust(client, lease_id, id=str(uuid7()), amount_cents=-20_000)
+        statement = client.get(f"/api/app/leases/{lease_id}/statement").json()
+
+    assert charged.status_code == 201
+    assert (charged.json()["kind"], charged.json()["due_date"]) == ("adjustment", "2026-10-27")
+    assert (again.status_code, again.json()) == (200, charged.json())
+    assert changed.status_code == 409
+    assert credited.json()["amount_cents"] == -20_000
+    assert statement["balance_cents"] == 160_000 + 5_000 - 20_000
+    [credit_line] = [c for c in statement["charges"] if c["amount_cents"] < 0]
+    assert credit_line["status"] is None
+
+
+async def test_a_zero_adjustment_or_another_accounts_lease_is_refused(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request) as ana, client_for(database, request) as luis:
+        lease_id = start_lease(ana)
+        start_lease(luis)
+        zero = adjust(ana, lease_id, id=str(uuid7()), amount_cents=0)
+        foreign = adjust(luis, lease_id, id=str(uuid7()), amount_cents=1_000)
+
+    assert zero.status_code == 422
+    assert (foreign.status_code, foreign.json()["detail"]) == (404, "lease_not_found")
