@@ -39,6 +39,8 @@ class OpsReadings(Protocol):
 
     async def schedule_rows(self, year: int) -> int: ...
 
+    async def has_tax_rules(self, year: int) -> bool: ...
+
     async def failed_runs_since(self, since: datetime) -> dict[str, int]: ...
 
 
@@ -110,6 +112,21 @@ class RaiseAlerts:
             for job in await self.readings.stuck_job_runs(now - JOB_STUCK_AFTER)
         ]
         for year in schedule_years(today):
+            if not await self.readings.has_tax_rules(year):
+                pending.append(
+                    Alert(
+                        key=f"rules:{today}:{year}",
+                        event="tax.rules_missing",
+                        subject=f"Casero: faltan las reglas tributarias de {year}",
+                        text=(
+                            f"No están cargadas la tasa, la deducción, la UIT ni el umbral de "
+                            f"{year}: sin ellas Casero no arma los formularios de ese año. "
+                            "Agrega `rules` al YAML del año y despliega; el migrador lo carga "
+                            "al arrancar (docs/ops/tax-config.md)."
+                        ),
+                        tags={"year": str(year)},
+                    )
+                )
             if await self.readings.schedule_rows(year) < MONTHS * RUC_GROUPS:
                 pending.append(
                     Alert(

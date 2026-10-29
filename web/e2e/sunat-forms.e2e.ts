@@ -4,10 +4,10 @@ import { expect, type Page, test } from "@playwright/test";
 const WCAG_21_AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const SUNAT_RUC = "20131312955";
 const ANA_DNI = "45678912";
-
-function limaToday(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
-}
+// A past month whose tax rules and schedule are loaded, so CI doesn't depend on the year's
+// rules being published (they arrive each December; docs/ops/tax-config.md).
+const MONTH = "2026-01";
+const PAID_ON = "2026-01-15";
 
 async function expectAccessible(page: Page) {
   const results = await new AxeBuilder({ page }).withTags(WCAG_21_AA).analyze();
@@ -27,7 +27,8 @@ async function addLease(page: Page, unit: string, rent: string, renter: "new" | 
   }
   await page.getByLabel("Alquiler mensual en soles").fill(rent);
   await page.getByLabel("¿Qué día del mes te paga?").fill("5");
-  await page.getByLabel("Fecha de inicio del contrato").fill(limaToday());
+  await page.getByLabel("Fecha de inicio del contrato").fill(`${MONTH}-01`);
+  await page.getByLabel("¿Desde qué mes llevas el control en Casero?").selectOption(MONTH);
   await page.getByRole("button", { name: "Guardar contrato" }).click();
   await expect(page).toHaveURL(/\/app\/contratos$/);
 }
@@ -37,6 +38,7 @@ async function recordPayment(page: Page, lease: number, amount: string) {
   await page.getByRole("link", { name: "Ver cobros de Ana Prueba" }).nth(lease).click();
   await page.getByRole("button", { name: "Registrar pago" }).click();
   await page.getByLabel("Monto recibido en soles").fill(amount);
+  await page.getByLabel("Fecha en que recibiste el dinero").fill(PAID_ON);
   await page.getByLabel("¿Cómo te pagó?").selectOption("yape");
   await page.getByRole("button", { name: "Guardar pago" }).click();
   await expect(page.getByText("Listo, guardamos el pago.")).toBeVisible();
@@ -81,9 +83,15 @@ test("a landlord registers, rents two rooms to one tenant and gets one 1683", as
   await recordPayment(page, 1, "100.50");
 
   await page.goto("/app/impuestos");
-  await page.getByRole("button", { name: "Mes siguiente" }).click();
+  const shown = page.getByRole("heading", { name: /^Cobros de / });
+  await expect(shown).toBeVisible();
+  while ((await shown.textContent()) !== "Cobros de enero de 2026") {
+    const before = (await shown.textContent()) ?? "";
+    await page.getByRole("button", { name: "Mes anterior" }).click();
+    await expect(shown).not.toHaveText(before);
+  }
   await expect(page.getByText("Total del mes: S/ 28.00 en 1 Formulario 1683.")).toBeVisible();
-  await expect(page.getByText(/Vencen el \d{2}\/\d{2}\/\d{4}|Fecha por confirmar/)).toBeVisible();
+  await expect(page.getByText("Vencen el 19/02/2026, según el último dígito de tu RUC.")).toBeVisible();
   const card = page.getByRole("listitem").filter({ hasText: "Ana Prueba" });
   await expect(card.getByText(SUNAT_RUC)).toBeVisible();
   await expect(card.getByText(ANA_DNI)).toBeVisible();
