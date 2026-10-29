@@ -679,6 +679,113 @@ describe("lease page", () => {
     expect(body.amount_cents).toBe(-5000);
   });
 
+  async function bodyOf(api: ReturnType<typeof mockApi>, path: string) {
+    await vi.waitFor(() => {
+      expect(api.requestsTo(path)).toHaveLength(1);
+    });
+    return (await api.requestsTo(path)[0]?.json()) as Record<string, unknown>;
+  }
+
+  const LEASE_PATH = `/api/app/leases/${LEASE.id}`;
+  const updatedLease = () => json(LEASE);
+
+  test("changes the rent from the next month not yet charged", async () => {
+    const api = mockLease({ [`${LEASE_PATH}/rent-changes`]: () => json({ id: "x" }, 201) });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cambiar el alquiler" }));
+    expect(document.activeElement).toBe(screen.getByLabelText("Nuevo alquiler mensual en soles"));
+    await userEvent.type(screen.getByLabelText("Nuevo alquiler mensual en soles"), "900");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByText(/Listo, guardamos el nuevo alquiler/)).toBeDefined();
+    const body = await bodyOf(api, `${LEASE_PATH}/rent-changes`);
+    expect(body.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/);
+    expect(body.monthly_rent_cents).toBe(90000);
+  });
+
+  test("leaves the lease without a planned end", async () => {
+    const api = mockLease({ [`${LEASE_PATH}/end-date`]: updatedLease });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Cambiar la fecha de fin" }));
+    expect(screen.getByLabelText<HTMLInputElement>("Nueva fecha de fin").value).toBe("2026-11-10");
+    fireEvent.change(screen.getByLabelText("Nueva fecha de fin"), { target: { value: "" } });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    expect(await screen.findByText("Listo, actualizamos la fecha de fin.")).toBeDefined();
+    expect(await bodyOf(api, `${LEASE_PATH}/end-date`)).toEqual({ end_date: null });
+  });
+
+  test("ends the lease with a discount for the days not used", async () => {
+    const api = mockLease({ [`${LEASE_PATH}/termination`]: updatedLease });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Terminar el contrato" }));
+    expect(screen.getByLabelText<HTMLInputElement>(/Fecha en que terminó/).value).toBe(
+      "2026-10-27",
+    );
+    fireEvent.change(screen.getByLabelText(/Fecha en que terminó/), {
+      target: { value: "2026-10-20" },
+    });
+    await userEvent.type(screen.getByLabelText(/Descuento por los días que no usó/), "100");
+    await userEvent.click(screen.getByRole("button", { name: "Terminar contrato" }));
+
+    expect(await screen.findByText("Listo, el contrato quedó terminado.")).toBeDefined();
+    const body = await bodyOf(api, `${LEASE_PATH}/termination`);
+    expect(body.ended_on).toBe("2026-10-20");
+    const credit = body.credit as { id: string; amount_cents: number };
+    expect(credit.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7/);
+    expect(credit.amount_cents).toBe(10000);
+  });
+
+  test("explains why an end date is refused", async () => {
+    mockLease({
+      [`${LEASE_PATH}/termination`]: () => json({ detail: "end_before_control" }, 422),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Terminar el contrato" }));
+    await userEvent.click(screen.getByRole("button", { name: "Terminar contrato" }));
+
+    expect(await screen.findByText(/anterior al mes desde el que llevas el control/)).toBeDefined();
+  });
+
+  test("records the 2026 prior debt, the only era left", async () => {
+    const api = mockLease({
+      [`${LEASE_PATH}/charges/prior-debts`]: () => json({ id: "x" }, 201),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Registrar una deuda anterior" }),
+    );
+    expect(screen.getByText("Deuda de 2026, antes del mes de control")).toBeDefined();
+    await userEvent.type(screen.getByLabelText(/Monto en soles/), "350");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    const body = await bodyOf(api, `${LEASE_PATH}/charges/prior-debts`);
+    expect([body.pre_2026, body.amount_cents]).toEqual([false, 35000]);
+  });
+
+  test("an ended lease with money in favor shows what to return and records it", async () => {
+    const adjustments = `${LEASE_PATH}/charges/adjustments`;
+    const api = mockLease({
+      "/api/app/leases": () => json([{ ...LEASE, ended_at: "2026-09-30" }]),
+      [STATEMENT_PATH]: () =>
+        json({ ...STATEMENT, balance_cents: -2000, credit_cents: 2000, up_to_date: true }),
+      [adjustments]: () => json({ id: "x" }, 201),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText("A devolver al inquilino: S/ 20.00")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Terminar el contrato" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Registrar devolución" }));
+
+    expect(await screen.findByText("Listo, registramos la devolución.")).toBeDefined();
+    expect((await bodyOf(api, adjustments)).amount_cents).toBe(2000);
+  });
+
   test("sends visitors without a session to log in", async () => {
     mockApi({
       "/api/app/leases": 401,

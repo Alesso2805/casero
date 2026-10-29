@@ -1,5 +1,3 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 
 import { primaryButton, secondaryButton } from "../account/fields";
@@ -8,41 +6,11 @@ import type { components } from "../api/schema";
 import { parseSolesToCents } from "../landing/money";
 import { leasesCopy as text } from "./copy";
 import { uuidv7 } from "./terms";
+import { inputClass, outcomeOf, useLeaseWrite } from "./writes";
 
 type ChargeLine = components["schemas"]["ChargeLineResponse"];
-type Outcome = "done" | "conflict" | "login";
 
 const CORRECTABLE = new Set<ChargeLine["kind"]>(["rent", "rent_correction"]);
-const inputClass = "min-h-11 w-full rounded-lg border border-stone-400 px-3 text-base";
-
-function useLeaseWrite(leaseId: string, write: () => Promise<Outcome>, onDone?: () => void) {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  return useMutation({
-    mutationFn: write,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ["statement", leaseId] }),
-    onSuccess: (outcome) => {
-      if (outcome === "login") {
-        void navigate({ to: "/ingresar" });
-      } else if (outcome === "done") {
-        onDone?.();
-      }
-    },
-  });
-}
-
-function outcomeOf(response: Response, saved: boolean): Outcome {
-  if (saved) {
-    return "done";
-  }
-  if (response.status === 401) {
-    return "login";
-  }
-  if (response.status === 409) {
-    return "conflict";
-  }
-  throw new Error(`Unexpected status ${String(response.status)}`);
-}
 
 export function ChargeActions({
   charge,
@@ -59,35 +27,28 @@ export function ChargeActions({
   const [reason, setReason] = useState("");
   const [amount, setAmount] = useState("");
   const [correctionId] = useState(uuidv7);
-  const close = () => {
-    setMode("idle");
-  };
-  const voiding = useLeaseWrite(
-    leaseId,
-    async () => {
-      const { data, response } = await api.POST("/api/app/charges/{charge_id}/void", {
+  const cents = parseSolesToCents(amount) ?? 0;
+  const voiding = useLeaseWrite(leaseId, () =>
+    outcomeOf(
+      api.POST("/api/app/charges/{charge_id}/void", {
         params: { path: { charge_id: charge.id } },
         body: { reason: reason.trim() },
-      });
-      return outcomeOf(response, data !== undefined);
-    },
-    close,
+      }),
+    ),
   );
-  const cents = parseSolesToCents(amount) ?? 0;
-  const correcting = useLeaseWrite(
-    leaseId,
-    async () => {
-      const { data, response } = await api.POST(
-        "/api/app/leases/{lease_id}/charges/corrections",
-        {
-          params: { path: { lease_id: leaseId } },
-          body: { id: correctionId, corrects_charge_id: charge.id, amount_cents: cents },
-        },
-      );
-      return outcomeOf(response, data !== undefined);
-    },
-    close,
+  const correcting = useLeaseWrite(leaseId, () =>
+    outcomeOf(
+      api.POST("/api/app/leases/{lease_id}/charges/corrections", {
+        params: { path: { lease_id: leaseId } },
+        body: { id: correctionId, corrects_charge_id: charge.id, amount_cents: cents },
+      }),
+    ),
   );
+  const close = {
+    onSuccess: () => {
+      setMode("idle");
+    },
+  };
   const canCorrect = charge.voided && CORRECTABLE.has(charge.kind) && !corrected;
   if (!charge.voided && mode === "void") {
     const reasonId = `charge-void-${charge.id}`;
@@ -109,12 +70,18 @@ export function ChargeActions({
             className={primaryButton}
             disabled={reason.trim() === "" || voiding.isPending}
             onClick={() => {
-              voiding.mutate();
+              voiding.mutate(undefined, close);
             }}
           >
             {text.charge.voidConfirm}
           </button>
-          <button type="button" className={secondaryButton} onClick={close}>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => {
+              setMode("idle");
+            }}
+          >
             {text.charge.cancel}
           </button>
         </div>
@@ -146,16 +113,22 @@ export function ChargeActions({
             className={primaryButton}
             disabled={cents <= 0 || correcting.isPending}
             onClick={() => {
-              correcting.mutate();
+              correcting.mutate(undefined, close);
             }}
           >
             {text.charge.correctConfirm}
           </button>
-          <button type="button" className={secondaryButton} onClick={close}>
+          <button
+            type="button"
+            className={secondaryButton}
+            onClick={() => {
+              setMode("idle");
+            }}
+          >
             {text.charge.cancel}
           </button>
         </div>
-        {(correcting.isError || correcting.data === "conflict") && (
+        {(correcting.isError || correcting.data?.kind === "conflict") && (
           <p role="alert" className="text-red-800">
             {text.errors.failure}
           </p>
@@ -163,31 +136,17 @@ export function ChargeActions({
       </div>
     );
   }
-  if (!charge.voided) {
+  if (!charge.voided || canCorrect) {
     return (
       <button
         type="button"
         className={`${secondaryButton} self-start`}
-        aria-label={text.charge.voidOf(label)}
+        aria-label={charge.voided ? text.charge.correctOf(label) : text.charge.voidOf(label)}
         onClick={() => {
-          setMode("void");
+          setMode(charge.voided ? "correct" : "void");
         }}
       >
-        {text.charge.void}
-      </button>
-    );
-  }
-  if (canCorrect) {
-    return (
-      <button
-        type="button"
-        className={`${secondaryButton} self-start`}
-        aria-label={text.charge.correctOf(label)}
-        onClick={() => {
-          setMode("correct");
-        }}
-      >
-        {text.charge.correct}
+        {charge.voided ? text.charge.correct : text.charge.void}
       </button>
     );
   }
@@ -215,13 +174,14 @@ export function AdjustmentForm({
     amountInput.current?.focus();
   }, []);
   const cents = parseSolesToCents(amount) ?? 0;
-  const saving = useLeaseWrite(leaseId, async () => {
-    const { data, response } = await api.POST("/api/app/leases/{lease_id}/charges/adjustments", {
-      params: { path: { lease_id: leaseId } },
-      body: { id: adjustmentId, amount_cents: kind === "credit" ? -cents : cents },
-    });
-    return outcomeOf(response, data !== undefined);
-  });
+  const saving = useLeaseWrite(leaseId, () =>
+    outcomeOf(
+      api.POST("/api/app/leases/{lease_id}/charges/adjustments", {
+        params: { path: { lease_id: leaseId } },
+        body: { id: adjustmentId, amount_cents: kind === "credit" ? -cents : cents },
+      }),
+    ),
+  );
   return (
     <form
       noValidate
@@ -232,9 +192,9 @@ export function AdjustmentForm({
         setConflict(false);
         saving.mutate(undefined, {
           onSuccess: (outcome) => {
-            if (outcome === "done") {
+            if (outcome.kind === "done") {
               onSaved();
-            } else if (outcome === "conflict") {
+            } else if (outcome.kind === "conflict") {
               setConflict(true);
               onConflict();
             }
