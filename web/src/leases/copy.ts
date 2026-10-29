@@ -106,6 +106,22 @@ export const leasesCopy = {
     details: "Ver cobros",
     detailsOf: (name: string) => `Ver cobros de ${name}`,
   },
+  tenantLink: {
+    title: "Enlace para el inquilino",
+    intro:
+      "Con este enlace tu inquilino ve su saldo y sus pagos, sin crear una cuenta. Compártelo solo con tu inquilino.",
+    create: "Crear enlace",
+    url: "Enlace",
+    copy: "Copiar enlace",
+    copied: "Enlace copiado. Pégalo en tu chat con el inquilino.",
+    lastUsed: (date: string) => `Lo abrió por última vez el ${date}.`,
+    neverUsed: "Todavía no lo ha abierto.",
+    renew: "Crear un enlace nuevo",
+    renewHint: "Si creas uno nuevo, el anterior deja de funcionar.",
+    revoke: "Desactivar el enlace",
+    revoked: "Listo, el enlace ya no funciona.",
+    unavailable: "Tu plan no incluye el portal del inquilino para este contrato.",
+  },
   leaseActions: {
     title: "Contrato",
     rent: "Cambiar el alquiler",

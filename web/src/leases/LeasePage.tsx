@@ -18,6 +18,7 @@ import { formatDay } from "../landing/dates";
 import { formatSoles, parseSolesToCents } from "../landing/money";
 import { AdjustmentForm, ChargeActions } from "./ChargeActions";
 import { LeaseActions } from "./LeaseActions";
+import { TenantLinkBlock } from "./TenantLinkBlock";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 import { fetchLeases, fetchRenters } from "./LeasesPage";
@@ -586,6 +587,7 @@ export function LeasePage() {
               </ul>
             )}
           </section>
+          <TenantLinkBlock leaseId={leaseId} />
           {lease && (
             <LeaseActions
               lease={lease}
