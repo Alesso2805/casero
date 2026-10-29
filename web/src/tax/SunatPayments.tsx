@@ -18,6 +18,10 @@ type Declaration = components["schemas"]["DeclarationResponse"];
 type DeclaredPayment = components["schemas"]["DeclaredPaymentResponse"];
 
 const recordSchema = z.object({
+  declaredBase: z
+    .string()
+    .trim()
+    .refine((value) => parseSolesToCents(value) !== null, { error: text.errors.declaredBase }),
   amount: z
     .string()
     .trim()
@@ -45,6 +49,7 @@ async function recordPayment(
       id,
       period,
       renter_id: renterId,
+      declared_base_cents: parseSolesToCents(values.declaredBase) ?? 0,
       amount_cents: parseSolesToCents(values.amount) ?? 0,
       paid_on: values.paidOn,
       order_number: values.orderNumber.trim(),
@@ -87,6 +92,7 @@ function RecordForm({
   } = useForm<RecordValues>({
     resolver: zodResolver(recordSchema),
     defaultValues: {
+      declaredBase: solesInput(declaration.base_cents),
       amount: declaration.pending_cents > 0 ? solesInput(declaration.pending_cents) : "",
       paidOn: limaToday(),
       orderNumber: "",
@@ -121,6 +127,14 @@ function RecordForm({
         })(event);
       }}
     >
+      <TextField
+        id={`${id}-base`}
+        label={text.declaredBase}
+        hint={text.declaredBaseHint}
+        decimal
+        error={errors.declaredBase}
+        registration={register("declaredBase")}
+      />
       <TextField
         id={`${id}-amount`}
         label={text.amount}

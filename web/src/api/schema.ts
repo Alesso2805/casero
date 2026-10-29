@@ -2015,6 +2015,11 @@ export interface components {
             /** Amount Cents */
             amount_cents: number;
             /**
+             * Declared Base Cents
+             * @description The base the landlord filed in the 1683
+             */
+            declared_base_cents: number;
+            /**
              * Id
              * Format: uuid
              */
@@ -2043,7 +2048,7 @@ export interface components {
             amount_cents: number;
             /**
              * Base Cents
-             * @description The declaration's base when the payment was recorded
+             * @description The base the landlord confirmed they declared
              */
             base_cents: number;
             /**
