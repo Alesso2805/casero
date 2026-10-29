@@ -88,6 +88,7 @@ from casero.identity.application.sessions import (
     AuthenticateSession,
     Credentials,
     LogIn,
+    LoginSteps,
     LoginThrottle,
     LogOut,
     PasswordHasher,
@@ -112,6 +113,7 @@ from casero.identity.infrastructure.email_suppressions import SqlSuppressionStor
 from casero.identity.infrastructure.passwords import Argon2PasswordHasher
 from casero.identity.infrastructure.sessions import (
     AsyncioSleeper,
+    EngineLoginSteps,
     PostgresLoginThrottle,
     SecretSessionTokens,
     SqlCredentials,
@@ -239,6 +241,11 @@ WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
 CLIENT_ERRORS_PER_HOUR = 30
+CLIENT_ERROR_KINDS_PER_HOUR = 1
+CLIENT_ERRORS_FORWARDED_PER_HOUR = 6
+# Account emails go out inside the request's transaction (ADR-0009): a slow SMTP server must
+# not hold a pooled connection for long.
+ACCOUNT_EMAIL_TIMEOUT_SECONDS = 10
 TENANT_PORTAL_PER_HOUR = 60
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
@@ -335,14 +342,20 @@ def create_app(
 
     app.include_router(calculator_api.create_router(provide_calculate))
 
-    async def provide_client_error_limiter(
+    async def provide_client_error_limits(
         connection: Transaction,
-    ) -> client_errors_api.RateLimiter:
-        return PostgresRateLimiter(
-            connection, config.rate_limit_key, app_clock, "client-errors", CLIENT_ERRORS_PER_HOUR
+    ) -> client_errors_api.ReportLimits:
+        def limiter(scope: str, per_hour: int) -> PostgresRateLimiter:
+            key = config.rate_limit_key
+            return PostgresRateLimiter(connection, key, app_clock, scope, per_hour)
+
+        return client_errors_api.ReportLimits(
+            per_client=limiter("client-errors", CLIENT_ERRORS_PER_HOUR),
+            per_kind=limiter("client-error-kinds", CLIENT_ERROR_KINDS_PER_HOUR),
+            overall=limiter("client-errors-forwarded", CLIENT_ERRORS_FORWARDED_PER_HOUR),
         )
 
-    app.include_router(client_errors_api.create_router(provide_client_error_limiter))
+    app.include_router(client_errors_api.create_router(provide_client_error_limits))
 
     hasher: PasswordHasher = Argon2PasswordHasher()
     session_tokens: SessionTokens = SecretSessionTokens()
@@ -353,16 +366,27 @@ def create_app(
     ) -> SqlCredentials:
         return SqlCredentials(connection)
 
-    async def provide_login(
-        connection: Transaction,
-    ) -> LogIn:
-        credentials: Credentials = SqlCredentials(connection)
-        store: SessionStore = SqlSessionStore(connection)
+    def login_throttle(connection: AsyncConnection) -> LoginThrottle:
         throttle: LoginThrottle = PostgresLoginThrottle(
             connection, config.rate_limit_key, app_clock, LOGIN_ATTEMPTS_PER_IP_PER_HOUR
         )
-        start = StartSession(session_tokens, store, app_clock)
-        return LogIn(credentials, hasher, start, throttle, login_sleeper)
+        return throttle
+
+    def login_credentials(connection: AsyncConnection) -> Credentials:
+        credentials: Credentials = SqlCredentials(connection)
+        return credentials
+
+    def login_sessions(connection: AsyncConnection) -> StartSession:
+        store: SessionStore = SqlSessionStore(connection)
+        return StartSession(session_tokens, store, app_clock)
+
+    login_steps: LoginSteps = EngineLoginSteps(
+        engine, login_throttle, login_credentials, login_sessions, hasher
+    )
+
+    async def provide_login() -> LogIn:
+        """Without the request's transaction: the delay must not hold a connection (I1)."""
+        return LogIn(login_steps, login_sleeper)
 
     async def provide_authenticate(
         connection: Transaction,
@@ -378,7 +402,9 @@ def create_app(
 
     current_session = sessions_api.session_dependency(provide_authenticate)
 
-    account_mailer: AccountMailer = mailer or SmtpMailer(config.smtp, app_clock)
+    account_mailer: AccountMailer = mailer or SmtpMailer(
+        config.smtp, app_clock, timeout_seconds=ACCOUNT_EMAIL_TIMEOUT_SECONDS
+    )
     email_tokens: EmailTokens = SecretEmailTokens()
     links = AccountLinks(config.public_url)
 

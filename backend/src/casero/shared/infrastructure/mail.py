@@ -23,9 +23,12 @@ class SmtpSettings:
 
 
 class SmtpMailer:
-    def __init__(self, settings: SmtpSettings, clock: Clock) -> None:
+    def __init__(
+        self, settings: SmtpSettings, clock: Clock, timeout_seconds: int = SMTP_TIMEOUT_SECONDS
+    ) -> None:
         self._settings = settings
         self._clock = clock
+        self._timeout_seconds = timeout_seconds
 
     def build(self, email: Email) -> EmailMessage:
         message = EmailMessage()
@@ -55,7 +58,7 @@ class SmtpMailer:
                 password=settings.password,
                 use_tls=settings.security == "tls",
                 start_tls=settings.security == "starttls",
-                timeout=SMTP_TIMEOUT_SECONDS,
+                timeout=self._timeout_seconds,
             )
         except (aiosmtplib.SMTPException, OSError) as error:
             raise MailDeliveryError(type(error).__name__) from error

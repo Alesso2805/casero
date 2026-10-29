@@ -1,4 +1,5 @@
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Annotated, Protocol
 
 import sentry_sdk
@@ -20,13 +21,20 @@ class RateLimiter(Protocol):
     async def allow(self, client: str) -> bool: ...
 
 
+@dataclass(frozen=True)
+class ReportLimits:
+    per_client: RateLimiter
+    per_kind: RateLimiter
+    overall: RateLimiter
+
+
 class ClientError(BaseModel):
     name: ErrorName
     route: RoutePath
     where: CodeLocation | None = None
 
 
-def create_router(provide_limiter: Callable[..., Awaitable[RateLimiter]]) -> APIRouter:
+def create_router(provide_limits: Callable[..., Awaitable[ReportLimits]]) -> APIRouter:
     router = APIRouter()
 
     @router.post(
@@ -37,13 +45,16 @@ def create_router(provide_limiter: Callable[..., Awaitable[RateLimiter]]) -> API
     async def report_client_error(
         body: ClientError,
         request: Request,
-        limiter: Annotated[RateLimiter, Depends(provide_limiter)],
+        limits: Annotated[ReportLimits, Depends(provide_limits)],
     ) -> Response:
         """Report a browser error by its type, route and code location (ADR-0011)."""
         client = request.client.host if request.client else "unknown"
-        if not await limiter.allow(client):
+        if not await limits.per_client.allow(client):
             return Response(status_code=429)
-        if sentry_sdk.is_initialized():
+        # One visitor could use up Sentry's monthly quota: only the first report of each kind
+        # in an hour, and a few per hour overall, are forwarded. The answer doesn't say which.
+        forward = await limits.per_kind.allow(f"{body.name}|{body.route}")
+        if forward and await limits.overall.allow("all") and sentry_sdk.is_initialized():
             sentry_sdk.capture_message(
                 "web.unhandled_error",
                 level="error",
