@@ -99,7 +99,7 @@ TABLE_PRIVILEGES = {
         "complaints": frozenset({"INSERT"}),
         "waitlist_entries": frozenset({"INSERT", "DELETE"}),
         "complaint_counters": READ_INSERT_UPDATE,
-        "email_suppressions": READ_AND_INSERT,
+        "email_suppressions": frozenset({"SELECT", "INSERT", "DELETE"}),
     },
     "casero_worker": {
         **ACCOUNT_TABLE_PRIVILEGES,

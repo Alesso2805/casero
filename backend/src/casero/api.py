@@ -79,6 +79,7 @@ from casero.identity.application.account_emails import (
     ResetPassword,
     SendVerification,
 )
+from casero.identity.application.email_choices import EmailChoices, Unsubscriptions
 from casero.identity.application.email_suppressions import (
     RecordEmailEvent,
     SnsMessageVerifier,
@@ -549,12 +550,17 @@ def create_app(
         names: AccountNames = SqlAccounts(connection)
         return GetAccountSummary(names, entitlements)
 
+    def email_choices(connection: AsyncConnection) -> EmailChoices:
+        users: UserEmails = SqlUserEmails(connection)
+        unsubscriptions: Unsubscriptions = SqlSuppressionStore(connection, config.email_hash_key)
+        return EmailChoices(users, unsubscriptions, app_clock)
+
     async def provide_get_profile(
         connection: Transaction,
     ) -> GetProfile:
         profiles: Profiles = SqlProfiles(connection)
         holdings: PropertyHoldings = SqlPropertyStore(connection)
-        return GetProfile(profiles, holdings)
+        return GetProfile(profiles, holdings, email_choices(connection))
 
     async def provide_update_profile(
         connection: Transaction,
@@ -562,7 +568,7 @@ def create_app(
         profiles: Profiles = SqlProfiles(connection)
         holdings: PropertyHoldings = SqlPropertyStore(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return UpdateProfile(profiles, holdings, audit, app_clock)
+        return UpdateProfile(profiles, holdings, email_choices(connection), audit, app_clock)
 
     app.include_router(
         account_api.create_router(

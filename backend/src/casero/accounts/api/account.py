@@ -3,7 +3,7 @@ from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints
 
 from casero.accounts.api.registration import DisplayName
 from casero.accounts.application.account import GetAccountSummary
@@ -43,6 +43,11 @@ class ProfileRequest(BaseModel):
     ruc: Ruc | None
     good_taxpayer: bool = False
     daily_digest: bool
+    tax_reminders_email: bool | None = Field(
+        default=None,
+        description="The user gets the SUNAT due-date reminders; true undoes an unsubscribe,"
+        " and leaving it out keeps the current choice",
+    )
 
 
 class ProfileResponse(BaseModel):
@@ -52,6 +57,7 @@ class ProfileResponse(BaseModel):
     ruc_group: RucGroup | None
     daily_digest: bool
     declarant_locked: bool
+    tax_reminders_email: bool
 
 
 def profile_response(view: ProfileView) -> ProfileResponse:
@@ -63,6 +69,7 @@ def profile_response(view: ProfileView) -> ProfileResponse:
         ruc_group=profile.ruc_group,
         daily_digest=profile.daily_digest,
         declarant_locked=view.declarant_locked,
+        tax_reminders_email=view.tax_reminders_email,
     )
 
 
@@ -95,14 +102,14 @@ def create_router(
 
     @router.get("/api/app/account/profile", responses=ACCOUNT_ERRORS)
     async def profile(
-        _: Annotated[AccountContext, Depends(current_account)],
+        context: Annotated[AccountContext, Depends(current_account)],
         get_profile: Annotated[GetProfile, Depends(provide_get_profile)],
     ) -> ProfileResponse:
         """The landlord's name, declarant type, RUC with its schedule group and email choices.
 
         `declarant_locked` is true once the account has properties, archived ones included.
         """
-        return profile_response(await get_profile())
+        return profile_response(await get_profile(context))
 
     @router.put(
         "/api/app/account/profile",
@@ -128,6 +135,7 @@ def create_router(
                 ruc=body.ruc,
                 good_taxpayer=body.good_taxpayer,
                 daily_digest=body.daily_digest,
+                tax_reminders_email=body.tax_reminders_email,
             ),
         )
         if result == "invalid_ruc":

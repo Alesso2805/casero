@@ -1762,6 +1762,18 @@
             ],
             "title": "Ruc"
           },
+          "tax_reminders_email": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user gets the SUNAT due-date reminders; true undoes an unsubscribe, and leaving it out keeps the current choice",
+            "title": "Tax Reminders Email"
+          },
           "taxpayer_kind": {
             "enum": [
               "person",
@@ -1825,6 +1837,10 @@
             ],
             "title": "Ruc Group"
           },
+          "tax_reminders_email": {
+            "title": "Tax Reminders Email",
+            "type": "boolean"
+          },
           "taxpayer_kind": {
             "enum": [
               "person",
@@ -1840,7 +1856,8 @@
           "ruc",
           "ruc_group",
           "daily_digest",
-          "declarant_locked"
+          "declarant_locked",
+          "tax_reminders_email"
         ],
         "title": "ProfileResponse",
         "type": "object"
