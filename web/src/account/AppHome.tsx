@@ -109,6 +109,9 @@ export function AppHome() {
       <Link to="/app/contratos" className={textLink}>
         {text.home.leases}
       </Link>
+      <Link to="/app/impuestos" className={textLink}>
+        {text.home.declarations}
+      </Link>
       <Link to="/app/mis-datos" className={textLink}>
         {text.home.profile}
       </Link>

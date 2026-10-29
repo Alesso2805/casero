@@ -131,6 +131,13 @@ const leaseRoute = createRoute({
   component: lazyRouteComponent(() => import("./leases/LeasePage"), "LeasePage"),
 });
 
+const declarationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/impuestos",
+  staticData: { title: "Formularios de SUNAT" },
+  component: lazyRouteComponent(() => import("./tax/DeclarationsPage"), "DeclarationsPage"),
+});
+
 const tenantRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/i",
@@ -189,6 +196,7 @@ export const routeTree = rootRoute.addChildren([
   leasesRoute,
   newLeaseRoute,
   leaseRoute,
+  declarationsRoute,
   tenantRoute,
   verifyRoute,
   forgotRoute,

@@ -544,6 +544,12 @@
           "doc_type": {
             "anyOf": [
               {
+                "enum": [
+                  "dni",
+                  "ce",
+                  "passport",
+                  "ruc"
+                ],
                 "type": "string"
               },
               {
