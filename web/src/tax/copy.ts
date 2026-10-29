@@ -86,6 +86,9 @@ export const taxCopy = {
     pending: (amount: string) => `Falta pagar ${amount}`,
     fullyPaid: "Pagado",
     record: "Registrar pago a SUNAT",
+    declaredBase: "Monto declarado (base)",
+    declaredBaseHint:
+      "Es el monto que pusiste en el 1683. Ya viene con la base de esta tarjeta; cámbialo si declaraste otro.",
     amount: "Monto pagado en soles",
     paidOn: "Fecha en que pagaste",
     orderNumber: "Número de orden",
@@ -100,6 +103,7 @@ export const taxCopy = {
     confirmVoid: "Sí, anular",
     voided: "Listo, anulamos el pago a SUNAT.",
     errors: {
+      declaredBase: "Escribe el monto declarado en soles, por ejemplo: 551.",
       amount: "Escribe el monto en soles, por ejemplo: 28 o 28.50.",
       paidOn: "Elige la fecha en que pagaste.",
       order: "Escribe solo los números de la orden.",

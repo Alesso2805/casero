@@ -181,6 +181,7 @@ async def test_what_was_paid_to_sunat_is_left_out(
             "amount_cents": 2_800,
             "paid_on": "2026-10-27",
             "order_number": "1234567890",
+            "declared_base_cents": 56_000,
         }
         assert send(client, "POST", "/api/app/tax/payments", body).status_code == 201
     mailer = RecordingMailer()
