@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 from typing import Any
 
@@ -107,3 +108,10 @@ def test_error_logs_reach_error_tracking_as_tagged_messages(sentry: Recording) -
     [event] = sentry.events
     assert event["message"] == "worker.job_crashed"
     assert event["tags"] == {"job": "rent_charges", "error": "KeyError"}
+
+
+def test_library_log_records_never_reach_error_tracking(sentry: Recording) -> None:
+    logging.getLogger("asyncpg.pool").error("bad value %s for renter", PERSONAL)
+    sentry_sdk.flush()
+
+    assert sentry.events == []
