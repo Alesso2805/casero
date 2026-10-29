@@ -3,7 +3,7 @@ import contextlib
 import signal
 import sys
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import date
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
 import asyncpg
@@ -71,6 +71,9 @@ WORKER_LOCK_KEY = 7_294_011
 TICK_SECONDS = 60
 HEARTBEAT_TIMEOUT_SECONDS = 10
 TAX_REMINDERS_FROM_HOUR = 8
+# A failed account is retried 3 times a day (rule 12); an hour apart, a short SMTP outage
+# doesn't use them all.
+TAX_REMINDER_RETRY_EVERY = timedelta(hours=1)
 
 type Job = Callable[[], Awaitable[None]]
 type Heartbeat = Callable[[], Awaitable[None]]
@@ -164,6 +167,19 @@ def from_lima_hour(hour: int, clock: Clock, job: Job) -> Job:
     return gated
 
 
+def at_most_every(interval: timedelta, clock: Clock, job: Job) -> Job:
+    started: list[datetime] = []
+
+    async def spaced() -> None:
+        now = clock.now()
+        if started and now - started[-1] < interval:
+            return
+        started[:] = [now]
+        await job()
+
+    return spaced
+
+
 def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> dict[str, Job]:
     outbox: ComplaintOutbox = SqlComplaintOutbox(engine)
     mailer: ComplaintMailer = SmtpMailer(settings.smtp, clock)
@@ -187,7 +203,11 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
         "tax_reminders": from_lima_hour(
             TAX_REMINDERS_FROM_HOUR,
             clock,
-            DailyAccountJob(engine, clock, "tax_reminders", tax_reminder_work(settings, clock)),
+            at_most_every(
+                TAX_REMINDER_RETRY_EVERY,
+                clock,
+                DailyAccountJob(engine, clock, "tax_reminders", tax_reminder_work(settings, clock)),
+            ),
         ),
     }
 

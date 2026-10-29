@@ -1,6 +1,13 @@
 from datetime import date
 
-from casero.reminders.domain.tax_reminders import DueMonth, OwedDeclaration, tax_reminder_email
+import pytest
+
+from casero.reminders.domain.tax_reminders import (
+    DueMonth,
+    OwedDeclaration,
+    reminder_due,
+    tax_reminder_email,
+)
 from casero.shared.kernel.periods import Period
 
 MONTH = DueMonth(
@@ -55,3 +62,23 @@ def test_the_day_before_it_says_tomorrow() -> None:
 
     assert subject == "Mañana vencen tus formularios 1683 de octubre de 2026"
     assert "Mañana vence el pago de tus formularios 1683 de octubre de 2026." in text
+
+
+@pytest.mark.parametrize(
+    ("days_left", "first_sent", "due"),
+    [
+        (6, False, False),
+        (5, False, True),
+        (4, False, True),
+        (2, False, True),
+        (4, True, False),
+        (2, True, False),
+        (1, True, True),
+        (1, False, True),
+        (0, False, False),
+    ],
+)
+def test_the_first_reminder_catches_up_until_two_days_before_and_the_last_is_the_day_before(
+    days_left: int, first_sent: bool, due: bool
+) -> None:
+    assert reminder_due(days_left, first_sent) == due
