@@ -9,7 +9,7 @@ from casero.api import create_app
 from casero.identity.application.account_emails import AccountMailer
 from casero.identity.application.email_suppressions import SnsMessageVerifier
 from casero.identity.application.sessions import Sleeper
-from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher
+from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, HmacKeyring
 from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings, RegistrationMode
 from casero.shared.kernel.clock import LIMA, Clock
@@ -22,6 +22,7 @@ TEST_UNSUBSCRIBE_KEY = b"test-unsubscribe-key"
 TEST_ACCEPTANCE_IP_KEY = b"test-acceptance-ip-key"
 TEST_FIELD_CIPHER = FieldCipher({"test": bytes(32)}, "test")
 TEST_DOCUMENT_HASHER = DocumentHasher(bytes(range(32)))
+TEST_TENANT_LINK_KEYS = HmacKeyring({"test": bytes(range(32, 64))}, "test")
 
 
 class FixedClock:
@@ -73,6 +74,7 @@ def api_client(
         public_url="https://casero.example",
         field_cipher=TEST_FIELD_CIPHER,
         document_hasher=TEST_DOCUMENT_HASHER,
+        tenant_link_keys=TEST_TENANT_LINK_KEYS,
     )
     app = create_app(settings, clock, sns_verifier, sleeper, mailer or RecordingMailer())
     # https, because __Host- cookies are Secure and the client only sends them over https.

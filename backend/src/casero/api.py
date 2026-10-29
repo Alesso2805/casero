@@ -192,6 +192,16 @@ from casero.tax.application.calculator import (
     TaxRuleBook,
 )
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
+from casero.tenant_portal.api import links as tenant_links_api
+from casero.tenant_portal.application.links import (
+    GetLink,
+    IssueLink,
+    Links,
+    LinkSigner,
+    LinkStore,
+    RevokeLink,
+)
+from casero.tenant_portal.infrastructure.links import HmacLinkSigner, SqlLinks
 
 WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
@@ -708,6 +718,33 @@ def create_app(
     app.include_router(
         lease_changes_api.create_router(
             current_account, provide_change_rent, provide_set_end_date, provide_end_lease
+        )
+    )
+
+    link_signer: LinkSigner = HmacLinkSigner(config.tenant_link_keys)
+
+    def tenant_links(connection: AsyncConnection) -> Links:
+        store: LinkStore = SqlLinks(connection)
+        return Links(store, link_signer, config.public_url)
+
+    async def provide_get_link(connection: Transaction) -> GetLink:
+        return GetLink(tenant_links(connection))
+
+    async def provide_issue_link(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> IssueLink:
+        audit: AuditLog = SqlAuditLog(connection)
+        return IssueLink(tenant_links(connection), entitlements, audit, app_clock)
+
+    async def provide_revoke_link(connection: Transaction) -> RevokeLink:
+        store: LinkStore = SqlLinks(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return RevokeLink(store, audit, app_clock)
+
+    app.include_router(
+        tenant_links_api.create_router(
+            current_account, provide_get_link, provide_issue_link, provide_revoke_link
         )
     )
 

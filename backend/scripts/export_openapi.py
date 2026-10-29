@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from casero.api import create_app
-from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher
+from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, HmacKeyring
 from casero.shared.infrastructure.mail import SmtpSettings
 from casero.shared.infrastructure.settings import ApiSettings
 
@@ -19,6 +19,7 @@ UNUSED_SETTINGS = ApiSettings(
     public_url="https://casero.example",
     field_cipher=FieldCipher({"test": bytes(32)}, "test"),
     document_hasher=DocumentHasher(bytes(range(32))),
+    tenant_link_keys=HmacKeyring({"unused": bytes(32)}, "unused"),
 )
 
 
