@@ -67,6 +67,15 @@ export const taxCopy = {
     payments: (year: string) => `Cobros de ${year} (CSV)`,
     declarations: (year: string) => `Formularios de ${year} (CSV)`,
   },
+  dueNotice: {
+    today: (period: string, amount: string) =>
+      `Hoy vencen tus formularios 1683 de ${period}: falta pagar ${amount}.`,
+    tomorrow: (period: string, amount: string) =>
+      `Mañana vencen tus formularios 1683 de ${period}: falta pagar ${amount}.`,
+    soon: (period: string, date: string, days: number, amount: string) =>
+      `Tus formularios 1683 de ${period} vencen el ${date} (en ${String(days)} días): falta pagar ${amount}.`,
+    open: "Ver formularios",
+  },
   sunat: {
     title: "Pago a SUNAT",
     paid: (amount: string, date: string, order: string) =>

@@ -43,6 +43,16 @@ def unsubscribe_links(
     )
 
 
+class UnsubscribeLinkMaker:
+    def __init__(self, public_url: str, tokens: HmacUnsubscribeTokens) -> None:
+        self._public_url = public_url
+        self._tokens = tokens
+
+    def links(self, user_id: UUID, kind: ScheduledEmailKind) -> tuple[str, str]:
+        links = unsubscribe_links(self._public_url, self._tokens, user_id, kind)
+        return links.page, links.one_click
+
+
 class SqlUserEmails:
     def __init__(self, connection: AsyncConnection) -> None:
         self._connection = connection

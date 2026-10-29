@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.reminders.application.reminders import Recipient
 from casero.shared.kernel.ids import new_id
+from casero.shared.kernel.periods import Period
 
 RECIPIENT = text(
     "SELECT l.renter_id, r.full_name, r.phone_e164, l.tools_enabled FROM leases l"
@@ -17,6 +18,11 @@ ADD_RENT_REMINDER = text(
     " VALUES (:id, :account_id, 'rent', :charge_id, :renter_id, 'whatsapp_link', :created_at)"
 )
 
+ADD_TAX_REMINDER = text(
+    "INSERT INTO reminder_logs (id, account_id, kind, period, renter_id, renter_doc_hmac,"
+    " channel, created_at) VALUES (:id, :account_id, 'tax_due', :period, :renter_id,"
+    " :renter_doc_hmac, 'email', :created_at)"
+)
 LAST_RENT_REMINDERS = text(
     "SELECT c.lease_id, max(g.created_at) AS sent_at FROM reminder_logs g"
     " JOIN charges c ON c.account_id = g.account_id AND c.id = g.charge_id"
@@ -49,6 +55,26 @@ class SqlReminderLog:
                 "account_id": account_id,
                 "charge_id": charge_id,
                 "renter_id": renter_id,
+                "created_at": at,
+            },
+        )
+
+    async def add_tax_due(
+        self,
+        account_id: UUID,
+        period: Period,
+        renter_id: UUID,
+        renter_doc_hmac: bytes | None,
+        at: datetime,
+    ) -> None:
+        await self._connection.execute(
+            ADD_TAX_REMINDER,
+            {
+                "id": new_id(),
+                "account_id": account_id,
+                "period": str(period),
+                "renter_id": renter_id,
+                "renter_doc_hmac": renter_doc_hmac,
                 "created_at": at,
             },
         )

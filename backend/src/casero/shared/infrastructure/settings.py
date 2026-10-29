@@ -114,6 +114,8 @@ class WorkerSettings:
     business: BusinessSettings
     complaints_inbox: str
     email_hash_key: bytes
+    unsubscribe_key: bytes
+    public_url: str
     sentry_dsn: str | None = None
     sentry_environment: str = "production"
     alerts_inbox: str | None = None
@@ -132,6 +134,8 @@ class WorkerSettings:
             business=BusinessSettings.from_environment(env),
             complaints_inbox=env["CASERO_COMPLAINTS_INBOX"],
             email_hash_key=secret_key(env, "CASERO_EMAIL_HASH_KEY"),
+            unsubscribe_key=secret_key(env, "CASERO_UNSUBSCRIBE_KEY"),
+            public_url=env["CASERO_PUBLIC_URL"],
             sentry_dsn=env.get("SENTRY_DSN") or None,
             sentry_environment=env.get("SENTRY_ENVIRONMENT", "production"),
             alerts_inbox=env.get("CASERO_ALERTS_INBOX") or None,
