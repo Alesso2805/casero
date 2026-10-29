@@ -53,6 +53,7 @@ def tax_payment(renter_id: str, **overrides: object) -> dict[str, object]:
         "amount_cents": 4_000,
         "paid_on": "2026-10-27",
         "order_number": "1234567890",
+        "declared_base_cents": 80_000,
         **overrides,
     }
 
@@ -65,7 +66,7 @@ async def owner_rows(database: Database, query: str, *args: object) -> list[asyn
         await owner.close()
 
 
-async def test_a_payment_keeps_the_declarations_document_and_base_and_replays(
+async def test_a_payment_keeps_the_declarations_document_and_the_confirmed_base_and_replays(
     database: Database, request: pytest.FixtureRequest
 ) -> None:
     clock = FixedClock(NOW)
@@ -76,6 +77,7 @@ async def test_a_payment_keeps_the_declarations_document_and_base_and_replays(
         first = send(ana, "POST", PAYMENTS, body)
         again = send(ana, "POST", PAYMENTS, body)
         changed = send(ana, "POST", PAYMENTS, {**body, "amount_cents": 3_000})
+        other_base = send(ana, "POST", PAYMENTS, {**body, "declared_base_cents": 70_000})
         elsewhere = send(luis, "POST", PAYMENTS, {**body, "renter_id": luis_renter})
 
     assert first.status_code == 201
@@ -91,6 +93,7 @@ async def test_a_payment_keeps_the_declarations_document_and_base_and_replays(
     }
     assert (again.status_code, again.json()) == (200, first.json())
     assert (changed.status_code, changed.json()["detail"]) == (409, "Conflict")
+    assert (other_base.status_code, other_base.json()["detail"]) == (409, "Conflict")
     assert (elsewhere.status_code, elsewhere.json()["detail"]) == (409, "Conflict")
     [stored] = await owner_rows(
         database,
@@ -111,6 +114,7 @@ async def test_a_payment_keeps_the_declarations_document_and_base_and_replays(
         ({"period": "2027-01"}, 422, "unknown_year"),
         ({"order_number": "12-34"}, 422, None),
         ({"amount_cents": 0}, 422, None),
+        ({"declared_base_cents": -100}, 422, None),
         ({"id": str(UUID(int=1))}, 422, None),
     ],
 )
@@ -278,6 +282,28 @@ async def test_a_base_that_rose_without_new_money_says_so(
     }
 
 
+async def test_a_collection_between_filing_and_recording_the_payment_asks_to_rectify(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        save_ruc(client)
+        ana = add_renter(client, "Ana", ANA_DNI)
+        [lease] = start_leases(client, {"renter_id": ana})
+        pay(client, lease, 80_000, "2026-10-05")
+        pay(client, lease, 20_000, "2026-10-20")
+        payment = send(client, "POST", PAYMENTS, tax_payment(ana))
+        card = october_card(client, ana)
+
+    assert payment.json()["base_cents"] == 80_000
+    assert (card["base_cents"], card["pending_cents"]) == (100_000, 1_000)
+    assert card["after_declaring"] == {
+        "kind": "base_up",
+        "base_difference_cents": 20_000,
+        "tax_difference_cents": 1_000,
+    }
+
+
 async def test_a_new_document_after_paying_and_an_overdue_month_without_payment(
     database: Database, request: pytest.FixtureRequest
 ) -> None:
@@ -363,7 +389,13 @@ async def test_the_same_sunat_payment_sent_twice_at_once_is_replayed_not_refused
     )
     context = AccountContext(row["account_id"], row["user_id"])
     new = NewTaxPayment(
-        uuid7(), Period(2026, 10), UUID(renter_id), 4_000, date(2026, 10, 27), "1234567890"
+        uuid7(),
+        Period(2026, 10),
+        UUID(renter_id),
+        4_000,
+        date(2026, 10, 27),
+        "1234567890",
+        80_000,
     )
 
     async with two_transactions(database, context.account_id) as (first, second):

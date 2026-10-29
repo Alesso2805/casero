@@ -47,6 +47,7 @@ async def test_the_notice_shows_in_the_last_five_days_until_paid(
             "amount_cents": 2_800,
             "paid_on": "2026-11-18",
             "order_number": "1234567890",
+            "declared_base_cents": 56_000,
         }
         assert send(client, "POST", "/api/app/tax/payments", body).status_code == 201
         paid = client.get(UPCOMING).json()
