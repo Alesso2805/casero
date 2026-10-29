@@ -254,6 +254,23 @@ function MonthDetails({ month }: { month: Month }) {
   );
 }
 
+function AccountantExports({ year }: { year: string }) {
+  return (
+    <section aria-labelledby="accountant-title" className="flex flex-col gap-2">
+      <h2 id="accountant-title" className="text-xl font-semibold">
+        {text.accountant.title}
+      </h2>
+      <p>{text.accountant.intro}</p>
+      <a href={`/api/app/exports/payments.csv?year=${year}`} download className={textLink}>
+        {text.accountant.payments(year)}
+      </a>
+      <a href={`/api/app/exports/declarations.csv?year=${year}`} download className={textLink}>
+        {text.accountant.declarations(year)}
+      </a>
+    </section>
+  );
+}
+
 function HowToPay() {
   return (
     <section aria-labelledby="how-to-title" className="flex flex-col gap-2">
@@ -318,6 +335,7 @@ export function DeclarationsPage() {
       )}
       {loaded.isPending && <p role="status">{text.loading}</p>}
       {loaded.data?.kind === "month" && <MonthDetails month={loaded.data.month} />}
+      {loaded.data?.kind === "month" && <AccountantExports year={period.slice(0, 4)} />}
       {loaded.data?.kind === "not_in_plan" && <p>{text.notInPlan}</p>}
       {loaded.data?.kind === "unknown_year" && <p>{text.unknownYear(period.slice(0, 4))}</p>}
       {loaded.data?.kind === "paused" && (
