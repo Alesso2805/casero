@@ -49,6 +49,18 @@ export const taxCopy = {
     copyLabel: (field: string) => `Copiar ${field.toLowerCase()}`,
     copied: (field: string) => `${field} copiado.`,
   },
+  complete: {
+    title: (name: string) => `Completa el documento de ${name}`,
+    docType: "Tipo de documento",
+    docNumber: "Número del documento",
+    save: "Guardar documento",
+    saving: "Guardando…",
+    required: "Escribe el número del documento.",
+    invalid: "Revisa el número del documento.",
+    duplicate:
+      "Ya registraste a otro inquilino con ese documento. Revisa que el número sea el correcto.",
+    failure: "No pudimos guardar el documento. Vuelve a intentarlo en unos minutos.",
+  },
   docTypes: {
     dni: "DNI",
     ce: "Carné de extranjería",

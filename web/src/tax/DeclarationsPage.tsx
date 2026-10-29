@@ -8,6 +8,7 @@ import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
 import { formatSoles } from "../landing/money";
 import { FIRST_CONTROL_PERIOD, limaToday, periodLabel } from "../leases/terms";
+import { CompleteDocument } from "./CompleteDocument";
 import { taxCopy as text } from "./copy";
 
 type Month = components["schemas"]["MonthDeclarationsResponse"];
@@ -105,6 +106,9 @@ function DeclarationCard({ declaration, month }: { declaration: Declaration; mon
         <p className="rounded-lg bg-amber-50 p-3 text-amber-900">
           {text.card.incomplete(declaration.renter_name)}
         </p>
+      )}
+      {declaration.incomplete && (
+        <CompleteDocument renterId={declaration.renter_id} renterName={declaration.renter_name} />
       )}
       <dl>
         {month.ruc ? (
