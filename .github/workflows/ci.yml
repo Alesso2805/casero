@@ -160,6 +160,7 @@ jobs:
       CASERO_BUSINESS_ADDRESS: Av. Ficticia 100, Lima
       CASERO_COMPLAINTS_INBOX: reclamos@example.com
       CASERO_PRIVACY_INBOX: privacidad@example.com
+      REGISTRATION_MODE: open
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the production images
@@ -190,6 +191,30 @@ jobs:
         run: |
           uv sync --locked
           uv run pytest tests/deployment
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: End to end through the production edge, with axe
+        working-directory: web
+        env:
+          CASERO_E2E_URL: https://localhost
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          pnpm run e2e
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: e2e-report
+          path: |
+            web/e2e/playwright-report
+            web/e2e/test-results
+          retention-days: 7
       - name: Check that edge errors leave no request data in the logs
         run: |
           compose="docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml"
