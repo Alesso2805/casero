@@ -10,6 +10,7 @@ import { formatSoles } from "../landing/money";
 import { FIRST_CONTROL_PERIOD, limaToday, periodLabel } from "../leases/terms";
 import { CompleteDocument } from "./CompleteDocument";
 import { taxCopy as text } from "./copy";
+import { SunatPayments } from "./SunatPayments";
 
 type Month = components["schemas"]["MonthDeclarationsResponse"];
 type Declaration = components["schemas"]["DeclarationResponse"];
@@ -89,8 +90,31 @@ function CopyRow({
   );
 }
 
+function afterDeclaringText(declaration: Declaration, month: Month): string | null {
+  const after = declaration.after_declaring;
+  if (!after) {
+    return null;
+  }
+  const period = periodLabel(month.period);
+  switch (after.kind) {
+    case "up":
+      return text.after.up(
+        formatSoles(after.base_difference_cents),
+        period,
+        formatSoles(after.tax_difference_cents),
+      );
+    case "down":
+      return text.after.down(period);
+    case "document_changed":
+      return text.after.document_changed;
+    case "overdue_unpaid":
+      return text.after.overdue_unpaid(formatDay(month.due_on ?? ""));
+  }
+}
+
 function DeclarationCard({ declaration, month }: { declaration: Declaration; month: Month }) {
   const [copied, setCopied] = useState("");
+  const after = afterDeclaringText(declaration, month);
   const onCopied = (label: string) => {
     setCopied(text.card.copied(label));
   };
@@ -153,6 +177,8 @@ function DeclarationCard({ declaration, month }: { declaration: Declaration; mon
       {declaration.old_debt_cents > 0 && (
         <p className="text-stone-700">{text.card.oldDebt(formatSoles(declaration.old_debt_cents))}</p>
       )}
+      {after && <p className="rounded-lg bg-amber-50 p-3 text-amber-900">{after}</p>}
+      {!declaration.incomplete && <SunatPayments declaration={declaration} period={month.period} />}
     </li>
   );
 }

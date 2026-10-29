@@ -18,6 +18,10 @@ const ANA = {
   old_debt_cents: 0,
   base_cents: 55100,
   tax_cents: 2800,
+  payments: [] as unknown[],
+  paid_cents: 0,
+  pending_cents: 2800,
+  after_declaring: null as unknown,
 };
 const ROSA = {
   ...ANA,
@@ -220,5 +224,138 @@ describe("Formularios de SUNAT", () => {
     await renderPage("/app/impuestos");
 
     expect(await screen.findByRole("heading", { name: "Ingresa a Casero" })).toBeDefined();
+  });
+});
+
+
+describe("pagos a SUNAT", () => {
+  const PAID = {
+    id: "0195a0b0-0000-7000-8000-000000000050",
+    amount_cents: 2800,
+    paid_on: "2026-10-21",
+    order_number: "1234567890",
+  };
+
+  test("records what the landlord paid SUNAT for a card", async () => {
+    let paid = false;
+    const api = mockApi({
+      [PATH]: () =>
+        json({
+          ...SEPTEMBER,
+          declarations: [
+            paid ? { ...ANA, payments: [PAID], paid_cents: 2800, pending_cents: 0 } : ANA,
+          ],
+        }),
+      "/api/app/tax/payments": () => {
+        paid = true;
+        return json({ ...PAID, period: "2026-09", renter_id: ANA.renter_id, base_cents: 55100, voided: false }, 201);
+      },
+    });
+    await renderPage("/app/impuestos");
+    await screen.findByText(/Total del mes/);
+
+    const ana = within(card("Ana Quispe"));
+    expect(ana.getByText("Falta pagar S/ 28.00")).toBeDefined();
+    await userEvent.click(ana.getByRole("button", { name: "Registrar pago a SUNAT" }));
+    expect(ana.getByLabelText("Monto pagado en soles")).toHaveProperty("value", "28");
+    await userEvent.type(ana.getByLabelText("Número de orden"), "1234567890");
+    await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
+
+    expect(await screen.findByText("Listo, guardamos el pago a SUNAT.")).toBeDefined();
+    expect(await screen.findByText("Pagaste S/ 28.00 el 21/10/2026 · orden 1234567890")).toBeDefined();
+    expect(screen.getByText("Pagado")).toBeDefined();
+    const body = (await api.requestsTo("/api/app/tax/payments")[0]?.json()) as Record<string, unknown>;
+    expect(body).toEqual({
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-7/) as unknown,
+      period: "2026-09",
+      renter_id: ANA.renter_id,
+      amount_cents: 2800,
+      paid_on: "2026-10-27",
+      order_number: "1234567890",
+    });
+  });
+
+  test("explains a date SUNAT can't have taken", async () => {
+    mockApi({
+      [PATH]: () => json(SEPTEMBER),
+      "/api/app/tax/payments": () => json({ detail: "paid_before_period" }, 422),
+    });
+    await renderPage("/app/impuestos");
+    await screen.findByText(/Total del mes/);
+
+    const ana = within(card("Ana Quispe"));
+    await userEvent.click(ana.getByRole("button", { name: "Registrar pago a SUNAT" }));
+    await userEvent.type(ana.getByLabelText("Número de orden"), "12-34");
+    await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
+    expect(await ana.findByText("Escribe solo los números de la orden.")).toBeDefined();
+    await userEvent.clear(ana.getByLabelText("Número de orden"));
+    await userEvent.type(ana.getByLabelText("Número de orden"), "1234");
+    await userEvent.click(ana.getByRole("button", { name: "Guardar pago a SUNAT" }));
+
+    expect(
+      await ana.findByText("La fecha no puede ser anterior al mes que declaras."),
+    ).toBeDefined();
+  });
+
+  test("voids a SUNAT payment with a reason", async () => {
+    const voidPath = `/api/app/tax/payments/${PAID.id}/void`;
+    const api = mockApi({
+      [PATH]: () =>
+        json({
+          ...SEPTEMBER,
+          declarations: [{ ...ANA, payments: [PAID], paid_cents: 2800, pending_cents: 0 }],
+        }),
+      [voidPath]: () =>
+        json({ ...PAID, period: "2026-09", renter_id: ANA.renter_id, base_cents: 55100, voided: true }),
+    });
+    await renderPage("/app/impuestos");
+    await screen.findByText(/Total del mes/);
+
+    const ana = within(card("Ana Quispe"));
+    await userEvent.click(ana.getByRole("button", { name: "Anular el pago de S/ 28.00" }));
+    await userEvent.click(ana.getByRole("button", { name: "Sí, anular" }));
+    expect(await ana.findByText("Escribe el motivo.")).toBeDefined();
+    await userEvent.type(ana.getByLabelText("¿Por qué lo anulas?"), "Lo registré dos veces");
+    await userEvent.click(ana.getByRole("button", { name: "Sí, anular" }));
+
+    expect(await screen.findByText("Listo, anulamos el pago a SUNAT.")).toBeDefined();
+    expect(await api.requestsTo(voidPath)[0]?.json()).toEqual({ reason: "Lo registré dos veces" });
+  });
+
+  test("tells what to do when a declaration changed after paying or is overdue", async () => {
+    const after = (kind: string, base = 0, tax = 0) => ({
+      kind,
+      base_difference_cents: base,
+      tax_difference_cents: tax,
+    });
+    const tenant = (n: number, name: string, change: unknown) => ({
+      ...ANA,
+      renter_id: `0195a0b0-0000-7000-8000-00000000006${String(n)}`,
+      renter_name: name,
+      after_declaring: change,
+    });
+    mockApi({
+      [PATH]: () =>
+        json({
+          ...SEPTEMBER,
+          declarations: [
+            tenant(1, "Ana", after("up", 20000, 1000)),
+            tenant(2, "Luis", after("down")),
+            tenant(3, "Rosa", after("document_changed")),
+            tenant(4, "Eva", after("overdue_unpaid")),
+          ],
+        }),
+    });
+    await renderPage("/app/impuestos");
+    await screen.findByText(/Total del mes/);
+
+    expect(
+      await within(card("Ana")).findByText(
+        "Cobraste S/ 200.00 más en setiembre de 2026 después de declarar. Presenta una declaración rectificatoria del 1683 con la nueva base y paga la diferencia de S/ 10.00 con intereses. Consúltalo con tu contador.",
+      ),
+    ).toBeDefined();
+    expect(within(card("Luis")).getByText(/La base de setiembre de 2026 bajó/)).toBeDefined();
+    expect(within(card("Rosa")).getByText(/Formulario 1693/)).toBeDefined();
+    expect(within(card("Eva")).getByText(/Esta declaración venció el 21\/10\/2026/)).toBeDefined();
   });
 });

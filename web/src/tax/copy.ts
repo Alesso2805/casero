@@ -61,6 +61,48 @@ export const taxCopy = {
       "Ya registraste a otro inquilino con ese documento. Revisa que el número sea el correcto.",
     failure: "No pudimos guardar el documento. Vuelve a intentarlo en unos minutos.",
   },
+  sunat: {
+    title: "Pago a SUNAT",
+    paid: (amount: string, date: string, order: string) =>
+      `Pagaste ${amount} el ${date} · orden ${order}`,
+    pending: (amount: string) => `Falta pagar ${amount}`,
+    fullyPaid: "Pagado",
+    record: "Registrar pago a SUNAT",
+    amount: "Monto pagado en soles",
+    paidOn: "Fecha en que pagaste",
+    orderNumber: "Número de orden",
+    orderHint: "Está en la constancia de pago de SUNAT.",
+    save: "Guardar pago a SUNAT",
+    saving: "Guardando…",
+    cancel: "Cancelar",
+    saved: "Listo, guardamos el pago a SUNAT.",
+    void: "Anular",
+    voidLabel: (amount: string) => `Anular el pago de ${amount}`,
+    reason: "¿Por qué lo anulas?",
+    confirmVoid: "Sí, anular",
+    voided: "Listo, anulamos el pago a SUNAT.",
+    errors: {
+      amount: "Escribe el monto en soles, por ejemplo: 28 o 28.50.",
+      paidOn: "Elige la fecha en que pagaste.",
+      order: "Escribe solo los números de la orden.",
+      reason: "Escribe el motivo.",
+      paid_before_period: "La fecha no puede ser anterior al mes que declaras.",
+      paid_in_future: "La fecha no puede ser posterior a hoy.",
+      conflict:
+        "Este pago ya se había guardado con otros datos. Revisa los pagos de la tarjeta y vuelve a intentarlo.",
+      failure: "No pudimos guardar. Vuelve a intentarlo en unos minutos.",
+    },
+  },
+  after: {
+    up: (difference: string, period: string, taxDifference: string) =>
+      `Cobraste ${difference} más en ${period} después de declarar. Presenta una declaración rectificatoria del 1683 con la nueva base y paga la diferencia de ${taxDifference} con intereses. Consúltalo con tu contador.`,
+    down: (period: string) =>
+      `La base de ${period} bajó después de declarar. Una rectificatoria que reduce el tributo la revisa SUNAT antes de surtir efecto; consulta con tu contador si conviene presentarla o pedir la devolución.`,
+    document_changed:
+      "Esta declaración se pagó con otro documento del inquilino. Ese dato no se corrige con una rectificatoria sino con el Formulario 1693 (solicitud de modificación de datos del pago). Revísalo con tu contador.",
+    overdue_unpaid: (date: string) =>
+      `Esta declaración venció el ${date}. Si la presentas y pagas antes de que SUNAT te notifique, la multa tiene una rebaja importante por gradualidad, y se pagan intereses. Consúltalo con tu contador.`,
+  },
   docTypes: {
     dni: "DNI",
     ce: "Carné de extranjería",
