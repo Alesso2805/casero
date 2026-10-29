@@ -1,7 +1,10 @@
 import re
 from collections.abc import Mapping
+from datetime import date
 from typing import Literal
 from urllib.parse import quote
+
+from casero.shared.kernel.periods import Period
 
 TemplateKind = Literal["friendly", "due_today", "overdue"]
 TEMPLATE_KINDS: tuple[TemplateKind, ...] = ("friendly", "due_today", "overdue")
@@ -24,6 +27,21 @@ DEFAULT_BODIES: dict[TemplateKind, str] = {
 }
 
 PLACEHOLDER = re.compile(r"\{([^{}]*)\}")
+# Peru writes "setiembre" (RAE accepts both forms).
+MONTH_NAMES = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "setiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
 
 
 def unknown_variables(body: str) -> list[str]:
@@ -45,3 +63,11 @@ def whatsapp_url(phone_e164: str | None, message: str) -> str:
     """
     number = phone_e164.removeprefix("+") if phone_e164 else ""
     return f"https://wa.me/{number}?text={quote(message, safe='')}"
+
+
+def period_label(period: Period) -> str:
+    return f"{MONTH_NAMES[period.month - 1]} de {period.year}"
+
+
+def day_label(day: date) -> str:
+    return day.strftime("%d/%m/%Y")

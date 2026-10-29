@@ -176,8 +176,16 @@ from casero.properties.application.properties import (
     UpdateUnit,
 )
 from casero.properties.infrastructure.properties import SqlPropertyStore
+from casero.reminders.api import reminders as reminders_api
 from casero.reminders.api import templates as templates_api
+from casero.reminders.application.reminders import (
+    PrepareReminder,
+    RecipientStore,
+    ReminderLog,
+    TenantLinkUrls,
+)
 from casero.reminders.application.templates import ListTemplates, SaveTemplate, TemplateStore
+from casero.reminders.infrastructure.reminders import SqlRecipientStore, SqlReminderLog
 from casero.reminders.infrastructure.templates import SqlTemplateStore
 from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
@@ -203,6 +211,7 @@ from casero.tenant_portal.api import portal as tenant_portal_api
 from casero.tenant_portal.application.links import (
     GetLink,
     IssueLink,
+    LinkInUse,
     Links,
     LinkSigner,
     LinkStore,
@@ -804,6 +813,29 @@ def create_app(
     app.include_router(
         templates_api.create_router(current_account, provide_list_templates, provide_save_template)
     )
+
+    async def provide_prepare_reminder(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> PrepareReminder:
+        recipients: RecipientStore = SqlRecipientStore(connection)
+        ledger: LedgerStore = SqlLedger(connection)
+        templates: TemplateStore = SqlTemplateStore(connection)
+        log: ReminderLog = SqlReminderLog(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        links = tenant_links(connection)
+        urls: TenantLinkUrls = LinkInUse(links, IssueLink(links, entitlements, audit, app_clock))
+        return PrepareReminder(
+            entitlements,
+            recipients,
+            GetStatement(ledger, app_clock),
+            templates,
+            urls,
+            log,
+            app_clock,
+        )
+
+    app.include_router(reminders_api.create_router(current_account, provide_prepare_reminder))
 
     async def provide_declarations(
         connection: Transaction,

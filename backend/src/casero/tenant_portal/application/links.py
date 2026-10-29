@@ -114,6 +114,24 @@ class IssueLink:
 
 
 @dataclass(frozen=True)
+class LinkInUse:
+    """`{enlace}` for the collection messages: the link in use, or a new one (AR-03)."""
+
+    links: Links
+    issue: IssueLink
+
+    async def url_for(self, context: AccountContext, lease_id: UUID) -> str | None:
+        # Locking first keeps two messages prepared at once from replacing each other's link.
+        if not await self.links.store.portal_enabled(lease_id, lock=True):
+            return None
+        current = await self.links.store.current(lease_id)
+        if current is not None:
+            return self.links.view(current).url
+        issued = await self.issue(context, lease_id)
+        return None if isinstance(issued, str) else issued.url
+
+
+@dataclass(frozen=True)
 class RevokeLink:
     """Revoking is idempotent: without a link in use there is nothing to do."""
 

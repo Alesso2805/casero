@@ -2013,6 +2013,40 @@
         "title": "RegistrationRequest",
         "type": "object"
       },
+      "ReminderResponse": {
+        "properties": {
+          "charge_id": {
+            "format": "uuid",
+            "title": "Charge Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "friendly",
+              "due_today",
+              "overdue"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "charge_id",
+          "message",
+          "url"
+        ],
+        "title": "ReminderResponse",
+        "type": "object"
+      },
       "RentChangeRequest": {
         "properties": {
           "id": {
@@ -3572,6 +3606,59 @@
           }
         },
         "summary": "End Lease"
+      }
+    },
+    "/api/app/leases/{lease_id}/whatsapp-reminders": {
+      "post": {
+        "description": "The WhatsApp link with the message for the most urgent unpaid rent; logs the send.",
+        "operationId": "prepare_reminder_api_app_leases__lease_id__whatsapp_reminders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lease_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lease Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, `csrf`, or `whatsapp_unavailable` (plan or lease without WhatsApp)"
+          },
+          "404": {
+            "description": "`lease_not_found`"
+          },
+          "409": {
+            "description": "`nothing_due`: no unpaid rent to remind"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare Reminder"
       }
     },
     "/api/app/me": {
