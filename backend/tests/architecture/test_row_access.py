@@ -152,6 +152,13 @@ async def test_ar16_in_the_tenant_context_writes_are_refused_but_the_link_is_tou
             lease_id,
         )
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            async with app.transaction():
+                await app.execute(
+                    "UPDATE tenant_links SET revoked_at = $1 WHERE lease_id = $2",
+                    seed.SEEDED_AT,
+                    lease_id,
+                )
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await app.execute(
                 "INSERT INTO lease_rent_changes (id, account_id, lease_id, monthly_rent_cents,"
                 " effective_period, created_at) VALUES ($1, $2, $3, 1, '2026-12', $4)",

@@ -44,3 +44,7 @@ Account emails (verification and password reset) are sent during the request tha
 - the person is waiting on the screen, so an immediate error ("no pudimos enviar el correo") is better than a silent failure a minute later.
 
 A failed send doesn't undo the request: registration still succeeds, and the app offers to resend the email (three per hour). Suppressions still apply: a bounced or complained address gets no email. Scheduled emails and complaint copies stay in the worker.
+
+## Amendment (critical review of Sprints 7-9, 2026-10-29)
+
+The send still happens inside the request's transaction, so the response can say whether it worked. To keep a slow SMTP server from holding a pooled connection, the API's mailer times out after 10 seconds (the worker keeps 30). The login delay, which used to hold a connection for up to 30 seconds, now runs between two short transactions and holds none.

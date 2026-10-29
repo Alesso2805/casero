@@ -76,6 +76,8 @@ async def test_the_worker_reads_stuck_emails_schedules_and_failures(
     assert "complaint_copy" not in stuck_jobs
     assert await readings.schedule_rows(2026) == 84
     assert await readings.schedule_rows(2031) == 0
+    assert await readings.has_tax_rules(2026)
+    assert not await readings.has_tax_rules(2031)
 
 
 async def test_each_alert_is_claimed_once(worker_engine: AsyncEngine) -> None:

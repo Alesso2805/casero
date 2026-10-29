@@ -1,12 +1,31 @@
-from datetime import UTC, datetime, timedelta
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid7
 
 import asyncpg
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from api_client import FixedClock
+from casero.accounts.application.context import AccountContext
+from casero.accounts.application.entitlements import GetEntitlements
+from casero.accounts.infrastructure.account import SqlPlans, SqlProfiles, SqlSubscriptions
+from casero.leases.infrastructure.leases import SqlLeaseStore
+from casero.leases.infrastructure.renters import SqlRenterHolders
+from casero.ledger.infrastructure.ledger import SqlLedger
+from casero.properties.infrastructure.properties import SqlPropertyStore
+from casero.shared.infrastructure.audit import SqlAuditLog
+from casero.shared.infrastructure.database import create_engine, set_account_context
+from casero.shared.kernel.periods import Period
+from casero.tax.application.declarations import GetDeclarations
+from casero.tax.application.payments import RecordedTaxPayment, RecordTaxPayment
+from casero.tax.application.sunat_payments import NewTaxPayment
+from casero.tax.infrastructure.payments import SqlTaxPayments
+from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from database import Database
 from tax_flows import add_renter, client_for, pay, register, save_ruc, send, start_leases
 
@@ -260,3 +279,75 @@ async def test_a_new_document_after_paying_and_an_overdue_month_without_payment(
         "base_difference_cents": 0,
         "tax_difference_cents": 0,
     }
+
+
+@asynccontextmanager
+async def two_transactions(
+    database: Database, account_id: UUID
+) -> AsyncIterator[tuple[AsyncConnection, AsyncConnection]]:
+    engine = create_engine(
+        database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
+    )
+    try:
+        async with engine.connect() as first, engine.connect() as second:
+            for connection in (first, second):
+                await connection.begin()
+                await set_account_context(connection, account_id)
+            yield first, second
+    finally:
+        await engine.dispose()
+
+
+def record_with(connection: AsyncConnection) -> RecordTaxPayment:
+    clock = FixedClock(NOW)
+    entitlements = GetEntitlements(SqlSubscriptions(connection), SqlPlans(connection), clock)
+    declarations = GetDeclarations(
+        entitlements,
+        SqlProfiles(connection),
+        SqlPropertyStore(connection),
+        SqlLeaseStore(connection),
+        SqlRenterHolders(connection),
+        SqlLedger(connection),
+        SqlTaxRuleBook(connection),
+        SqlTaxPayments(connection),
+        clock,
+    )
+    return RecordTaxPayment(
+        SqlProfiles(connection),
+        declarations,
+        SqlTaxPayments(connection),
+        SqlAuditLog(connection),
+        clock,
+    )
+
+
+async def test_the_same_sunat_payment_sent_twice_at_once_is_replayed_not_refused(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        renter_id = ana_paid_in_october(client)
+    [row] = await owner_rows(
+        database,
+        "SELECT account_id, user_id FROM account_members m JOIN renters r"
+        " USING (account_id) WHERE r.id = $1",
+        UUID(renter_id),
+    )
+    context = AccountContext(row["account_id"], row["user_id"])
+    new = NewTaxPayment(
+        uuid7(), Period(2026, 10), UUID(renter_id), 4_000, date(2026, 10, 27), "1234567890"
+    )
+
+    async with two_transactions(database, context.account_id) as (first, second):
+        recorded = await record_with(first)(context, new)
+        resent = asyncio.create_task(record_with(second)(context, new))
+        await asyncio.sleep(0.3)
+        waited_for_the_account = not resent.done()
+        await first.commit()
+        replayed = await resent
+        await second.commit()
+
+    assert isinstance(recorded, RecordedTaxPayment)
+    assert not recorded.replayed
+    assert waited_for_the_account
+    assert isinstance(replayed, RecordedTaxPayment)
+    assert replayed.replayed

@@ -1,6 +1,7 @@
 from typing import Any
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.transport import Transport
 from sentry_sdk.types import Event, Hint
 from structlog.typing import EventDict, WrappedLogger
@@ -41,6 +42,9 @@ def init_error_tracking(
         traces_sample_rate=0,
         before_send=scrub,
         transport=transport,
+        # Library log records carry their formatted message, which can quote personal data;
+        # our own errors reach Sentry through forward_errors with safe fields only.
+        integrations=[LoggingIntegration(level=None, event_level=None)],
     )
 
 

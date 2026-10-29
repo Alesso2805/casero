@@ -84,23 +84,38 @@ class StartSession:
         return LoggedIn(token, session)
 
 
+class LoginSteps(Protocol):
+    """Each step runs in its own short transaction, so the delay between them holds no
+    database connection or rate-limit lock (critical reviews of Sprints 4-6 and 7-9, I1)."""
+
+    async def check(self, email: str, client: str) -> int | Literal["limited"]: ...
+
+    async def complete(
+        self, email: str, password: str, previous_token: str | None
+    ) -> LoggedIn | Literal["invalid"]: ...
+
+
 @dataclass(frozen=True)
-class LogIn:
+class CheckLogin:
+    throttle: LoginThrottle
+
+    async def __call__(self, email: str, client: str) -> int | Literal["limited"]:
+        """The seconds to wait before checking the password, or "limited" for this client."""
+        if not await self.throttle.allow_ip(client):
+            return "limited"
+        return email_delay_seconds(await self.throttle.recent_failures(email))
+
+
+@dataclass(frozen=True)
+class CompleteLogin:
     credentials: Credentials
     hasher: PasswordHasher
     start_session: StartSession
     throttle: LoginThrottle
-    sleeper: Sleeper
 
     async def __call__(
-        self, email: str, password: str, client: str, previous_token: str | None
-    ) -> LoginOutcome:
-        if not await self.throttle.allow_ip(client):
-            return "limited"
-        email = normalize_email(email)
-        delay = email_delay_seconds(await self.throttle.recent_failures(email))
-        if delay:
-            await self.sleeper.sleep(delay)
+        self, email: str, password: str, previous_token: str | None
+    ) -> LoggedIn | Literal["invalid"]:
         user = await self.credentials.by_email(email)
         if user is None:
             await self.hasher.verify_nothing(password)
@@ -110,6 +125,23 @@ class LogIn:
             await self.throttle.record_failure(email)
             return "invalid"
         return await self.start_session(user.user_id, previous_token)
+
+
+@dataclass(frozen=True)
+class LogIn:
+    steps: LoginSteps
+    sleeper: Sleeper
+
+    async def __call__(
+        self, email: str, password: str, client: str, previous_token: str | None
+    ) -> LoginOutcome:
+        email = normalize_email(email)
+        delay = await self.steps.check(email, client)
+        if delay == "limited":
+            return "limited"
+        if delay:
+            await self.sleeper.sleep(delay)
+        return await self.steps.complete(email, password, previous_token)
 
 
 @dataclass(frozen=True)

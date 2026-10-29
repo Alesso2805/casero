@@ -165,3 +165,37 @@ async def test_an_ip_is_blocked_and_an_email_slowed_down(
     assert statuses == [401] * LOGIN_ATTEMPTS_PER_IP_PER_HOUR + [429]
     assert sleeper.slept[:4] == [1, 2, 4, 8]
     assert max(sleeper.slept) == 30
+
+
+class WatchingSleeper:
+    """Looks at the database while the login waits: no API connection may be mid-transaction."""
+
+    def __init__(self, database: Database) -> None:
+        self._database = database
+        self.open_transactions: list[int] = []
+
+    async def sleep(self, seconds: int) -> None:
+        owner = await asyncpg.connect(self._database.dsn("casero_owner"))
+        try:
+            self.open_transactions.append(
+                await owner.fetchval(
+                    "SELECT count(*) FROM pg_stat_activity WHERE usename = 'casero_app'"
+                    " AND state LIKE 'idle in transaction%'"
+                )
+            )
+        finally:
+            await owner.close()
+
+
+async def test_the_login_delay_holds_no_connection_or_lock(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    email = await a_user(database)
+    sleeper = WatchingSleeper(database)
+    clock = FixedClock(datetime(2049, 1, 1, 15, 0, tzinfo=UTC))
+
+    with api_client(database, address_for(request.node.name), clock, sleeper=sleeper) as client:
+        for _ in range(5):
+            log_in(client, email, "otra clave cualquiera")
+
+    assert sleeper.open_transactions == [0, 0]
