@@ -57,6 +57,7 @@
 			root * /srv
 			try_files {path} /index.html
 			header Cache-Control "no-cache"
+			header /manifest.webmanifest Content-Type application/manifest+json
 			file_server
 		}
 	}

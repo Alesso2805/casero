@@ -27,6 +27,17 @@ def assert_security_headers(response: httpx2.Response) -> None:
     assert "server" not in response.headers
 
 
+def test_the_app_installs_and_its_worker_is_revalidated_and_caches_nothing() -> None:
+    manifest = get("/manifest.webmanifest")
+    worker = get("/sw.js")
+
+    assert manifest.headers["content-type"].startswith("application/manifest+json")
+    assert manifest.json()["start_url"] == "/app"
+    assert worker.headers["cache-control"] == "no-cache"
+    assert "fetch" not in worker.text
+    assert get("/registerSW.js").status_code == 200
+
+
 def test_pages_send_the_security_headers() -> None:
     response = get("/")
 
