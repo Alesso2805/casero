@@ -416,8 +416,9 @@ CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fech
 | Sprint 4 | 7 (CS-32, CS-09) | 5: CS-09 (CS-32 ya se contó en el Sprint 3) | 27 oct 2026 (el plan lo cerraba el 31 ene) | 6.6 puntos por sprint |
 | Sprint 5 | 8 (CS-11, CS-26) | 8; de CS-26 queda activar respaldos, Sentry y Better Stack cuando tengas las cuentas | 28 oct 2026 (el plan lo cerraba el 14 feb) | 6.8 puntos por sprint |
 | Sprint 6 | 8 (CS-12, CS-13) | 8 | 28 oct 2026 (el plan lo cerraba el 28 feb) | 7 puntos por sprint |
+| Sprint 7 | 7 (CS-31, CS-18) | 7 | 28 oct 2026 (el plan lo cerraba el 14 mar) | 7 puntos por sprint |
 
-Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del plan y las puertas no cambian: la de fin del Sprint 1 (20 dic) decide si se comprime el plan con esta velocidad. El Sprint 4 cerró con CS-09, el Sprint 5 con CS-11 y CS-26, y el Sprint 6 con CS-12 y CS-13.
+Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del plan y las puertas no cambian: la de fin del Sprint 1 (20 dic) decide si se comprime el plan con esta velocidad. El Sprint 4 cerró con CS-09, el Sprint 5 con CS-11 y CS-26, el Sprint 6 con CS-12 y CS-13, y el Sprint 7 con CS-31 y CS-18.
 
 **Puertas de decisión**
 
