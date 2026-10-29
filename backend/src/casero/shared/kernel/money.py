@@ -1,5 +1,6 @@
 CENTS_PER_SOL = 100
 BASIS_POINTS = 10_000
+WHOLE_PERCENT = 100
 
 
 def format_soles(cents: int) -> str:

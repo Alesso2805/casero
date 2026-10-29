@@ -59,13 +59,14 @@ def add_renter(client: TestClient, name: str, document: dict[str, str] | None = 
     return str(renter.json()["id"])
 
 
-def start_leases(client: TestClient, *terms: dict[str, object]) -> list[str]:
+def start_leases(
+    client: TestClient, *terms: dict[str, object], house: dict[str, object] | None = None
+) -> list[str]:
     units = [{"name": f"Cuarto {n}", "kind": "room"} for n in range(len(terms))]
-    house = send(
-        client, "POST", "/api/app/properties", {"name": "Casa", "ownership": "sole", "units": units}
-    ).json()
+    details = {"name": "Casa", "ownership": "sole", "units": units, **(house or {})}
+    created_house = send(client, "POST", "/api/app/properties", details).json()
     ids = []
-    for unit, overrides in zip(house["units"], terms, strict=True):
+    for unit, overrides in zip(created_house["units"], terms, strict=True):
         lease = {
             "id": str(uuid7()),
             "unit_id": unit["id"],
@@ -128,8 +129,44 @@ async def test_one_tenant_with_two_leases_has_one_form_with_its_due_date(
             }
         ],
         "untaxed": [],
+        "minimum_rent": [],
     }
     assert ANA_DNI not in renters.text
+
+
+async def test_a_property_rented_under_six_percent_of_its_autovaluo_is_flagged(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        ana = add_renter(client, "Ana")
+        luis = add_renter(client, "Luis")
+        start_leases(
+            client,
+            {"renter_id": ana, "control_from_period": "2026-09"},
+            house={"name": "Casa grande", "autovaluo_cents": 20_000_000},
+        )
+        start_leases(
+            client,
+            {"renter_id": luis},
+            house={"name": "Casa chica", "autovaluo_cents": 16_000_000},
+        )
+        start_leases(
+            client,
+            {"renter_id": add_renter(client, "Rosa"), "tax_treatment": "unsupported"},
+            house={"name": "Cochera", "autovaluo_cents": 50_000_000},
+        )
+        start_leases(client, {"renter_id": add_renter(client, "Eva")})
+        start_leases(
+            client,
+            {"renter_id": add_renter(client, "Juan"), "monthly_rent_cents": 25_000},
+            house={"name": "Cuarto", "autovaluo_cents": 20_000_000, "rented_share_pct": 25},
+        )
+        september = client.get("/api/app/tax/declarations?period=2026-09").json()
+        october = client.get(OCTOBER).json()
+
+    assert [m["property_name"] for m in september["minimum_rent"]] == ["Casa grande"]
+    assert [m["property_name"] for m in october["minimum_rent"]] == ["Casa grande"]
 
 
 async def test_old_debt_untaxed_leases_and_tenants_without_a_document(
