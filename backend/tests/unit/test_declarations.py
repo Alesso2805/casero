@@ -9,6 +9,7 @@ from hypothesis import strategies as st
 
 from casero.ledger.domain.allocation import Charge, Payment, allocate, paid_toward_old_debt
 from casero.shared.kernel.periods import Period
+from casero.tax.application.declarations import due_status
 from casero.tax.domain.declarations import Declarant, TaxablePayment, declarations
 from casero.tax.domain.rules import TaxRules
 from ledger_samples import CENTS, at, credit, ledgers, opening, payment, rent
@@ -137,3 +138,9 @@ def test_a_credit_never_changes_the_tax_of_a_month_before_it(
     assert {m: tax for m, tax in after.items() if m < month} == {
         m: tax for m, tax in before.items() if m < month
     }
+
+
+def test_the_due_date_is_to_be_confirmed_until_the_years_schedule_is_loaded() -> None:
+    assert due_status("20131312955", None) == "unknown_schedule"
+    assert due_status("20131312955", date(2026, 11, 19)) == "known"
+    assert due_status(None, None) == "no_ruc"

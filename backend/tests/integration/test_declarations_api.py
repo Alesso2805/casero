@@ -1,0 +1,238 @@
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from uuid import uuid7
+
+import asyncpg
+import pytest
+from fastapi.testclient import TestClient
+
+from api_client import FixedClock, address_for, api_client
+from database import Database
+
+pytestmark = pytest.mark.anyio
+
+NOW = datetime(2026, 10, 27, 15, 0, tzinfo=UTC)
+CSRF = "__Host-casero_csrf"
+SUNAT_RUC = "20131312955"
+ANA_DNI = "45678912"
+OCTOBER = "/api/app/tax/declarations?period=2026-10"
+
+
+def send(client: TestClient, method: str, path: str, body: object = None) -> Any:
+    return client.request(method, path, json=body, headers={"X-CSRF-Token": client.cookies[CSRF]})
+
+
+def register(client: TestClient, email: str | None = None) -> None:
+    client.get("/api/public/csrf")
+    registered = send(
+        client,
+        "POST",
+        "/api/public/registration",
+        {
+            "email": email or f"{uuid7()}@example.com",
+            "password": "una clave bien larga",
+            "display_name": "Casera",
+            "accept_terms_and_privacy": True,
+            "consent_sensitive_data": True,
+        },
+    )
+    assert registered.status_code == 201
+
+
+def save_ruc(client: TestClient) -> None:
+    profile = {
+        "display_name": "Casera",
+        "taxpayer_kind": "person",
+        "ruc": SUNAT_RUC,
+        "good_taxpayer": False,
+        "daily_digest": True,
+    }
+    assert send(client, "PUT", "/api/app/account/profile", profile).status_code == 200
+
+
+def add_renter(client: TestClient, name: str, document: dict[str, str] | None = None) -> str:
+    body: dict[str, object] = {"full_name": name}
+    if document:
+        body["document"] = document
+    renter = send(client, "POST", "/api/app/renters", body)
+    assert renter.status_code == 201
+    return str(renter.json()["id"])
+
+
+def start_leases(client: TestClient, *terms: dict[str, object]) -> list[str]:
+    units = [{"name": f"Cuarto {n}", "kind": "room"} for n in range(len(terms))]
+    house = send(
+        client, "POST", "/api/app/properties", {"name": "Casa", "ownership": "sole", "units": units}
+    ).json()
+    ids = []
+    for unit, overrides in zip(house["units"], terms, strict=True):
+        lease = {
+            "id": str(uuid7()),
+            "unit_id": unit["id"],
+            "monthly_rent_cents": 80_000,
+            "due_day": 5,
+            "start_date": "2026-03-01",
+            "control_from_period": "2026-10",
+            "tax_treatment": "standard",
+            **overrides,
+        }
+        created = send(client, "POST", "/api/app/leases", lease)
+        assert created.status_code == 201, created.json()
+        ids.append(str(lease["id"]))
+    return ids
+
+
+def pay(client: TestClient, lease_id: str, cents: int, on: str) -> None:
+    body = {"id": str(uuid7()), "amount_cents": cents, "received_on": on, "method": "yape"}
+    assert send(client, "POST", f"/api/app/leases/{lease_id}/payments", body).status_code == 201
+
+
+def client_for(database: Database, request: pytest.FixtureRequest, clock: FixedClock) -> Any:
+    return api_client(database, address_for(request.node.name), clock, registration_mode="open")
+
+
+async def test_one_tenant_with_two_leases_has_one_form_with_its_due_date(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        save_ruc(client)
+        ana = add_renter(client, "Ana", {"doc_type": "dni", "number": ANA_DNI})
+        room, shop = start_leases(client, {"renter_id": ana}, {"renter_id": ana})
+        pay(client, room, 45_050, "2026-10-05")
+        pay(client, shop, 10_050, "2026-10-20")
+        pay(client, room, 30_000, "2026-09-28")
+        october = client.get(OCTOBER)
+        renters = client.get("/api/app/renters")
+
+    assert october.status_code == 200
+    assert october.json() == {
+        "period": "2026-10",
+        "ruc": SUNAT_RUC,
+        "due_on": "2026-11-19",
+        "due_status": "known",
+        "total_tax_cents": 2_800,
+        "declarations": [
+            {
+                "renter_id": ana,
+                "renter_name": "Ana",
+                "doc_type": "dni",
+                "doc_number": ANA_DNI,
+                "incomplete": False,
+                "company_tenant": False,
+                "lease_ids": sorted([room, shop]),
+                "collected_cents": 55_100,
+                "old_debt_cents": 0,
+                "base_cents": 55_100,
+                "tax_cents": 2_800,
+            }
+        ],
+        "untaxed": [],
+    }
+    assert ANA_DNI not in renters.text
+
+
+async def test_old_debt_untaxed_leases_and_tenants_without_a_document(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        rosa = add_renter(client, "Rosa")
+        company = add_renter(client, "Bodega SAC", {"doc_type": "ruc", "number": SUNAT_RUC})
+        luis = add_renter(client, "Luis", {"doc_type": "dni", "number": "12345678"})
+        with_old_debt, shop, garage = start_leases(
+            client,
+            {
+                "renter_id": rosa,
+                "start_date": "2025-06-01",
+                "opening_balance_pre_2026_cents": 120_000,
+            },
+            {"renter_id": company, "tax_treatment": "company_tenant"},
+            {"renter_id": luis, "tax_treatment": "unsupported"},
+        )
+        pay(client, with_old_debt, 150_000, "2026-10-10")
+        pay(client, shop, 80_000, "2026-10-06")
+        pay(client, garage, 30_000, "2026-10-07")
+        october = client.get(OCTOBER).json()
+
+    assert (october["ruc"], october["due_on"], october["due_status"]) == (None, None, "no_ruc")
+    assert [
+        (
+            d["renter_name"],
+            d["incomplete"],
+            d["company_tenant"],
+            d["doc_number"],
+            d["collected_cents"],
+            d["old_debt_cents"],
+            d["tax_cents"],
+        )
+        for d in october["declarations"]
+    ] == [
+        ("Bodega SAC", False, True, SUNAT_RUC, 80_000, 0, 4_000),
+        ("Rosa", True, False, None, 30_000, 120_000, 1_500),
+    ]
+    assert october["total_tax_cents"] == 5_500
+    assert october["untaxed"] == [
+        {"lease_id": garage, "renter_name": "Luis", "collected_cents": 30_000}
+    ]
+
+
+async def test_another_account_sees_none_of_the_declarations(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    clock = FixedClock(NOW)
+    with client_for(database, request, clock) as ana, client_for(database, request, clock) as luis:
+        register(ana)
+        register(luis)
+        renter = add_renter(ana, "Ana", {"doc_type": "dni", "number": ANA_DNI})
+        [lease] = start_leases(ana, {"renter_id": renter})
+        pay(ana, lease, 80_000, "2026-10-05")
+        seen_by_luis = luis.get(OCTOBER).json()
+
+    assert (seen_by_luis["declarations"], seen_by_luis["untaxed"]) == ([], [])
+    assert seen_by_luis["total_tax_cents"] == 0
+
+
+async def test_the_free_plan_has_no_tax_module(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    clock = FixedClock(NOW)
+    email = f"{uuid7()}@example.com"
+    with client_for(database, request, clock) as client:
+        register(client, email)
+        owner = await asyncpg.connect(database.dsn("casero_owner"))
+        try:
+            await owner.execute(
+                "UPDATE users SET email_verified_at = $1 WHERE email = $2", NOW, email
+            )
+        finally:
+            await owner.close()
+        clock.advance(timedelta(days=29))
+        in_trial = client.get(OCTOBER)
+        clock.advance(timedelta(days=9))
+        lapsed = client.get(OCTOBER)
+
+    assert in_trial.status_code == 200
+    assert (lapsed.status_code, lapsed.json()["detail"]) == (403, "tax_module_unavailable")
+
+
+@pytest.mark.parametrize(
+    ("period", "detail"), [("2027-01", "unknown_year"), ("2026-13", None), ("octubre", None)]
+)
+async def test_a_month_needs_a_valid_period_and_its_years_rules(
+    database: Database, request: pytest.FixtureRequest, period: str, detail: str | None
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        response = client.get(f"/api/app/tax/declarations?period={period}")
+
+    assert response.status_code == 422
+    if detail:
+        assert response.json()["detail"] == detail
+
+
+def test_declarations_need_a_session(database: Database, request: pytest.FixtureRequest) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        response = client.get(OCTOBER)
+
+    assert response.status_code == 401

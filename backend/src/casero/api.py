@@ -125,6 +125,7 @@ from casero.leases.application.leases import LeaseStore, ListLeases
 from casero.leases.application.renters import (
     CreateRenter,
     ListRenters,
+    RenterDocuments,
     RenterStore,
     UpdateRenter,
 )
@@ -137,6 +138,7 @@ from casero.ledger.api import lease_changes as lease_changes_api
 from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
+from casero.ledger.application.collected import CollectedPayments
 from casero.ledger.application.collections import CollectionsStore, GetCollections
 from casero.ledger.application.lease_changes import (
     ChangeRent,
@@ -186,11 +188,13 @@ from casero.shared.infrastructure.settings import ApiSettings
 from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import Clock, SystemClock
 from casero.tax.api import calculator as calculator_api
+from casero.tax.api import declarations as declarations_api
 from casero.tax.application.calculator import (
     CalculateTax,
     CalculatorRateLimiter,
     TaxRuleBook,
 )
+from casero.tax.application.declarations import GetDeclarations
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
 from casero.tenant_portal.api import portal as tenant_portal_api
@@ -785,6 +789,23 @@ def create_app(
         return GetCollections(books, app_clock)
 
     app.include_router(collections_api.create_router(current_account, provide_collections))
+
+    async def provide_declarations(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> GetDeclarations:
+        profiles: Profiles = SqlProfiles(connection)
+        leases: LeaseStore = SqlLeaseStore(connection)
+        renters: RenterDocuments = SqlRenterStore(
+            connection, config.field_cipher, config.document_hasher
+        )
+        books: CollectionsStore = SqlLedger(connection)
+        rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        return GetDeclarations(
+            entitlements, profiles, leases, renters, CollectedPayments(books), rule_book
+        )
+
+    app.include_router(declarations_api.create_router(current_account, provide_declarations))
 
     @app.get("/api/health", responses={503: {"description": "`database_unavailable`"}})
     async def health() -> HealthResponse:

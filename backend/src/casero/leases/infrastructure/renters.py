@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.leases.application.renters import RenterDocument
 from casero.leases.domain.renters import Document, Renter, RenterDetails
 from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, field_context
 
@@ -11,6 +12,9 @@ SELECT_RENTERS = "SELECT id, full_name, phone_e164, doc_type, doc_last4 FROM ren
 ALL_RENTERS = text(SELECT_RENTERS + " ORDER BY id")
 LOCK_RENTER = text(SELECT_RENTERS + " WHERE id = :id FOR UPDATE")
 HOLDER = text("SELECT id FROM renters WHERE doc_hmac = :doc_hmac")
+DOCUMENTS = text(
+    "SELECT id, account_id, full_name, doc_type, doc_enc, doc_hmac FROM renters ORDER BY id"
+)
 ADD_RENTER = text(
     "INSERT INTO renters (id, account_id, full_name, phone_e164, doc_type, doc_enc, doc_hmac,"
     " doc_last4) VALUES (:id, :account_id, :full_name, :phone_e164, :doc_type, :doc_enc,"
@@ -51,6 +55,22 @@ class SqlRenterStore:
             "doc_hmac": self._hasher.digest(document.doc_type, document.number),
             "doc_last4": document.last4,
         }
+
+    async def documents(self) -> list[RenterDocument]:
+        return [
+            RenterDocument(
+                row.id,
+                row.full_name,
+                row.doc_type,
+                bytes(row.doc_hmac) if row.doc_hmac else None,
+                self._cipher.decrypt(
+                    row.doc_enc, field_context("renters", "doc_enc", row.account_id, row.id)
+                )
+                if row.doc_enc
+                else None,
+            )
+            for row in await self._connection.execute(DOCUMENTS)
+        ]
 
     async def all(self) -> list[Renter]:
         return [renter(row) for row in await self._connection.execute(ALL_RENTERS)]
