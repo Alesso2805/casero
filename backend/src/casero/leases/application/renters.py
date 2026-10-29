@@ -4,7 +4,10 @@ from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.profile import Profiles
-from casero.leases.domain.renters import DocType, Document, Renter, RenterDetails
+from casero.leases.domain.renters import (
+    DocType as DocType,
+)
+from casero.leases.domain.renters import Document, Renter, RenterDetails
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.ids import new_id
