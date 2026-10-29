@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { primaryButton, secondaryButton } from "../account/fields";
 import { api } from "../api/client";
@@ -34,6 +34,13 @@ export function TenantLinkBlock({ leaseId }: { leaseId: string }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [message, setMessage] = useState<string | null>(null);
+  const status = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    // After revoking, the buttons that had focus are gone: the confirmation takes it.
+    if (message === t.revoked) {
+      status.current?.focus();
+    }
+  }, [message]);
   const key = ["tenant-link", leaseId];
   const params = { params: { path: { lease_id: leaseId } } };
   const current = useQuery({
@@ -65,7 +72,11 @@ export function TenantLinkBlock({ leaseId }: { leaseId: string }) {
       </h2>
       <p>{t.intro}</p>
       {answer?.kind === "unavailable" && <p role="alert">{t.unavailable}</p>}
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p ref={status} role="status" tabIndex={-1}>
+          {message}
+        </p>
+      )}
       {(current.isError || change.isError) && (
         <p role="alert" className="text-red-800">
           {text.errors.failure}

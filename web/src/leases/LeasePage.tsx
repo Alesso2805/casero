@@ -362,6 +362,7 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
           <input
             id={reasonId}
             className="min-h-11 w-full rounded-lg border border-stone-400 px-3 text-base"
+            maxLength={200}
             value={reason}
             onChange={(event) => {
               setReason(event.target.value);
