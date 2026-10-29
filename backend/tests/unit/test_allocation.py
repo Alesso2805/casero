@@ -35,7 +35,7 @@ def test_debt_from_2025_or_before_is_paid_first_then_2026_then_by_due_date() -> 
 
     result = allocate([SEPT, recent, old], [pay])
 
-    assert result.covered_by(pay.id) == {old.id: 120_000, recent.id: 30_000}
+    assert result.covered_by(("payment", pay.id)) == {old.id: 120_000, recent.id: 30_000}
 
 
 def test_on_the_same_day_payments_go_before_credits() -> None:
@@ -45,8 +45,8 @@ def test_on_the_same_day_payments_go_before_credits() -> None:
 
     result = allocate([SEPT, OCT, early_credit], [late_payment])
 
-    assert result.covered_by(late_payment.id) == {SEPT.id: 30_000}
-    assert result.covered_by(early_credit.id) == {SEPT.id: 50_000, OCT.id: 30_000}
+    assert result.covered_by(("payment", late_payment.id)) == {SEPT.id: 30_000}
+    assert result.covered_by(("credit", early_credit.id)) == {SEPT.id: 50_000, OCT.id: 30_000}
 
 
 def test_a_credit_is_never_money_received_and_voided_records_count_for_nothing() -> None:
@@ -148,7 +148,7 @@ def test_a_later_movement_never_changes_how_earlier_ones_were_applied(
     before = allocate(charges, payments).covered
     after = allocate(charges, [*payments, later]).covered
 
-    assert {key: value for key, value in after.items() if key[0] != later.id} == before
+    assert {key: value for key, value in after.items() if key[0] != ("payment", later.id)} == before
 
 
 @given(ledgers(), CENTS)
@@ -163,4 +163,6 @@ def test_a_later_credit_never_changes_how_earlier_payments_were_applied(
     before = allocate(charges, payments).covered
     after = allocate([*charges, late_credit], payments).covered
 
-    assert {key: value for key, value in after.items() if key[0] != late_credit.id} == before
+    kept = {key: value for key, value in after.items() if key[0] != ("credit", late_credit.id)}
+
+    assert kept == before
