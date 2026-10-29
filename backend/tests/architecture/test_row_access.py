@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid7
 
 import asyncpg
 import pytest
@@ -101,6 +101,67 @@ async def test_ar16_meta_detects_a_missing_tenant_policy(
         await superuser.execute("SET LOCAL ROLE casero_app")
 
         assert await tenant_scope_leaks(superuser, first, first.lease_ids[0]) == ["charges"]
+
+
+TENANT_WRITE_GUARDS = """
+SELECT tablename, cmd FROM pg_policies
+WHERE schemaname = 'public' AND permissive = 'RESTRICTIVE' AND policyname LIKE 'tenant_no_%'
+  AND coalesce(qual, with_check) LIKE '%app.context%IS DISTINCT FROM%tenant%'
+"""
+TENANT_WRITABLE = {("tenant_links", "UPDATE")}
+
+
+async def unguarded_tenant_writes(connection: asyncpg.Connection) -> list[str]:
+    guarded = {
+        (row["tablename"], row["cmd"]) for row in await connection.fetch(TENANT_WRITE_GUARDS)
+    }
+    return sorted(
+        f"{table} {command}"
+        for table in ACCOUNT_TABLES
+        for command in ("INSERT", "UPDATE", "DELETE")
+        if (table, command) not in guarded | TENANT_WRITABLE
+    )
+
+
+async def test_ar16_the_tenant_context_cannot_write_except_its_link_use(
+    database: Database,
+) -> None:
+    async with rolled_back(database.dsn("casero_owner")) as owner:
+        assert await unguarded_tenant_writes(owner) == []
+
+
+async def test_ar16_meta_detects_a_missing_write_guard(database: Database) -> None:
+    async with rolled_back(database.superuser_dsn()) as superuser:
+        await superuser.execute("DROP POLICY tenant_no_insert ON payments")
+
+        assert await unguarded_tenant_writes(superuser) == ["payments INSERT"]
+
+
+async def test_ar16_in_the_tenant_context_writes_are_refused_but_the_link_is_touched(
+    database: Database, seeded: tuple[SeededAccount, SeededAccount]
+) -> None:
+    first, _ = seeded
+    lease_id = first.lease_ids[0]
+    async with rolled_back(database.dsn("casero_app")) as app:
+        await seed.set_context(app, first.account_id, "tenant", lease_id)
+
+        renamed = await app.execute("UPDATE accounts SET display_name = 'Otra'")
+        touched = await app.execute(
+            "UPDATE tenant_links SET last_used_at = $1 WHERE lease_id = $2",
+            seed.SEEDED_AT,
+            lease_id,
+        )
+        with pytest.raises(asyncpg.InsufficientPrivilegeError):
+            await app.execute(
+                "INSERT INTO lease_rent_changes (id, account_id, lease_id, monthly_rent_cents,"
+                " effective_period, created_at) VALUES ($1, $2, $3, 1, '2026-12', $4)",
+                uuid7(),
+                first.account_id,
+                lease_id,
+                seed.SEEDED_AT,
+            )
+
+    assert (renamed, touched) == ("UPDATE 0", "UPDATE 1")
 
 
 async def test_ar17_admin_sees_rows_only_where_it_has_a_policy(
