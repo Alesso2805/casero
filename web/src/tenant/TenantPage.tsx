@@ -131,7 +131,11 @@ function PrivacyNotice({ landlord }: { landlord: string }) {
       <h2 id="tenant-privacy" className="text-xl font-bold">
         {text.privacyTitle}
       </h2>
-      <p>{text.privacy(landlord, business.data?.privacy_inbox ?? landlord)}</p>
+      <p>
+        {business.data
+          ? text.privacy(landlord, business.data.privacy_inbox)
+          : text.privacyWithoutInbox(landlord)}
+      </p>
     </section>
   );
 }
@@ -140,7 +144,7 @@ export function TenantPage() {
   const hash = useLocation({ select: (location) => location.hash });
   const token = new URLSearchParams(hash.replace(/^#/, "")).get("t") ?? "";
   const loaded = useQuery({
-    queryKey: ["tenant-statement"],
+    queryKey: ["tenant-statement", token],
     queryFn: () => fetchStatement(token),
     enabled: token !== "",
   });

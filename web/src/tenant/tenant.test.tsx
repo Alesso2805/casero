@@ -58,6 +58,19 @@ describe("tenant portal", () => {
     expect(request?.url).not.toContain(TOKEN);
   });
 
+  test("without the business contact the notice still says who to ask", async () => {
+    mockApi({
+      "/api/tenant/statement": () => json(STATEMENT),
+      "/api/public/business": 503,
+    });
+    await renderPage(`/i#t=${TOKEN}`);
+
+    expect(
+      await screen.findByText(/Para pedir que se corrijan o se borren, habla con Rosa Pérez\.$/),
+    ).toBeDefined();
+    expect(screen.queryByText(/escribe a Rosa Pérez/)).toBeNull();
+  });
+
   test("explains a link that no longer works", async () => {
     mockApi({ "/api/tenant/statement": () => json({ detail: "link_not_found" }, 404) });
     await renderPage(`/i#t=${TOKEN}`);

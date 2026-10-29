@@ -200,6 +200,21 @@ describe("account home", () => {
     );
   });
 
+  test("says when SUNAT's due dates could not be checked", async () => {
+    mockApi({
+      "/api/app/me": () => json({ ...ME, email_verified: true, verify_by: null }),
+      ...EMPTY_HOME,
+      "/api/app/tax/upcoming": 500,
+    });
+    await renderPage("/app");
+
+    expect(
+      await screen.findByText(
+        "No pudimos revisar tus vencimientos de SUNAT. Vuelve a intentarlo en unos minutos.",
+      ),
+    ).toBeDefined();
+  });
+
   test("says when the account could not be loaded", async () => {
     mockApi({ "/api/app/me": 500 });
     await renderPage("/app");

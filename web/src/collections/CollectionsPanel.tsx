@@ -116,7 +116,7 @@ function LeaseLine({
           <span className="text-stone-600">{text.reminded(remindedDaysAgo)}</span>
         )}
       </Link>
-      {line.status !== "up_to_date" && (
+      {line.status !== "up_to_date" && line.rent_to_remind && (
         <div className="px-3 pb-3">
           <WhatsAppButton leaseId={line.lease_id} renterName={renter} />
         </div>
