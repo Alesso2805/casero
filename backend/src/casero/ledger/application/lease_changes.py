@@ -156,7 +156,11 @@ EndRefusal = Literal[
 
 @dataclass(frozen=True)
 class EndLease:
-    """Ends a lease on a date up to today; periods starting after it are not charged."""
+    """Ends a lease on a date up to today; periods starting after it are not charged.
+
+    A lease registered ahead of its start ends today: all its rents are voided, and what was
+    already collected stays in favor of the tenant, to give back (SPEC, "Último mes").
+    """
 
     leases: LeaseStore
     charges: ChargeStore
@@ -177,15 +181,17 @@ class EndLease:
             return view(lease, today) if replayed else "lease_ended"
         if ended_on > today:
             return "end_in_future"
-        if ended_on < lease.terms.start_date:
+        not_started = today < lease.terms.start_date
+        if ended_on < lease.terms.start_date and not (not_started and ended_on == today):
             return "end_before_start"
-        if ended_on < lease.terms.control_from.first_day():
+        if ended_on < lease.terms.control_from.first_day() and not not_started:
             return "end_before_control"
         if credit is not None and await self.charges.charge(credit.id) is not None:
             return "conflict"
         now = self.clock.now()
         await self.leases.end(lease_id, ended_on)
-        for charge_id in await self.charges.rents_after(lease_id, Period.of(ended_on)):
+        last_charged = lease.terms.control_from.previous() if not_started else Period.of(ended_on)
+        for charge_id in await self.charges.rents_after(lease_id, last_charged):
             await self.charges.void_charge(
                 context.account_id, charge_id, ENDED_REASON, context.user_id, now
             )

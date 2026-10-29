@@ -8,6 +8,8 @@ from hypothesis import strategies as st
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.profile import ProfileChange, ProfileView, UpdateProfile
 from casero.accounts.domain.profile import Profile, RucGroup, ruc_group
+from casero.identity.application.email_choices import EmailChoices
+from casero.identity.domain.email_suppressions import ScheduledEmailKind, Suppression
 from casero.shared.kernel.audit import AuditEntry
 from casero.shared.kernel.ruc import is_valid_ruc
 
@@ -89,6 +91,27 @@ class Holdings:
         return self._any_property
 
 
+class Users:
+    async def email_of(self, user_id: UUID) -> str | None:
+        assert user_id == CONTEXT.user_id
+        return "ana@example.com"
+
+
+class Unsubscribes:
+    def __init__(self) -> None:
+        self.kinds: set[ScheduledEmailKind] = set()
+
+    async def unsubscribed(self, email: str, kind: ScheduledEmailKind) -> bool:
+        return kind in self.kinds
+
+    async def add(self, suppression: Suppression, now: datetime) -> None:
+        assert suppression.kind is not None
+        self.kinds.add(suppression.kind)
+
+    async def resubscribe(self, email: str, kind: ScheduledEmailKind) -> None:
+        self.kinds.discard(kind)
+
+
 class Audit:
     def __init__(self) -> None:
         self.entries: list[AuditEntry] = []
@@ -104,12 +127,19 @@ def change(**overrides: object) -> ProfileChange:
         "ruc": None,
         "good_taxpayer": False,
         "daily_digest": False,
+        "tax_reminders_email": None,
     }
     return ProfileChange(**{**values, **overrides})  # type: ignore[arg-type]
 
 
-def update_profile(profiles: Profiles, audit: Audit, any_property: bool = False) -> UpdateProfile:
-    return UpdateProfile(profiles, Holdings(any_property), audit, Clock())  # type: ignore[arg-type]
+def update_profile(
+    profiles: Profiles,
+    audit: Audit,
+    any_property: bool = False,
+    unsubscribes: Unsubscribes | None = None,
+) -> UpdateProfile:
+    emails = EmailChoices(Users(), unsubscribes or Unsubscribes(), Clock())  # type: ignore[arg-type]
+    return UpdateProfile(profiles, Holdings(any_property), emails, audit, Clock())  # type: ignore[arg-type]
 
 
 @pytest.mark.anyio
@@ -119,7 +149,7 @@ async def test_saving_a_ruc_derives_its_group_and_audits_only_field_names() -> N
     result = await update_profile(profiles, audit)(CONTEXT, change(ruc=SUNAT_RUC))
 
     saved = Profile("Ana", "person", SUNAT_RUC, "4-5", False)
-    assert result == ProfileView(saved, declarant_locked=False)
+    assert result == ProfileView(saved, declarant_locked=False, tax_reminders_email=True)
     assert profiles.saved == [saved]
     [entry] = audit.entries
     assert (entry.action, entry.changed_fields, entry.at) == (
@@ -128,6 +158,24 @@ async def test_saving_a_ruc_derives_its_group_and_audits_only_field_names() -> N
         NOW,
     )
     assert (entry.account_id, entry.actor_user_id) == (CONTEXT.account_id, CONTEXT.user_id)
+
+
+@pytest.mark.anyio
+async def test_the_sunat_reminders_go_off_and_back_on_without_saving_the_profile() -> None:
+    profiles, audit, unsubscribes = Profiles(EMPTY), Audit(), Unsubscribes()
+    update = update_profile(profiles, audit, unsubscribes=unsubscribes)
+
+    off = await update(CONTEXT, change(tax_reminders_email=False))
+    left_out = await update(CONTEXT, change())
+    on = await update(CONTEXT, change(tax_reminders_email=True))
+
+    assert [v.tax_reminders_email for v in (off, left_out, on)] == [False, False, True]  # type: ignore[union-attr]
+    assert unsubscribes.kinds == set()
+    assert profiles.saved == []
+    assert [e.changed_fields for e in audit.entries] == [
+        ("tax_reminders_email",),
+        ("tax_reminders_email",),
+    ]
 
 
 @pytest.mark.anyio
@@ -146,7 +194,7 @@ async def test_saving_the_same_profile_writes_nothing() -> None:
 
     result = await update_profile(profiles, audit)(CONTEXT, change())
 
-    assert result == ProfileView(EMPTY, declarant_locked=False)
+    assert result == ProfileView(EMPTY, declarant_locked=False, tax_reminders_email=True)
     assert (profiles.saved, audit.entries) == ([], [])
 
 
@@ -156,7 +204,7 @@ async def test_without_a_ruc_there_is_no_group_even_for_a_good_taxpayer() -> Non
 
     result = await update_profile(profiles, Audit())(CONTEXT, change(good_taxpayer=True))
 
-    assert result == ProfileView(EMPTY, declarant_locked=False)
+    assert result == ProfileView(EMPTY, declarant_locked=False, tax_reminders_email=True)
 
 
 @pytest.mark.anyio
@@ -180,5 +228,7 @@ async def test_the_rest_of_the_profile_stays_editable_with_properties() -> None:
     )
 
     assert result == ProfileView(
-        Profile("Ana", "person", SUNAT_RUC, "4-5", False), declarant_locked=True
+        Profile("Ana", "person", SUNAT_RUC, "4-5", False),
+        declarant_locked=True,
+        tax_reminders_email=True,
     )

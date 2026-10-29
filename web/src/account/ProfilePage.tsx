@@ -31,6 +31,7 @@ const schema = z.object({
     }),
   goodTaxpayer: z.boolean(),
   dailyDigest: z.boolean(),
+  taxReminders: z.boolean(),
 });
 
 type ProfileValues = z.input<typeof schema>;
@@ -58,6 +59,7 @@ async function saveProfile(values: ProfileValues): Promise<Profile | "invalid_ru
       ruc: ruc === "" ? null : ruc,
       good_taxpayer: ruc !== "" && values.goodTaxpayer,
       daily_digest: values.dailyDigest,
+      tax_reminders_email: values.taxReminders,
     },
   });
   if (data) {
@@ -97,6 +99,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
       ruc: profile.ruc ?? "",
       goodTaxpayer: profile.ruc_group === "bc",
       dailyDigest: profile.daily_digest,
+      taxReminders: profile.tax_reminders_email,
     },
   });
   const [ruc, goodTaxpayer, taxpayerKind] = useWatch({
@@ -183,6 +186,21 @@ function ProfileForm({ profile }: { profile: Profile }) {
         </div>
       )}
       <p className="rounded-lg bg-stone-100 p-4">{groupMessage(trimmedRuc, goodTaxpayer)}</p>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-start gap-3">
+          <input
+            id="tax-reminders"
+            type="checkbox"
+            className={checkbox}
+            aria-describedby="tax-reminders-hint"
+            {...field("taxReminders")}
+          />
+          <label htmlFor="tax-reminders">{text.profile.taxReminders}</label>
+        </div>
+        <p id="tax-reminders-hint" className="text-base text-stone-600">
+          {text.profile.taxRemindersHint}
+        </p>
+      </div>
       <div className="flex flex-col gap-1">
         <div className="flex items-start gap-3">
           <input

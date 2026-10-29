@@ -21,6 +21,14 @@ BLOCKS = text(
     "SELECT EXISTS (SELECT 1 FROM email_suppressions WHERE email_hash = :email_hash"
     " AND (email_kind IS NULL OR email_kind = :email_kind))"
 )
+UNSUBSCRIBED = text(
+    "SELECT EXISTS (SELECT 1 FROM email_suppressions WHERE email_hash = :email_hash"
+    " AND email_kind = :email_kind AND reason = 'unsubscribe')"
+)
+RESUBSCRIBE = text(
+    "DELETE FROM email_suppressions WHERE email_hash = :email_hash"
+    " AND email_kind = :email_kind AND reason = 'unsubscribe'"
+)
 
 
 def email_hash(key: bytes, email: str) -> bytes:
@@ -49,6 +57,17 @@ class SqlSuppressionStore:
             BLOCKS, {"email_hash": email_hash(self._key, email), "email_kind": kind}
         )
         return bool(result.scalar_one())
+
+    async def unsubscribed(self, email: str, kind: ScheduledEmailKind) -> bool:
+        result = await self._connection.execute(
+            UNSUBSCRIBED, {"email_hash": email_hash(self._key, email), "email_kind": kind}
+        )
+        return bool(result.scalar_one())
+
+    async def resubscribe(self, email: str, kind: ScheduledEmailKind) -> None:
+        await self._connection.execute(
+            RESUBSCRIBE, {"email_hash": email_hash(self._key, email), "email_kind": kind}
+        )
 
 
 class SuppressionLookup:

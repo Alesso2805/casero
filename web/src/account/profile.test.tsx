@@ -14,6 +14,7 @@ const EMPTY = {
   ruc_group: null,
   daily_digest: false,
   declarant_locked: false,
+  tax_reminders_email: true,
 };
 
 function setCsrfCookie(value: string | null) {
@@ -63,12 +64,15 @@ describe("profile page", () => {
     const api = mockApi({
       "/api/app/account/profile": (request) =>
         request.method === "GET"
-          ? json(EMPTY)
+          ? json({ ...EMPTY, tax_reminders_email: false })
           : json({ ...EMPTY, ruc: SUNAT_RUC, ruc_group: "bc", daily_digest: true }),
     });
     await renderPage("/app/mis-datos");
 
-    await userEvent.type(await screen.findByLabelText(/^RUC/), SUNAT_RUC);
+    const reminders = await screen.findByLabelText("Recibir los recordatorios de SUNAT por correo");
+    expect(reminders).toHaveProperty("checked", false);
+    await userEvent.click(reminders);
+    await userEvent.type(screen.getByLabelText(/^RUC/), SUNAT_RUC);
     expect(screen.getByText(/RUC que terminan en 4 o 5/)).toBeDefined();
     await userEvent.click(screen.getByLabelText("SUNAT me calificó como buen contribuyente"));
     expect(screen.getByText(/las de los buenos contribuyentes/)).toBeDefined();
@@ -88,6 +92,7 @@ describe("profile page", () => {
       ruc: SUNAT_RUC,
       good_taxpayer: true,
       daily_digest: true,
+      tax_reminders_email: true,
     });
   });
 

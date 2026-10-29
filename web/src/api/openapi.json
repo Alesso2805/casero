@@ -112,6 +112,7 @@
             "description": "`up`/`down`: the base changed after paying; `document_changed`: paid with another tenant document; `overdue_unpaid`: past due with no payment recorded",
             "enum": [
               "up",
+              "base_up",
               "down",
               "document_changed",
               "overdue_unpaid"
@@ -1762,6 +1763,18 @@
             ],
             "title": "Ruc"
           },
+          "tax_reminders_email": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The user gets the SUNAT due-date reminders; true undoes an unsubscribe, and leaving it out keeps the current choice",
+            "title": "Tax Reminders Email"
+          },
           "taxpayer_kind": {
             "enum": [
               "person",
@@ -1825,6 +1838,10 @@
             ],
             "title": "Ruc Group"
           },
+          "tax_reminders_email": {
+            "title": "Tax Reminders Email",
+            "type": "boolean"
+          },
           "taxpayer_kind": {
             "enum": [
               "person",
@@ -1840,7 +1857,8 @@
           "ruc",
           "ruc_group",
           "daily_digest",
-          "declarant_locked"
+          "declarant_locked",
+          "tax_reminders_email"
         ],
         "title": "ProfileResponse",
         "type": "object"
@@ -2988,6 +3006,149 @@
         ],
         "title": "VoidTaxPaymentRequest",
         "type": "object"
+      },
+      "VoidedChargeResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "corrects_charge_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Charge Id"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "rent",
+              "rent_correction",
+              "opening_balance",
+              "adjustment"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "paid_to_sunat": {
+            "description": "Months (YYYY-MM) already paid to SUNAT whose declaration this void changed",
+            "items": {
+              "type": "string"
+            },
+            "title": "Paid To Sunat",
+            "type": "array"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "kind",
+          "period",
+          "amount_cents",
+          "due_date",
+          "corrects_charge_id",
+          "voided",
+          "paid_to_sunat"
+        ],
+        "title": "VoidedChargeResponse",
+        "type": "object"
+      },
+      "VoidedPaymentResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "paid_to_sunat": {
+            "description": "Months (YYYY-MM) already paid to SUNAT whose declaration this void changed",
+            "items": {
+              "type": "string"
+            },
+            "title": "Paid To Sunat",
+            "type": "array"
+          },
+          "received_on": {
+            "format": "date",
+            "title": "Received On",
+            "type": "string"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "lease_id",
+          "amount_cents",
+          "received_on",
+          "method",
+          "note",
+          "voided",
+          "paid_to_sunat"
+        ],
+        "title": "VoidedPaymentResponse",
+        "type": "object"
       }
     }
   },
@@ -3117,7 +3278,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChargeResponse"
+                  "$ref": "#/components/schemas/VoidedChargeResponse"
                 }
               }
             },
@@ -4160,7 +4321,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaymentResponse"
+                  "$ref": "#/components/schemas/VoidedPaymentResponse"
                 }
               }
             },

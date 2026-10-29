@@ -6,7 +6,8 @@ import asyncpg
 import pytest
 from fastapi.testclient import TestClient
 
-from api_client import FixedClock, address_for, api_client
+from api_client import TEST_EMAIL_HASH_KEY, FixedClock, address_for, api_client
+from casero.identity.infrastructure.email_suppressions import email_hash
 from database import Database
 
 pytestmark = pytest.mark.anyio
@@ -77,6 +78,7 @@ async def test_a_new_account_has_an_empty_tax_profile(
         "ruc_group": None,
         "daily_digest": False,
         "declarant_locked": False,
+        "tax_reminders_email": True,
     }
 
 
@@ -103,11 +105,75 @@ async def test_the_landlord_saves_a_ruc_and_gets_its_schedule_group(
         "ruc_group": "bc",
         "daily_digest": True,
         "declarant_locked": False,
+        "tax_reminders_email": True,
     }
     assert account["display_name"] == "Ana Quispe"
     assert await audit_entries(database, email) == [
         ("account.profile_updated", ["display_name", "ruc", "ruc_group", "daily_digest"]),
         ("account.profile_updated", ["ruc_group"]),
+    ]
+
+
+async def suppressions(database: Database, *emails: str) -> list[tuple[str, str | None, str]]:
+    hashes = {email_hash(TEST_EMAIL_HASH_KEY, email): email for email in emails}
+    owner = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        rows = await owner.fetch(
+            "SELECT email_hash, email_kind, reason FROM email_suppressions"
+            " WHERE email_hash = ANY($1::bytea[]) ORDER BY reason",
+            list(hashes),
+        )
+    finally:
+        await owner.close()
+    return [(hashes[bytes(r["email_hash"])], r["email_kind"], r["reason"]) for r in rows]
+
+
+async def suppress(database: Database, email: str, kind: str | None, reason: str) -> None:
+    owner = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        await owner.execute(
+            "INSERT INTO email_suppressions (email_hash, email_kind, reason, created_at)"
+            " VALUES ($1, $2, $3, $4)",
+            email_hash(TEST_EMAIL_HASH_KEY, email),
+            kind,
+            reason,
+            NOW,
+        )
+    finally:
+        await owner.close()
+
+
+async def test_mis_datos_undoes_only_the_users_own_unsubscribe_from_sunat_reminders(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    email, other = f"{uuid7()}@example.com", f"{uuid7()}@example.com"
+    await suppress(database, other, "tax_reminders", "unsubscribe")
+    with api_client(
+        database, address_for(request.node.name), FixedClock(NOW), registration_mode="open"
+    ) as client:
+        register(client, email, "Ana")
+        unsubscribed = put_profile(client, tax_reminders_email=False)
+        await suppress(database, email, None, "bounce")
+        left_out = put_profile(client)
+        before = await suppressions(database, email, other)
+        back = put_profile(client, tax_reminders_email=True)
+        read = client.get("/api/app/account/profile").json()
+
+    assert unsubscribed.json()["tax_reminders_email"] is False
+    assert left_out.json()["tax_reminders_email"] is False
+    assert set(before) == {
+        (email, None, "bounce"),
+        (email, "tax_reminders", "unsubscribe"),
+        (other, "tax_reminders", "unsubscribe"),
+    }
+    assert (back.json()["tax_reminders_email"], read["tax_reminders_email"]) == (True, True)
+    assert set(await suppressions(database, email, other)) == {
+        (email, None, "bounce"),
+        (other, "tax_reminders", "unsubscribe"),
+    }
+    assert [fields for _, fields in await audit_entries(database, email)] == [
+        ["display_name", "ruc", "ruc_group", "daily_digest", "tax_reminders_email"],
+        ["tax_reminders_email"],
     ]
 
 
