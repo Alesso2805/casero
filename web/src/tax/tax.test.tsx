@@ -93,7 +93,7 @@ describe("Formularios de SUNAT", () => {
     await userEvent.click(ana.getByRole("button", { name: "Copiar número de documento del inquilino" }));
     expect(await ana.findByText("Número de documento del inquilino copiado.")).toBeDefined();
     await userEvent.click(ana.getByRole("button", { name: "Copiar monto de la renta" }));
-    await userEvent.click(ana.getByRole("button", { name: "Copiar ruc del arrendador" }));
+    await userEvent.click(ana.getByRole("button", { name: "Copiar RUC del arrendador" }));
     expect(writeText.mock.calls).toEqual([["45678912"], ["551"], ["20131312955"]]);
   });
 

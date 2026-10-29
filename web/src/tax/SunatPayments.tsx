@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -88,6 +88,7 @@ function RecordForm({
     register,
     handleSubmit,
     setError,
+    setFocus,
     formState: { errors },
   } = useForm<RecordValues>({
     resolver: zodResolver(recordSchema),
@@ -98,6 +99,9 @@ function RecordForm({
       orderNumber: "",
     },
   });
+  useEffect(() => {
+    setFocus("amount");
+  }, [setFocus]);
   const save = useMutation({
     mutationFn: (values: RecordValues) =>
       recordPayment(paymentId, period, declaration.renter_id, values),
@@ -189,6 +193,12 @@ function PaidLine({ payment, onVoided }: { payment: DeclaredPayment; onVoided: (
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
   const [missingReason, setMissingReason] = useState(false);
+  const reasonInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (voiding) {
+      reasonInput.current?.focus();
+    }
+  }, [voiding]);
   const amount = formatSoles(payment.amount_cents);
   const reasonId = `void-${payment.id}`;
   const voidPayment = useMutation({
@@ -214,6 +224,7 @@ function PaidLine({ payment, onVoided }: { payment: DeclaredPayment; onVoided: (
           </label>
           <input
             id={reasonId}
+            ref={reasonInput}
             className="min-h-11 w-full rounded-lg border border-stone-400 px-3 text-base"
             value={reason}
             maxLength={200}

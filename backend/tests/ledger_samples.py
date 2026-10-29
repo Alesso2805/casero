@@ -1,9 +1,10 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from uuid import UUID
 
 from hypothesis import strategies as st
 
 from casero.ledger.domain.allocation import Charge, ChargeKind, Payment
+from casero.shared.kernel.clock import LIMA
 
 LIMA_NOON = 17  # 12:00 in Lima is 17:00 UTC.
 
@@ -29,6 +30,15 @@ def payment(n: int, cents: int, on: date, minute: int = 0) -> Payment:
 
 
 DAYS = st.dates(min_value=date(2026, 1, 1), max_value=date(2026, 3, 31))
+# A credit's date is the Lima day it was recorded: around midnight, that day and the UTC
+# day differ, so the properties must cross it.
+LIMA_TIMES = st.sampled_from([time(0, 0), time(0, 1), time(12, 0), time(23, 58), time(23, 59)])
+
+
+def lima_moment(day: date, at_time: time) -> datetime:
+    return datetime.combine(day, at_time, tzinfo=LIMA).astimezone(UTC)
+
+
 CENTS = st.integers(min_value=1, max_value=500_000)
 KINDS: list[ChargeKind] = ["rent", "rent_correction", "opening_balance", "adjustment"]
 
@@ -49,7 +59,7 @@ def ledgers(draw: st.DrawFn) -> tuple[list[Charge], list[Payment]]:
                 amount,
                 day,
                 draw(st.booleans()) if kind == "opening_balance" else None,
-                at(day, draw(st.integers(min_value=0, max_value=59))),
+                lima_moment(day, draw(LIMA_TIMES)),
                 draw(st.booleans()),
             )
         )
@@ -58,7 +68,7 @@ def ledgers(draw: st.DrawFn) -> tuple[list[Charge], list[Payment]]:
             UUID(int=500 + n),
             draw(CENTS),
             day := draw(DAYS),
-            at(day, draw(st.integers(min_value=0, max_value=59))),
+            lima_moment(day, draw(LIMA_TIMES)),
             draw(st.booleans()),
         )
         for n in range(draw(st.integers(min_value=0, max_value=8)))

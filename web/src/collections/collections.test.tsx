@@ -51,6 +51,7 @@ const LEASES = [0, 1, 2].map((n) => ({
   ending_soon: false,
 }));
 const line = {
+  rent_to_remind: true,
   ended: false,
   overdue_days: 0,
   overdue_cents: 0,
@@ -181,6 +182,17 @@ describe("collections panel", () => {
     await vi.waitFor(() => {
       expect(api.requestsTo("/api/app/whatsapp-reminders").length).toBe(2);
     });
+  });
+
+  test("a lease that only owes prior debt offers no WhatsApp message", async () => {
+    mockHome({
+      ...COLLECTIONS,
+      leases: COLLECTIONS.leases.map((lease) => ({ ...lease, rent_to_remind: false })),
+    });
+    await renderPage("/app");
+
+    expect(await screen.findByRole("region", { name: "Atrasados" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Enviar por WhatsApp/ })).toBeNull();
   });
 
   test("explains why a lease can't be reminded and closes the tab it opened", async () => {

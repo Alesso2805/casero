@@ -6,7 +6,7 @@ import type { components } from "../api/schema";
 import { parseSolesToCents } from "../landing/money";
 import { leasesCopy as text } from "./copy";
 import { uuidv7 } from "./terms";
-import { inputClass, outcomeOf, useLeaseWrite } from "./writes";
+import { inputClass, type Outcome, outcomeOf, useLeaseWrite } from "./writes";
 
 type ChargeLine = components["schemas"]["ChargeLineResponse"];
 
@@ -44,9 +44,18 @@ export function ChargeActions({
       }),
     ),
   );
+  const field = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (mode !== "idle") {
+      field.current?.focus();
+    }
+  }, [mode]);
+  // A refusal keeps the form open with its message; only a saved write closes it.
   const close = {
-    onSuccess: () => {
-      setMode("idle");
+    onSuccess: (outcome: Outcome) => {
+      if (outcome.kind === "done") {
+        setMode("idle");
+      }
     },
   };
   const canCorrect = charge.voided && CORRECTABLE.has(charge.kind) && !corrected;
@@ -57,6 +66,7 @@ export function ChargeActions({
         <label htmlFor={reasonId}>{text.charge.voidReason}</label>
         <input
           id={reasonId}
+          ref={field}
           className={inputClass}
           maxLength={200}
           value={reason}
@@ -85,7 +95,7 @@ export function ChargeActions({
             {text.charge.cancel}
           </button>
         </div>
-        {voiding.isError && (
+        {(voiding.isError || (voiding.data && voiding.data.kind !== "done")) && (
           <p role="alert" className="text-red-800">
             {text.errors.failure}
           </p>
@@ -100,6 +110,7 @@ export function ChargeActions({
         <label htmlFor={amountId}>{text.charge.correctAmount}</label>
         <input
           id={amountId}
+          ref={field}
           inputMode="decimal"
           className={inputClass}
           value={amount}
@@ -128,9 +139,11 @@ export function ChargeActions({
             {text.charge.cancel}
           </button>
         </div>
-        {(correcting.isError || correcting.data?.kind === "conflict") && (
+        {(correcting.isError || (correcting.data && correcting.data.kind !== "done")) && (
           <p role="alert" className="text-red-800">
-            {text.errors.failure}
+            {correcting.data?.kind === "refused" && correcting.data.detail === "already_corrected"
+              ? text.errors.alreadyCorrected
+              : text.errors.failure}
           </p>
         )}
       </div>

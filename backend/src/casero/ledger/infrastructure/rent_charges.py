@@ -11,6 +11,7 @@ from casero.shared.kernel.periods import Period
 LEASES = text(
     "SELECT id, due_day, start_date, control_from_period, COALESCE(ended_at, end_date) AS ends_on"
     " FROM leases WHERE (CAST(:lease_id AS uuid) IS NULL OR id = :lease_id) ORDER BY id"
+    " FOR UPDATE"
 )
 RENT_CHANGES = text(
     "SELECT id, lease_id, monthly_rent_cents, effective_period, created_at"
@@ -35,6 +36,9 @@ class SqlRentCharges:
 
     async def leases_to_charge(self, lease_id: UUID | None) -> list[LeaseToCharge]:
         scope = {"lease_id": lease_id}
+        # The leases are locked before their rent changes are read, so a rent change or an
+        # ending made at the same moment waits for this run, or this run waits for it.
+        leases = (await self._connection.execute(LEASES, scope)).all()
         changes: defaultdict[UUID, list[RentChange]] = defaultdict(list)
         for row in await self._connection.execute(RENT_CHANGES, scope):
             changes[row.lease_id].append(
@@ -58,7 +62,7 @@ class SqlRentCharges:
                 rent_changes=tuple(changes[row.id]),
                 charged=frozenset(charged[row.id]),
             )
-            for row in await self._connection.execute(LEASES, scope)
+            for row in leases
         ]
 
     async def add_rent(

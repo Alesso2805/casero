@@ -17,9 +17,9 @@ Landlords collect rent through WhatsApp conversations. The WhatsApp Business API
 - **`{enlace}`:**
   - It is always the lease's current tenant link. `reminders` obtains it from `tenant_portal` through a port (ADR-0001).
   - Regenerating the link makes earlier messages point to a revoked link, and the UI says so before regenerating.
-- **Logging:** the frontend records the send with a server-generated `reminder_logs` row (kind `rent`, channel `whatsapp_link`) before opening the link. The panel shows "recordado hace N días".
+- **Logging:** the server prepares the message and records the send with a server-generated `reminder_logs` row (kind `rent`, channel `whatsapp_link`) before returning the link, which the browser then opens. The panel shows "recordado hace N días".
 - **Gating:** the button requires the `whatsapp_links` feature (through `entitlements`) and `leases.tools_enabled`.
-- **Privacy:** the message contains a name and an amount. It is built in the browser from data the landlord already sees, it is never sent to the server, and the `wa.me` URL is excluded from frontend error-tracking breadcrumbs.
+- **Privacy:** the message contains a name, an amount and the tenant's link. Since CS-16 the server builds it from the account's templates (`{enlace}` needs the link, which only the server can sign). It travels only in the response to the landlord, with `Cache-Control: no-store`, and is never stored or logged. The browser sends no `wa.me` URL to error tracking.
 
 ## Consequences
 

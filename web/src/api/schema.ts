@@ -1505,6 +1505,11 @@ export interface components {
              */
             overdue_days: number;
             /**
+             * Rent To Remind
+             * @description An unpaid rent the WhatsApp message can remind (prior debts are not)
+             */
+            rent_to_remind: boolean;
+            /**
              * Status
              * @enum {string}
              */

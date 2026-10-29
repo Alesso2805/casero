@@ -9,7 +9,7 @@ export function PublicFooter() {
       <Link to="/libro-de-reclamaciones" className="self-start">
         <img src={complaintsNotice} alt={copy.footer.complaints} width={160} height={124} />
       </Link>
-      <Link to="/privacidad" className="text-brand underline">
+      <Link to="/privacidad" className="inline-flex min-h-11 items-center self-start text-brand underline">
         {copy.footer.privacy}
       </Link>
       <p>{copy.footer.disclaimer}</p>

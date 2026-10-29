@@ -280,3 +280,19 @@ async def test_one_click_unsubscribe_from_the_header_stops_the_next_reminder(
     assert one_click.startswith(f"{APP_URL}/api/public/unsubscribe?")
     assert response.status_code < 300
     assert len(mailer.sent) == 1
+
+
+async def test_a_missed_first_reminder_goes_out_on_the_next_day_the_worker_runs(
+    database: Database, request: pytest.FixtureRequest, worker_engine: AsyncEngine
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        account_id, _, _ = await landlord_owing_october(database, client)
+    mailer = RecordingMailer()
+
+    for today in (date(2026, 11, 15), date(2026, 11, 16), date(2026, 11, 18)):
+        await run_for(worker_engine, account_id, today, mailer)
+
+    assert [sent.subject for sent in mailer.sent] == [
+        "Tus formularios 1683 de octubre de 2026 vencen el 19/11/2026",
+        "Mañana vencen tus formularios 1683 de octubre de 2026",
+    ]
