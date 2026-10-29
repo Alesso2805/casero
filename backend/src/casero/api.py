@@ -131,7 +131,7 @@ from casero.leases.application.renters import (
 )
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.leases.infrastructure.leases import SqlLeaseStore
-from casero.leases.infrastructure.renters import SqlRenterStore
+from casero.leases.infrastructure.renters import SqlRenterHolders, SqlRenterStore
 from casero.ledger.api import charges as charges_api
 from casero.ledger.api import collections as collections_api
 from casero.ledger.api import lease_changes as lease_changes_api
@@ -190,6 +190,7 @@ from casero.reminders.infrastructure.reminders import SqlRecipientStore, SqlRemi
 from casero.reminders.infrastructure.templates import SqlTemplateStore
 from casero.shared.infrastructure import client_errors as client_errors_api
 from casero.shared.infrastructure.audit import SqlAuditLog
+from casero.shared.infrastructure.caching import NoStore
 from casero.shared.infrastructure.database import Transaction, create_engine, database_answers
 from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.logs import ErrorShield, configure_logging
@@ -280,6 +281,7 @@ def create_app(
     )
     app.state.engine = engine
     app.add_middleware(ErrorShield)
+    app.add_middleware(NoStore)
 
     async def provide_join_waitlist(
         connection: Transaction,
@@ -853,16 +855,12 @@ def create_app(
         )
     )
 
-    async def provide_declarations(
-        connection: Transaction,
-        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    def declarations_with(
+        connection: AsyncConnection, entitlements: GetEntitlements, renters: RenterDocuments
     ) -> GetDeclarations:
         profiles: Profiles = SqlProfiles(connection)
         properties: PropertyStore = SqlPropertyStore(connection)
         leases: LeaseStore = SqlLeaseStore(connection)
-        renters: RenterDocuments = SqlRenterStore(
-            connection, config.field_cipher, config.document_hasher
-        )
         books: CollectionsStore = SqlLedger(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
         tax_payments: TaxPaymentStore = SqlTaxPayments(connection)
@@ -878,9 +876,26 @@ def create_app(
             app_clock,
         )
 
+    async def provide_declarations(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> GetDeclarations:
+        """With document numbers in clear, only for the 1683 cards and the export."""
+        renters: RenterDocuments = SqlRenterStore(
+            connection, config.field_cipher, config.document_hasher
+        )
+        return declarations_with(connection, entitlements, renters)
+
+    async def provide_declaration_totals(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> GetDeclarations:
+        renters: RenterDocuments = SqlRenterHolders(connection)
+        return declarations_with(connection, entitlements, renters)
+
     async def provide_upcoming(
         connection: Transaction,
-        declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
+        declarations: Annotated[GetDeclarations, Depends(provide_declaration_totals)],
     ) -> GetUpcomingDue:
         profiles: Profiles = SqlProfiles(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
@@ -900,13 +915,16 @@ def create_app(
         )
         properties: PropertyStore = SqlPropertyStore(connection)
         ledger: LedgerStore = SqlLedger(connection)
-        return ExportPayments(entitlements, leases, renters, properties, ledger)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ExportPayments(entitlements, leases, renters, properties, ledger, audit, app_clock)
 
     async def provide_export_declarations(
+        connection: Transaction,
         entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
         declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
     ) -> ExportDeclarations:
-        return ExportDeclarations(entitlements, declarations, app_clock)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ExportDeclarations(entitlements, declarations, audit, app_clock)
 
     app.include_router(
         exports_api.create_router(
@@ -916,11 +934,12 @@ def create_app(
 
     async def provide_record_tax_payment(
         connection: Transaction,
-        declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
+        declarations: Annotated[GetDeclarations, Depends(provide_declaration_totals)],
     ) -> RecordTaxPayment:
+        profiles: Profiles = SqlProfiles(connection)
         store: TaxPaymentStore = SqlTaxPayments(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return RecordTaxPayment(declarations, store, audit, app_clock)
+        return RecordTaxPayment(profiles, declarations, store, audit, app_clock)
 
     async def provide_void_tax_payment(
         connection: Transaction,

@@ -5,13 +5,16 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
+from casero.accounts.application.context import AccountContext
 from casero.accounts.application.entitlements import GetEntitlements
 from casero.leases.application.leases import LeaseStore
 from casero.leases.application.renters import RenterDocuments
 from casero.ledger.application.collected import received_payments
 from casero.ledger.application.payments import LedgerStore
 from casero.properties.application.properties import PropertyStore
+from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
+from casero.shared.kernel.ids import new_id
 from casero.shared.kernel.money import CENTS_PER_SOL
 from casero.shared.kernel.periods import Period
 from casero.tax.application.declarations import TAXED, GetDeclarations
@@ -81,6 +84,24 @@ def day(value: date) -> str:
     return value.strftime("%d/%m/%Y")
 
 
+async def record_export(
+    audit: AuditLog, context: AccountContext, action: str, entity: str, clock: Clock
+) -> None:
+    """Exports carry full tenant documents, so each one leaves a trace (field names only)."""
+    await audit.record(
+        AuditEntry(
+            new_id(),
+            context.account_id,
+            context.user_id,
+            action,
+            entity,
+            None,
+            ("year",),
+            clock.now(),
+        )
+    )
+
+
 @dataclass(frozen=True)
 class ExportPayments:
     """Every valid payment collected in a year, for the landlord's accountant (SPEC)."""
@@ -90,10 +111,13 @@ class ExportPayments:
     renters: RenterDocuments
     properties: PropertyStore
     ledger: LedgerStore
+    audit: AuditLog
+    clock: Clock
 
-    async def __call__(self, year: int) -> str | Unavailable:
+    async def __call__(self, context: AccountContext, year: int) -> str | Unavailable:
         if not (await self.entitlements()).allows("accountant_export"):
             return "accountant_export_unavailable"
+        await record_export(self.audit, context, "export.payments", "payments", self.clock)
         documents = {doc.renter_id: doc for doc in await self.renters.documents()}
         units = {
             unit.id: f"{unit.details.name} · {p.details.name}"
@@ -135,11 +159,13 @@ class ExportDeclarations:
 
     entitlements: GetEntitlements
     declarations: GetDeclarations
+    audit: AuditLog
     clock: Clock
 
-    async def __call__(self, year: int) -> str | Unavailable:
+    async def __call__(self, context: AccountContext, year: int) -> str | Unavailable:
         if not (await self.entitlements()).allows("accountant_export"):
             return "accountant_export_unavailable"
+        await record_export(self.audit, context, "export.declarations", "tax_payments", self.clock)
         current = Period.of(self.clock.today_lima())
         rows = []
         period = Period(year, 1)

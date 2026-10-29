@@ -60,6 +60,7 @@ def api_client(
     sleeper: Sleeper | None = None,
     registration_mode: RegistrationMode = "closed",
     mailer: AccountMailer | None = None,
+    tenant_link_keys: HmacKeyring = TEST_TENANT_LINK_KEYS,
 ) -> Iterator[TestClient]:
     url = database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
     settings = ApiSettings(
@@ -74,7 +75,7 @@ def api_client(
         public_url="https://casero.example",
         field_cipher=TEST_FIELD_CIPHER,
         document_hasher=TEST_DOCUMENT_HASHER,
-        tenant_link_keys=TEST_TENANT_LINK_KEYS,
+        tenant_link_keys=tenant_link_keys,
     )
     app = create_app(settings, clock, sns_verifier, sleeper, mailer or RecordingMailer())
     # https, because __Host- cookies are Secure and the client only sends them over https.
