@@ -239,6 +239,8 @@ WAITLIST_JOINS_PER_HOUR = 5
 COMPLAINTS_PER_HOUR = 5
 CALCULATIONS_PER_HOUR = 30
 CLIENT_ERRORS_PER_HOUR = 30
+CLIENT_ERROR_KINDS_PER_HOUR = 1
+CLIENT_ERRORS_FORWARDED_PER_HOUR = 6
 TENANT_PORTAL_PER_HOUR = 60
 LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
@@ -335,14 +337,20 @@ def create_app(
 
     app.include_router(calculator_api.create_router(provide_calculate))
 
-    async def provide_client_error_limiter(
+    async def provide_client_error_limits(
         connection: Transaction,
-    ) -> client_errors_api.RateLimiter:
-        return PostgresRateLimiter(
-            connection, config.rate_limit_key, app_clock, "client-errors", CLIENT_ERRORS_PER_HOUR
+    ) -> client_errors_api.ReportLimits:
+        def limiter(scope: str, per_hour: int) -> PostgresRateLimiter:
+            key = config.rate_limit_key
+            return PostgresRateLimiter(connection, key, app_clock, scope, per_hour)
+
+        return client_errors_api.ReportLimits(
+            per_client=limiter("client-errors", CLIENT_ERRORS_PER_HOUR),
+            per_kind=limiter("client-error-kinds", CLIENT_ERROR_KINDS_PER_HOUR),
+            overall=limiter("client-errors-forwarded", CLIENT_ERRORS_FORWARDED_PER_HOUR),
         )
 
-    app.include_router(client_errors_api.create_router(provide_client_error_limiter))
+    app.include_router(client_errors_api.create_router(provide_client_error_limits))
 
     hasher: PasswordHasher = Argon2PasswordHasher()
     session_tokens: SessionTokens = SecretSessionTokens()
