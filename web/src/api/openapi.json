@@ -1097,6 +1097,11 @@
             "title": "Overdue Days",
             "type": "integer"
           },
+          "rent_to_remind": {
+            "description": "An unpaid rent the WhatsApp message can remind (prior debts are not)",
+            "title": "Rent To Remind",
+            "type": "boolean"
+          },
           "status": {
             "enum": [
               "overdue",
@@ -1116,7 +1121,8 @@
           "overdue_cents",
           "next_due_on",
           "next_due_cents",
-          "balance_cents"
+          "balance_cents",
+          "rent_to_remind"
         ],
         "title": "LeaseCollectionResponse",
         "type": "object"
@@ -2380,6 +2386,13 @@
             "title": "Amount Cents",
             "type": "integer"
           },
+          "declared_base_cents": {
+            "description": "The base the landlord filed in the 1683",
+            "maximum": 100000000000.0,
+            "minimum": 0.0,
+            "title": "Declared Base Cents",
+            "type": "integer"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2413,7 +2426,8 @@
           "renter_id",
           "amount_cents",
           "paid_on",
-          "order_number"
+          "order_number",
+          "declared_base_cents"
         ],
         "title": "TaxPaymentRequest",
         "type": "object"
@@ -2425,7 +2439,7 @@
             "type": "integer"
           },
           "base_cents": {
-            "description": "The declaration's base when the payment was recorded",
+            "description": "The base the landlord confirmed they declared",
             "title": "Base Cents",
             "type": "integer"
           },

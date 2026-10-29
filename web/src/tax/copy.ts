@@ -77,6 +77,7 @@ export const taxCopy = {
     soon: (period: string, date: string, days: number, amount: string) =>
       `Tus formularios 1683 de ${period} vencen el ${date} (en ${String(days)} días): falta pagar ${amount}.`,
     open: "Ver formularios",
+    failure: "No pudimos revisar tus vencimientos de SUNAT. Vuelve a intentarlo en unos minutos.",
   },
   sunat: {
     title: "Pago a SUNAT",
@@ -85,6 +86,9 @@ export const taxCopy = {
     pending: (amount: string) => `Falta pagar ${amount}`,
     fullyPaid: "Pagado",
     record: "Registrar pago a SUNAT",
+    declaredBase: "Monto declarado (base)",
+    declaredBaseHint:
+      "Es el monto que pusiste en el 1683. Ya viene con la base de esta tarjeta; cámbialo si declaraste otro.",
     amount: "Monto pagado en soles",
     paidOn: "Fecha en que pagaste",
     orderNumber: "Número de orden",
@@ -99,6 +103,7 @@ export const taxCopy = {
     confirmVoid: "Sí, anular",
     voided: "Listo, anulamos el pago a SUNAT.",
     errors: {
+      declaredBase: "Escribe el monto declarado en soles, por ejemplo: 551.",
       amount: "Escribe el monto en soles, por ejemplo: 28 o 28.50.",
       paidOn: "Elige la fecha en que pagaste.",
       order: "Escribe solo los números de la orden.",

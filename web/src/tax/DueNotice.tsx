@@ -39,6 +39,13 @@ function message(upcoming: Upcoming): string {
 /** SPEC's fixed notice in the last 5 days before the 1683 falls due. */
 export function DueNotice() {
   const upcoming = useQuery({ queryKey: ["tax-upcoming"], queryFn: fetchUpcoming });
+  if (upcoming.isError) {
+    return (
+      <p role="alert" className="text-red-800">
+        {text.failure}
+      </p>
+    );
+  }
   if (!upcoming.data) {
     return null;
   }
