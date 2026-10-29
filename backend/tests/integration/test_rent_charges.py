@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import UTC, date, datetime
 from typing import Any
@@ -9,9 +10,19 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from api_client import FixedClock, address_for, api_client
+from casero.accounts.application.context import AccountContext
+from casero.leases.infrastructure.leases import SqlLeaseStore
+from casero.ledger.application.lease_changes import ChangeRent, NewRent, RentChanged
+from casero.ledger.domain.charges import missing_rent_charges
+from casero.ledger.infrastructure.ledger import SqlLedger
+from casero.ledger.infrastructure.rent_charges import SqlRentCharges
+from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import create_engine, set_account_context
+from casero.shared.kernel.ids import new_id
+from casero.shared.kernel.periods import Period
 from casero.worker import account_jobs
 from database import Database
+from tax_flows import add_renter, client_for, register, start_leases
 
 pytestmark = pytest.mark.anyio
 
@@ -203,3 +214,68 @@ async def test_a_lease_past_its_planned_end_closes_and_stops_charging(
     assert [(row["actor_user_id"], list(row["changed_fields"])) for row in audit] == [
         (None, ["ended_at"])
     ]
+
+
+async def owner_rows(database: Database, query: str, *args: object) -> list[asyncpg.Record]:
+    owner = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        return await owner.fetch(query, *args)
+    finally:
+        await owner.close()
+
+
+async def test_a_rent_change_waits_for_the_daily_rent_job_and_starts_after_it(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        ana = add_renter(client, "Ana")
+        [lease] = start_leases(client, {"renter_id": ana})
+    [row] = await owner_rows(
+        database,
+        "SELECT l.account_id, m.user_id FROM leases l"
+        " JOIN account_members m USING (account_id) WHERE l.id = $1",
+        UUID(lease),
+    )
+    context = AccountContext(row["account_id"], row["user_id"])
+    november_first = FixedClock(datetime(2026, 11, 1, 5, 0, 30, tzinfo=UTC))
+    worker_engine = create_engine(
+        database.dsn("casero_worker").replace("postgresql://", "postgresql+asyncpg://", 1)
+    )
+    app_engine = create_engine(
+        database.dsn("casero_app").replace("postgresql://", "postgresql+asyncpg://", 1)
+    )
+    try:
+        async with worker_engine.connect() as worker, app_engine.connect() as app:
+            for connection in (worker, app):
+                await connection.begin()
+                await set_account_context(connection, context.account_id)
+            store = SqlRentCharges(worker)
+            [to_charge] = await store.leases_to_charge(UUID(lease))
+            change = ChangeRent(
+                SqlLeaseStore(app), SqlLedger(app), SqlAuditLog(app), november_first
+            )
+            changing = asyncio.create_task(change(context, NewRent(uuid7(), UUID(lease), 120_000)))
+            await asyncio.sleep(0.3)
+            waited_for_the_job = not changing.done()
+            # Without the lock this insert would wait for the change: fail fast, don't hang.
+            async with asyncio.timeout(5):
+                for charge in missing_rent_charges(to_charge, november_first.today_lima()):
+                    await store.add_rent(context.account_id, new_id(), charge, november_first.now())
+            await worker.commit()
+            changed = await changing
+            await app.commit()
+    finally:
+        await worker_engine.dispose()
+        await app_engine.dispose()
+
+    assert waited_for_the_job
+    assert isinstance(changed, RentChanged)
+    assert changed.change.effective_period == Period(2026, 12)
+    november = await owner_rows(
+        database,
+        "SELECT amount_cents FROM charges WHERE lease_id = $1 AND kind = 'rent'"
+        " AND period = '2026-11'",
+        UUID(lease),
+    )
+    assert [r["amount_cents"] for r in november] == [80_000]

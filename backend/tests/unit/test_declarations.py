@@ -8,6 +8,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from casero.ledger.domain.allocation import Charge, Payment, allocate, paid_toward_old_debt
+from casero.shared.kernel.clock import LIMA
 from casero.shared.kernel.periods import Period
 from casero.tax.application.declarations import due_status
 from casero.tax.domain.declarations import Declarant, TaxablePayment, declarations
@@ -120,8 +121,20 @@ def test_the_tax_does_not_depend_on_the_order_payments_were_entered_in_a_day(
     for stamps in by_day.values():
         random.shuffle(stamps)
     shuffled = [replace(p, created_at=by_day[p.received_on].pop()) for p in payments]
+    credits_by_day: dict[date, list[datetime]] = {}
+    for c in charges:
+        if c.is_credit:
+            credits_by_day.setdefault(c.created_at.astimezone(LIMA).date(), []).append(c.created_at)
+    for stamps in credits_by_day.values():
+        random.shuffle(stamps)
+    reordered = [
+        replace(c, created_at=credits_by_day[c.created_at.astimezone(LIMA).date()].pop())
+        if c.is_credit
+        else c
+        for c in charges
+    ]
 
-    assert monthly_taxes(charges, shuffled) == monthly_taxes(charges, payments)
+    assert monthly_taxes(reordered, shuffled) == monthly_taxes(charges, payments)
 
 
 @given(ledgers(), CENTS, st.dates(min_value=date(2026, 1, 1), max_value=date(2026, 4, 30)))
