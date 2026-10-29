@@ -6,7 +6,7 @@ from sqlalchemy import Row, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.shared.kernel.periods import Period
-from casero.tax.application.payments import NewTaxPayment, TaxPaymentRecord
+from casero.tax.application.sunat_payments import NewTaxPayment, TaxPaymentRecord
 
 SELECT_PAYMENTS = (
     "SELECT p.id, p.period, p.renter_id, p.renter_doc_hmac, p.amount_cents, p.paid_on,"

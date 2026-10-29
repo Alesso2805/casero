@@ -1,73 +1,19 @@
 from dataclasses import dataclass, replace
-from datetime import date, datetime
-from typing import Literal, Protocol
+from typing import Literal
 from uuid import UUID
 
 from casero.accounts.application.context import AccountContext
 from casero.accounts.application.entitlements import GetEntitlements
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
-from casero.shared.kernel.periods import Period
 from casero.tax.application.declarations import GetDeclarations
+from casero.tax.application.sunat_payments import (
+    NewTaxPayment,
+    TaxPaymentRecord,
+    TaxPaymentStore,
+)
 
 TAX_PAYMENT_FIELDS = ("period", "renter_id", "amount_cents", "paid_on", "order_number")
-
-
-@dataclass(frozen=True)
-class NewTaxPayment:
-    id: UUID
-    period: Period
-    renter_id: UUID
-    amount_cents: int
-    paid_on: date
-    order_number: str
-
-
-@dataclass(frozen=True)
-class TaxPaymentRecord:
-    id: UUID
-    period: Period
-    renter_id: UUID
-    renter_doc_hmac: bytes
-    amount_cents: int
-    paid_on: date
-    order_number: str
-    base_cents: int
-    created_at: datetime
-    voided: bool
-
-    def matches(self, new: NewTaxPayment) -> bool:
-        return (
-            self.period,
-            self.renter_id,
-            self.amount_cents,
-            self.paid_on,
-            self.order_number,
-        ) == (new.period, new.renter_id, new.amount_cents, new.paid_on, new.order_number)
-
-
-class TaxPaymentStore(Protocol):
-    async def add(
-        self,
-        account_id: UUID,
-        new: NewTaxPayment,
-        renter_doc_hmac: bytes,
-        base_cents: int,
-        created_by: UUID,
-        created_at: datetime,
-    ) -> bool:
-        """False when the id already exists, in this account or another (rule 5)."""
-        ...
-
-    async def get(self, payment_id: UUID) -> TaxPaymentRecord | None: ...
-
-    async def of_period(self, period: Period) -> list[TaxPaymentRecord]: ...
-
-    async def void(
-        self, account_id: UUID, payment_id: UUID, reason: str, voided_by: UUID, at: datetime
-    ) -> bool:
-        """False when it was already voided."""
-        ...
 
 
 @dataclass(frozen=True)

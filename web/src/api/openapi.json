@@ -102,6 +102,36 @@
         "title": "AdjustmentRequest",
         "type": "object"
       },
+      "AfterDeclaringResponse": {
+        "properties": {
+          "base_difference_cents": {
+            "title": "Base Difference Cents",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "`up`/`down`: the base changed after paying; `document_changed`: paid with another tenant document; `overdue_unpaid`: past due with no payment recorded",
+            "enum": [
+              "up",
+              "down",
+              "document_changed",
+              "overdue_unpaid"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "tax_difference_cents": {
+            "title": "Tax Difference Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "base_difference_cents",
+          "tax_difference_cents"
+        ],
+        "title": "AfterDeclaringResponse",
+        "type": "object"
+      },
       "CalculatorLine": {
         "properties": {
           "base_cents": {
@@ -517,6 +547,16 @@
       },
       "DeclarationResponse": {
         "properties": {
+          "after_declaring": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AfterDeclaringResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "base_cents": {
             "title": "Base Cents",
             "type": "integer"
@@ -576,6 +616,21 @@
             "title": "Old Debt Cents",
             "type": "integer"
           },
+          "paid_cents": {
+            "title": "Paid Cents",
+            "type": "integer"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/DeclaredPaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "pending_cents": {
+            "title": "Pending Cents",
+            "type": "integer"
+          },
           "renter_id": {
             "format": "uuid",
             "title": "Renter Id",
@@ -601,9 +656,43 @@
           "collected_cents",
           "old_debt_cents",
           "base_cents",
-          "tax_cents"
+          "tax_cents",
+          "payments",
+          "paid_cents",
+          "pending_cents",
+          "after_declaring"
         ],
         "title": "DeclarationResponse",
+        "type": "object"
+      },
+      "DeclaredPaymentResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "paid_on": {
+            "format": "date",
+            "title": "Paid On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount_cents",
+          "paid_on",
+          "order_number"
+        ],
+        "title": "DeclaredPaymentResponse",
         "type": "object"
       },
       "DocumentRequest": {

@@ -1050,6 +1050,19 @@ export interface components {
              */
             id: string;
         };
+        /** AfterDeclaringResponse */
+        AfterDeclaringResponse: {
+            /** Base Difference Cents */
+            base_difference_cents: number;
+            /**
+             * Kind
+             * @description `up`/`down`: the base changed after paying; `document_changed`: paid with another tenant document; `overdue_unpaid`: past due with no payment recorded
+             * @enum {string}
+             */
+            kind: "up" | "down" | "document_changed" | "overdue_unpaid";
+            /** Tax Difference Cents */
+            tax_difference_cents: number;
+        };
         /** CalculatorLine */
         CalculatorLine: {
             /** Base Cents */
@@ -1211,6 +1224,7 @@ export interface components {
         };
         /** DeclarationResponse */
         DeclarationResponse: {
+            after_declaring: components["schemas"]["AfterDeclaringResponse"] | null;
             /** Base Cents */
             base_cents: number;
             /** Collected Cents */
@@ -1236,6 +1250,12 @@ export interface components {
              * @description Debt from 2025 or before: outside the base
              */
             old_debt_cents: number;
+            /** Paid Cents */
+            paid_cents: number;
+            /** Payments */
+            payments: components["schemas"]["DeclaredPaymentResponse"][];
+            /** Pending Cents */
+            pending_cents: number;
             /**
              * Renter Id
              * Format: uuid
@@ -1245,6 +1265,23 @@ export interface components {
             renter_name: string;
             /** Tax Cents */
             tax_cents: number;
+        };
+        /** DeclaredPaymentResponse */
+        DeclaredPaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Number */
+            order_number: string;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
         };
         /** DocumentRequest */
         DocumentRequest: {

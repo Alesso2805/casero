@@ -174,3 +174,89 @@ async def test_the_free_plan_cannot_record_or_void_sunat_payments(
         (403, "tax_module_unavailable"),
         (403, "tax_module_unavailable"),
     ]
+
+
+def october_card(client: TestClient, renter_id: str) -> Any:
+    month = client.get("/api/app/tax/declarations?period=2026-10").json()
+    return next(card for card in month["declarations"] if card["renter_id"] == renter_id)
+
+
+async def test_the_card_follows_what_was_paid_and_what_changed_after(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        save_ruc(client)
+        ana = add_renter(client, "Ana", ANA_DNI)
+        [lease] = start_leases(client, {"renter_id": ana})
+        first = pay(client, lease, 80_000, "2026-10-05")
+        before = october_card(client, ana)
+        payment = send(client, "POST", PAYMENTS, tax_payment(ana))
+        declared = october_card(client, ana)
+        second = pay(client, lease, 20_000, "2026-10-20")
+        went_up = october_card(client, ana)
+        for payment_id in (first, second):
+            send(client, "POST", f"/api/app/payments/{payment_id}/void", {"reason": "Error"})
+        went_down = october_card(client, ana)
+
+    assert (before["paid_cents"], before["pending_cents"], before["after_declaring"]) == (
+        0,
+        4_000,
+        None,
+    )
+    assert declared["payments"] == [
+        {
+            "id": payment.json()["id"],
+            "amount_cents": 4_000,
+            "paid_on": "2026-10-27",
+            "order_number": "1234567890",
+        }
+    ]
+    assert (declared["paid_cents"], declared["pending_cents"], declared["after_declaring"]) == (
+        4_000,
+        0,
+        None,
+    )
+    assert (went_up["base_cents"], went_up["pending_cents"]) == (100_000, 1_000)
+    assert went_up["after_declaring"] == {
+        "kind": "up",
+        "base_difference_cents": 20_000,
+        "tax_difference_cents": 1_000,
+    }
+    assert (went_down["collected_cents"], went_down["paid_cents"]) == (0, 4_000)
+    assert went_down["after_declaring"] == {
+        "kind": "down",
+        "base_difference_cents": 80_000,
+        "tax_difference_cents": 0,
+    }
+
+
+async def test_a_new_document_after_paying_and_an_overdue_month_without_payment(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        register(client)
+        save_ruc(client)
+        ana = add_renter(client, "Ana", ANA_DNI)
+        [lease] = start_leases(client, {"renter_id": ana, "control_from_period": "2026-09"})
+        pay(client, lease, 80_000, "2026-09-10")
+        pay(client, lease, 80_000, "2026-10-05")
+        send(client, "POST", PAYMENTS, tax_payment(ana))
+        send(
+            client,
+            "PUT",
+            f"/api/app/renters/{ana}",
+            {"full_name": "Ana", "document": {"doc_type": "ce", "number": "001234567"}},
+        )
+        october = october_card(client, ana)
+        september = client.get("/api/app/tax/declarations?period=2026-09").json()
+
+    assert october["doc_number"] == "001234567"
+    assert (october["paid_cents"], october["pending_cents"]) == (0, 4_000)
+    assert october["after_declaring"]["kind"] == "document_changed"
+    assert september["due_on"] == "2026-10-21"
+    assert september["declarations"][0]["after_declaring"] == {
+        "kind": "overdue_unpaid",
+        "base_difference_cents": 0,
+        "tax_difference_cents": 0,
+    }

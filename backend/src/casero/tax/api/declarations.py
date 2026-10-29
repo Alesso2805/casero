@@ -9,7 +9,23 @@ from pydantic import BaseModel, Field
 from casero.accounts.application.context import AccountContext
 from casero.leases.application.renters import DocType
 from casero.shared.kernel.periods import PERIOD_PATTERN, Period
-from casero.tax.application.declarations import DueStatus, GetDeclarations
+from casero.tax.application.declarations import ChangeKind, DueStatus, GetDeclarations
+
+
+class DeclaredPaymentResponse(BaseModel):
+    id: UUID
+    amount_cents: int
+    paid_on: date
+    order_number: str
+
+
+class AfterDeclaringResponse(BaseModel):
+    kind: ChangeKind = Field(
+        description="`up`/`down`: the base changed after paying; `document_changed`: paid with"
+        " another tenant document; `overdue_unpaid`: past due with no payment recorded"
+    )
+    base_difference_cents: int
+    tax_difference_cents: int
 
 
 class DeclarationResponse(BaseModel):
@@ -24,6 +40,10 @@ class DeclarationResponse(BaseModel):
     old_debt_cents: int = Field(description="Debt from 2025 or before: outside the base")
     base_cents: int
     tax_cents: int
+    payments: list[DeclaredPaymentResponse]
+    paid_cents: int
+    pending_cents: int
+    after_declaring: AfterDeclaringResponse | None
 
 
 class UntaxedResponse(BaseModel):
@@ -96,6 +116,24 @@ def create_router(
                     old_debt_cents=c.declaration.old_debt_cents,
                     base_cents=c.declaration.base_cents,
                     tax_cents=c.declaration.tax_cents,
+                    payments=[
+                        DeclaredPaymentResponse(
+                            id=p.id,
+                            amount_cents=p.amount_cents,
+                            paid_on=p.paid_on,
+                            order_number=p.order_number,
+                        )
+                        for p in c.payments
+                    ],
+                    paid_cents=c.paid_cents,
+                    pending_cents=c.pending_cents,
+                    after_declaring=None
+                    if c.after is None
+                    else AfterDeclaringResponse(
+                        kind=c.after.kind,
+                        base_difference_cents=c.after.base_difference_cents,
+                        tax_difference_cents=c.after.tax_difference_cents,
+                    ),
                 )
                 for c in result.cards
             ],

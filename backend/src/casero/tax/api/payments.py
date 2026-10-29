@@ -10,12 +10,8 @@ from casero.accounts.application.context import AccountContext
 from casero.shared.infrastructure.csrf import require_csrf
 from casero.shared.kernel.ids import client_generated
 from casero.shared.kernel.periods import PERIOD_PATTERN, Period
-from casero.tax.application.payments import (
-    NewTaxPayment,
-    RecordTaxPayment,
-    TaxPaymentRecord,
-    VoidTaxPayment,
-)
+from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
+from casero.tax.application.sunat_payments import NewTaxPayment, TaxPaymentRecord
 
 MAX_CENTS = 10**11
 
