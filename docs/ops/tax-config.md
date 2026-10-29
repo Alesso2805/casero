@@ -18,7 +18,7 @@ Las reglas del impuesto, la UIT, el cronograma de SUNAT y los feriados viven sol
 | Enero o febrero | `due_dates` del año, cuando SUNAT publique su página del cronograma | `sunat.gob.pe/orientacion/cronogramas/{año}/cObligacionMensual{año}.html` |
 | Antes de cargar | Validar los valores con el contador | — |
 
-Mientras falte el cronograma de un año, Casero muestra "fecha por confirmar" y el worker avisa (CS-21 y CS-26).
+Mientras falte el cronograma de un año, Casero muestra "fecha por confirmar" y el worker avisa (CS-21 y CS-26). Sin las `rules` del año, Casero no arma los formularios de ningún mes de ese año; el worker avisa con `tax.rules_missing` desde el 1 de noviembre del año anterior. La prueba de punta a punta de CI usa enero de 2026, así que no depende de que las reglas del año en curso ya estén cargadas.
 
 `test_every_2026_due_date_follows_the_sunat_rule` comprueba que cada vencimiento sea el día hábil que fija la R.S. N.° 000281-2022/SUNAT. Al agregar un año, se extiende a ese año.
 
