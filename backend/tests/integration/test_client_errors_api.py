@@ -1,13 +1,15 @@
+import asyncio
 from collections.abc import Iterator
 from typing import Any
 
+import asyncpg
 import pytest
 import sentry_sdk
 from sentry_sdk.envelope import Envelope
 from sentry_sdk.transport import Transport
 
 from api_client import address_for, api_client
-from casero.api import CLIENT_ERRORS_PER_HOUR
+from casero.api import CLIENT_ERRORS_FORWARDED_PER_HOUR, CLIENT_ERRORS_PER_HOUR
 from casero.shared.infrastructure.error_tracking import init_error_tracking
 from database import Database
 
@@ -23,6 +25,20 @@ class Recording(Transport):
         for item in envelope.items:
             if item.type == "event" and item.payload.json is not None:
                 self.events.append(item.payload.json)
+
+
+async def clear_limits(database: Database) -> None:
+    owner = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        await owner.execute("DELETE FROM rate_limit_buckets")
+    finally:
+        await owner.close()
+
+
+@pytest.fixture(autouse=True)
+def fresh_limits(database: Database) -> None:
+    """The forwarding caps are global, so earlier tests in this hour must not count."""
+    asyncio.run(clear_limits(database))
 
 
 @pytest.fixture
@@ -76,3 +92,20 @@ def test_reports_are_rate_limited(database: Database, request: pytest.FixtureReq
 
     assert statuses[:-1] == [204] * CLIENT_ERRORS_PER_HOUR
     assert statuses[-1] == 429
+
+
+def test_only_the_first_of_each_kind_and_a_few_per_hour_reach_error_tracking(
+    database: Database, request: pytest.FixtureRequest, sentry: Recording
+) -> None:
+    kinds = [{**REPORT, "route": f"/app/pagina-{n}"} for n in range(8)]
+    with api_client(database, address_for(request.node.name)) as client:
+        init_error_tracking("https://public@example.invalid/1", "test", sentry)
+        statuses = [
+            client.post("/api/public/client-errors", json=report).status_code
+            for report in [REPORT, REPORT, *kinds]
+        ]
+        sentry_sdk.flush()
+
+    assert set(statuses) == {204}
+    assert len(sentry.events) == CLIENT_ERRORS_FORWARDED_PER_HOUR
+    assert [e["tags"]["route"] for e in sentry.events][:2] == ["/app/contratos", "/app/pagina-0"]

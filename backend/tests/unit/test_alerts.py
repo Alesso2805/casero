@@ -29,7 +29,9 @@ class Readings:
         schedules: dict[int, int] | None = None,
         failed: dict[str, int] | None = None,
         stuck_jobs: list[str] | None = None,
+        missing_rules: set[int] | None = None,
     ) -> None:
+        self.missing_rules = missing_rules or set()
         self.stuck = stuck or []
         self.stuck_jobs = stuck_jobs or []
         self.schedules = schedules or {}
@@ -43,6 +45,9 @@ class Readings:
 
     async def schedule_rows(self, year: int) -> int:
         return self.schedules.get(year, COMPLETE_YEAR)
+
+    async def has_tax_rules(self, year: int) -> bool:
+        return year not in self.missing_rules
 
     async def failed_runs_since(self, since: datetime) -> dict[str, int]:
         return self.failed
@@ -68,10 +73,12 @@ class Mailer:
 
 
 def raise_alerts(
-    readings: Readings, mailer: Mailer, inbox: str | None = "dueno@example.com"
+    readings: Readings,
+    mailer: Mailer,
+    now: datetime = datetime(2026, 10, 28, 15, 0, tzinfo=UTC),
+    inbox: str | None = "dueno@example.com",
 ) -> RaiseAlerts:
-    clock = Clock(datetime(2026, 10, 28, 15, 0, tzinfo=UTC))
-    return RaiseAlerts(readings, AlertLog(), mailer, inbox, clock)
+    return RaiseAlerts(readings, AlertLog(), mailer, inbox, Clock(now))
 
 
 def test_the_next_years_schedule_is_expected_from_november() -> None:
@@ -118,6 +125,20 @@ async def test_a_missing_schedule_and_failed_jobs_are_reported() -> None:
     assert [entry["event"] for entry in logs] == ["tax.schedule_missing", "worker.jobs_failed"]
     assert "2026" in mailer.sent[0].subject
     assert mailer.sent[1].text.startswith("Tareas con fallas: close_leases (1), rent_charges (2)")
+
+
+async def test_next_years_missing_rules_are_reported_from_november() -> None:
+    mailer = Mailer()
+    readings = Readings(missing_rules={2027})
+
+    with capture_logs() as october:
+        await raise_alerts(readings, mailer, datetime(2026, 10, 31, 15, tzinfo=UTC))()
+    with capture_logs() as november:
+        await raise_alerts(readings, mailer, datetime(2026, 11, 1, 15, tzinfo=UTC))()
+
+    assert october == []
+    assert [entry["event"] for entry in november] == ["tax.rules_missing"]
+    assert mailer.sent[0].subject == "Casero: faltan las reglas tributarias de 2027"
 
 
 async def test_without_an_inbox_alerts_only_go_to_the_logs() -> None:

@@ -69,3 +69,6 @@ class HmacLinkSigner:
 
     def token(self, link: TenantLink) -> str:
         return encode_token(self._keyring.sign(link.key_id, signed_message(link.id, link.nonce)))
+
+    def knows(self, key_id: str) -> bool:
+        return key_id in self._keyring.keys

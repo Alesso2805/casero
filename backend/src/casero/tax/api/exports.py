@@ -39,11 +39,11 @@ def create_router(
     @router.get("/api/app/exports/payments.csv", response_class=Response, responses=RESPONSES)
     async def export_payments(
         year: Year,
-        _: Annotated[AccountContext, Depends(current_account)],
+        context: Annotated[AccountContext, Depends(current_account)],
         export: Annotated[ExportPayments, Depends(provide_payments)],
     ) -> Response:
         """The year's payments for the accountant, with the part outside the 1683's base."""
-        result = await export(year)
+        result = await export(context, year)
         if result == "accountant_export_unavailable":
             raise HTTPException(status_code=403, detail=result)
         return csv_download(result, f"casero-pagos-{year}.csv")
@@ -51,11 +51,11 @@ def create_router(
     @router.get("/api/app/exports/declarations.csv", response_class=Response, responses=RESPONSES)
     async def export_declarations(
         year: Year,
-        _: Annotated[AccountContext, Depends(current_account)],
+        context: Annotated[AccountContext, Depends(current_account)],
         export: Annotated[ExportDeclarations, Depends(provide_declarations)],
     ) -> Response:
         """The year's 1683 declarations for the accountant, with what was paid to SUNAT."""
-        result = await export(year)
+        result = await export(context, year)
         if result == "accountant_export_unavailable":
             raise HTTPException(status_code=403, detail=result)
         return csv_download(result, f"casero-formularios-{year}.csv")

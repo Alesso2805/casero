@@ -17,6 +17,7 @@ STUCK_JOBS = text(
     " AND status = 'running' AND started_at < :before ORDER BY job"
 )
 SCHEDULE_ROWS = text("SELECT count(*) FROM sunat_due_dates WHERE year = :year")
+TAX_RULES = text("SELECT EXISTS (SELECT 1 FROM tax_rule_sets WHERE year = :year)")
 FAILED = text(
     "SELECT job, count(*) AS failures FROM job_runs WHERE status = 'failed'"
     " AND finished_at >= :since AND job <> :alert_job GROUP BY job"
@@ -52,6 +53,11 @@ class SqlOpsReadings:
         async with self._engine.connect() as connection:
             count: int = (await connection.execute(SCHEDULE_ROWS, {"year": year})).scalar_one()
             return count
+
+    async def has_tax_rules(self, year: int) -> bool:
+        async with self._engine.connect() as connection:
+            found: bool = (await connection.execute(TAX_RULES, {"year": year})).scalar_one()
+            return found
 
     async def failed_runs_since(self, since: datetime) -> dict[str, int]:
         async with self._engine.connect() as connection:

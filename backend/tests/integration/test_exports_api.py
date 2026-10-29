@@ -1,7 +1,7 @@
 import csv
 import io
 from datetime import UTC, datetime, timedelta
-from uuid import uuid7
+from uuid import UUID, uuid7
 
 import asyncpg
 import pytest
@@ -60,10 +60,23 @@ async def test_the_accountant_gets_the_years_payments_and_declarations(
 ) -> None:
     with client_for(database, request, FixedClock(NOW)) as client:
         register(client)
-        a_year_of_collections(client)
+        ana = a_year_of_collections(client)
         payments = client.get(PAYMENTS)
         declarations = client.get(DECLARATIONS)
 
+    owner = await asyncpg.connect(database.dsn("casero_owner"))
+    try:
+        exported = await owner.fetch(
+            "SELECT action, changed_fields FROM audit_log WHERE action LIKE 'export.%'"
+            " AND account_id = (SELECT account_id FROM renters WHERE id = $1) ORDER BY action",
+            UUID(ana),
+        )
+    finally:
+        await owner.close()
+    assert [(row["action"], row["changed_fields"]) for row in exported] == [
+        ("export.declarations", ["year"]),
+        ("export.payments", ["year"]),
+    ]
     assert payments.headers["content-type"] == "text/csv; charset=utf-8"
     assert payments.headers["content-disposition"] == 'attachment; filename="casero-pagos-2026.csv"'
     assert payments.headers["cache-control"] == "no-store"
