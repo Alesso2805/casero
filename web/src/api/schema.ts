@@ -1778,6 +1778,11 @@ export interface components {
             /** Ruc */
             ruc: string | null;
             /**
+             * Tax Reminders Email
+             * @description The user gets the SUNAT due-date reminders; true undoes an unsubscribe, and leaving it out keeps the current choice
+             */
+            tax_reminders_email?: boolean | null;
+            /**
              * Taxpayer Kind
              * @enum {string}
              */
@@ -1795,6 +1800,8 @@ export interface components {
             ruc: string | null;
             /** Ruc Group */
             ruc_group: ("0" | "1" | "2-3" | "4-5" | "6-7" | "8-9" | "bc") | null;
+            /** Tax Reminders Email */
+            tax_reminders_email: boolean;
             /**
              * Taxpayer Kind
              * @enum {string}

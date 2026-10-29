@@ -10,7 +10,7 @@ SES reports bounces and complaints through SNS. SPEC.md asks for:
 
 - a webhook that verifies each message's signature and feeds `email_suppressions`;
 - a permanent bounce or a complaint stops every email to that address, including transactional ones;
-- an unsubscribe stops only that kind of scheduled email.
+- an unsubscribe stops only that kind of scheduled email. The user can undo it from Mis datos (review of Sprints 7-9, I22): `casero_app` deletes only rows with reason `unsubscribe` for that user's address and kind, never a bounce or a complaint.
 
 The table must not keep email addresses in clear (CLAUDE.md, rule 8).
 

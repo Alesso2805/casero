@@ -85,6 +85,9 @@ export const accountCopy = {
       "6-7": "6 o 7",
       "8-9": "8 o 9",
     },
+    taxReminders: "Recibir los recordatorios de SUNAT por correo",
+    taxRemindersHint:
+      "Te escribimos 5 días y 1 día antes de que venzan tus formularios 1683. Si te diste de baja desde un correo, marca la casilla para volver a recibirlos.",
     dailyDigest: "Quiero un resumen diario por correo",
     dailyDigestHint:
       "A las 8:00, solo los días en que tengas algo que hacer. Lo empezaremos a enviar pronto; puedes dejarlo elegido desde ahora.",
