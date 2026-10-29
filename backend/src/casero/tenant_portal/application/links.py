@@ -42,6 +42,10 @@ class LinkSigner(Protocol):
 
     def token(self, link: TenantLink) -> str: ...
 
+    def knows(self, key_id: str) -> bool:
+        """False once the key that signed a link was retired (an incident rotation)."""
+        ...
+
 
 @dataclass(frozen=True)
 class LinkView:
@@ -73,7 +77,9 @@ class GetLink:
         if await self.links.store.portal_enabled(lease_id, lock=False) is None:
             return "lease_not_found"
         current = await self.links.store.current(lease_id)
-        return self.links.view(current) if current else None
+        if current is None or not self.links.signer.knows(current.key_id):
+            return None
+        return self.links.view(current)
 
 
 @dataclass(frozen=True)
@@ -125,7 +131,7 @@ class LinkInUse:
         if not await self.links.store.portal_enabled(lease_id, lock=True):
             return None
         current = await self.links.store.current(lease_id)
-        if current is not None:
+        if current is not None and self.links.signer.knows(current.key_id):
             return self.links.view(current).url
         issued = await self.issue(context, lease_id)
         return None if isinstance(issued, str) else issued.url
