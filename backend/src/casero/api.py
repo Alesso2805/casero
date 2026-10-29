@@ -200,6 +200,7 @@ from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import Clock, SystemClock
 from casero.tax.api import calculator as calculator_api
 from casero.tax.api import declarations as declarations_api
+from casero.tax.api import exports as exports_api
 from casero.tax.api import payments as tax_payments_api
 from casero.tax.application.calculator import (
     CalculateTax,
@@ -207,6 +208,7 @@ from casero.tax.application.calculator import (
     TaxRuleBook,
 )
 from casero.tax.application.declarations import GetDeclarations
+from casero.tax.application.exports import ExportDeclarations, ExportPayments
 from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
 from casero.tax.application.sunat_payments import TaxPaymentStore
 from casero.tax.application.upcoming import GetUpcomingDue
@@ -886,6 +888,30 @@ def create_app(
 
     app.include_router(
         declarations_api.create_router(current_account, provide_declarations, provide_upcoming)
+    )
+
+    async def provide_export_payments(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> ExportPayments:
+        leases: LeaseStore = SqlLeaseStore(connection)
+        renters: RenterDocuments = SqlRenterStore(
+            connection, config.field_cipher, config.document_hasher
+        )
+        properties: PropertyStore = SqlPropertyStore(connection)
+        ledger: LedgerStore = SqlLedger(connection)
+        return ExportPayments(entitlements, leases, renters, properties, ledger)
+
+    async def provide_export_declarations(
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+        declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
+    ) -> ExportDeclarations:
+        return ExportDeclarations(entitlements, declarations, app_clock)
+
+    app.include_router(
+        exports_api.create_router(
+            current_account, provide_export_payments, provide_export_declarations
+        )
     )
 
     async def provide_record_tax_payment(

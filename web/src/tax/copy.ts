@@ -61,6 +61,12 @@ export const taxCopy = {
       "Ya registraste a otro inquilino con ese documento. Revisa que el número sea el correcto.",
     failure: "No pudimos guardar el documento. Vuelve a intentarlo en unos minutos.",
   },
+  accountant: {
+    title: "Para tu contador",
+    intro: "Descarga los cobros y los formularios del año en archivos que se abren en Excel.",
+    payments: (year: string) => `Cobros de ${year} (CSV)`,
+    declarations: (year: string) => `Formularios de ${year} (CSV)`,
+  },
   dueNotice: {
     today: (period: string, amount: string) =>
       `Hoy vencen tus formularios 1683 de ${period}: falta pagar ${amount}.`,

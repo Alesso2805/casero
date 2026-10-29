@@ -5,6 +5,7 @@ from datetime import date
 from uuid import UUID
 
 from casero.ledger.application.collections import LeaseBook
+from casero.ledger.application.payments import LeaseLedger, PaymentRecord
 from casero.ledger.domain.allocation import allocate, paid_toward_old_debt
 from casero.shared.kernel.periods import Period
 
@@ -61,3 +62,20 @@ def rents_charged(
                 months[charge.period] += charge.amount_cents
         rents[book.lease_id] = dict(months)
     return rents
+
+
+@dataclass(frozen=True)
+class ReceivedPayment:
+    record: PaymentRecord
+    old_debt_cents: int
+
+
+def received_payments(ledger: LeaseLedger) -> list[ReceivedPayment]:
+    """A lease's valid payments, each with the part that paid debt from 2025 or before."""
+    payments = [record.payment for record in ledger.payments]
+    old_debt = paid_toward_old_debt(allocate(ledger.charges, payments), ledger.charges)
+    return [
+        ReceivedPayment(record, old_debt.get(record.payment.id, 0))
+        for record in ledger.payments
+        if not record.payment.voided
+    ]

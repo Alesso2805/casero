@@ -3186,6 +3186,94 @@
         "summary": "Send Verification"
       }
     },
+    "/api/app/exports/declarations.csv": {
+      "get": {
+        "description": "The year's 1683 declarations for the accountant, with what was paid to SUNAT.",
+        "operationId": "export_declarations_api_app_exports_declarations_csv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2026,
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {}
+            },
+            "description": "A CSV file, UTF-8 with BOM"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or `accountant_export_unavailable` in the plan"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Declarations"
+      }
+    },
+    "/api/app/exports/payments.csv": {
+      "get": {
+        "description": "The year's payments for the accountant, with the part outside the 1683's base.",
+        "operationId": "export_payments_api_app_exports_payments_csv_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "schema": {
+              "maximum": 2100,
+              "minimum": 2026,
+              "title": "Year",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {}
+            },
+            "description": "A CSV file, UTF-8 with BOM"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, or `accountant_export_unavailable` in the plan"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Payments"
+      }
+    },
     "/api/app/leases": {
       "get": {
         "description": "Every lease of the account, ended ones included.",

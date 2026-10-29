@@ -211,6 +211,17 @@ describe("Formularios de SUNAT", () => {
     expect(screen.getByRole("button", { name: "Mes siguiente" })).toHaveProperty("disabled", true);
   });
 
+  test("offers the year's files for the accountant", async () => {
+    mockApi({ [PATH]: () => json(SEPTEMBER) });
+    await renderPage("/app/impuestos");
+
+    const payments = await screen.findByRole("link", { name: "Cobros de 2026 (CSV)" });
+    expect(payments.getAttribute("href")).toBe("/api/app/exports/payments.csv?year=2026");
+    expect(
+      screen.getByRole("link", { name: "Formularios de 2026 (CSV)" }).getAttribute("href"),
+    ).toBe("/api/app/exports/declarations.csv?year=2026");
+  });
+
   test("explains that the free plan has no forms", async () => {
     mockApi({ [PATH]: () => json({ detail: "tax_module_unavailable" }, 403) });
     await renderPage("/app/impuestos");
