@@ -169,8 +169,12 @@ async def test_five_days_and_one_day_before_it_emails_what_is_owed(
     ]
 
 
+@pytest.mark.parametrize("new_document", [False, True])
 async def test_what_was_paid_to_sunat_is_left_out(
-    database: Database, request: pytest.FixtureRequest, worker_engine: AsyncEngine
+    database: Database,
+    request: pytest.FixtureRequest,
+    worker_engine: AsyncEngine,
+    new_document: bool,
 ) -> None:
     with client_for(database, request, FixedClock(NOW)) as client:
         account_id, _, ana = await landlord_owing_october(database, client)
@@ -181,8 +185,13 @@ async def test_what_was_paid_to_sunat_is_left_out(
             "amount_cents": 2_800,
             "paid_on": "2026-10-27",
             "order_number": "1234567890",
+            "declared_base_cents": 56_000,
         }
         assert send(client, "POST", "/api/app/tax/payments", body).status_code == 201
+        if new_document:
+            ana_ce = {"doc_type": "ce", "number": "001234567"}
+            renter = {"full_name": "Ana Quispe", "document": ana_ce}
+            assert send(client, "PUT", f"/api/app/renters/{ana}", renter).status_code == 200
     mailer = RecordingMailer()
 
     await run_for(worker_engine, account_id, FIVE_DAYS_BEFORE, mailer)

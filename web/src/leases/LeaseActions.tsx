@@ -3,7 +3,8 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { primaryButton, secondaryButton } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
-import { parseSolesToCents } from "../landing/money";
+import { formatSoles, parseSolesToCents } from "../landing/money";
+import { ConfirmButton } from "./ConfirmButton";
 import { leasesCopy as text } from "./copy";
 import { limaToday, uuidv7 } from "./terms";
 import { inputClass, type Outcome, outcomeOf, useLeaseWrite } from "./writes";
@@ -406,20 +407,21 @@ function Refund({
   return (
     <div className="flex flex-col gap-2">
       <p>{t.refundHint}</p>
-      <button
-        type="button"
-        className={primaryButton}
-        disabled={saving.isPending}
-        onClick={() => {
+      <ConfirmButton
+        id="lease-refund"
+        label={t.refund}
+        question={t.refundQuestion(formatSoles(creditCents))}
+        confirmLabel={t.refundConfirm}
+        cancelLabel={t.cancel}
+        busy={saving.isPending}
+        onConfirm={() => {
           saving.mutate(undefined, {
             onSuccess: (outcome) => {
               if (outcome.kind === "done") onDone(t.refundSaved);
             },
           });
         }}
-      >
-        {t.refund}
-      </button>
+      />
       {problem && (
         <p role="alert" className="text-red-800">
           {problem}

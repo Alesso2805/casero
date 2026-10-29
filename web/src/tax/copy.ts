@@ -2,7 +2,7 @@ export const taxCopy = {
   title: "Formularios de SUNAT",
   intro:
     "Un Formulario 1683 por cada inquilino que te pagó en el mes, sumando todos sus contratos. Preséntalo cuando termine el mes, no apenas cobres.",
-  month: (month: string) => `Cobros de ${month}`,
+  month: (month: string) => `Pagos recibidos en ${month}`,
   previousMonth: "Mes anterior",
   nextMonth: "Mes siguiente",
   loading: "Cargando tus formularios…",
@@ -25,7 +25,7 @@ export const taxCopy = {
       ? `Total del mes: ${amount} en 1 Formulario 1683.`
       : `Total del mes: ${amount} en ${String(count)} formularios 1683, uno por inquilino.`,
   empty: (month: string) =>
-    `No registraste cobros en ${month}, así que no hay formularios 1683 de ese mes.`,
+    `No registraste pagos recibidos en ${month}, así que no hay formularios 1683 de ese mes.`,
   card: {
     company: "Inquilino empresa",
     companyNotice:
@@ -65,8 +65,8 @@ export const taxCopy = {
   },
   accountant: {
     title: "Para tu contador",
-    intro: "Descarga los cobros y los formularios del año en archivos que se abren en Excel.",
-    payments: (year: string) => `Cobros de ${year} (CSV)`,
+    intro: "Descarga los pagos recibidos y los formularios del año en archivos que se abren en Excel.",
+    payments: (year: string) => `Pagos recibidos en ${year} (CSV)`,
     declarations: (year: string) => `Formularios de ${year} (CSV)`,
   },
   dueNotice: {
@@ -86,6 +86,9 @@ export const taxCopy = {
     pending: (amount: string) => `Falta pagar ${amount}`,
     fullyPaid: "Pagado",
     record: "Registrar pago a SUNAT",
+    declaredBase: "Monto declarado (base)",
+    declaredBaseHint:
+      "Es el monto que pusiste en el 1683. Ya viene con la base de esta tarjeta; cámbialo si declaraste otro.",
     amount: "Monto pagado en soles",
     paidOn: "Fecha en que pagaste",
     orderNumber: "Número de orden",
@@ -100,6 +103,7 @@ export const taxCopy = {
     confirmVoid: "Sí, anular",
     voided: "Listo, anulamos el pago a SUNAT.",
     errors: {
+      declaredBase: "Escribe el monto declarado en soles, por ejemplo: 551.",
       amount: "Escribe el monto en soles, por ejemplo: 28 o 28.50.",
       paidOn: "Elige la fecha en que pagaste.",
       order: "Escribe solo los números de la orden.",
@@ -114,6 +118,8 @@ export const taxCopy = {
   after: {
     up: (difference: string, period: string, taxDifference: string) =>
       `Cobraste ${difference} más en ${period} después de declarar. Presenta una declaración rectificatoria del 1683 con la nueva base y paga la diferencia de ${taxDifference} con intereses. Consúltalo con tu contador.`,
+    base_up: (period: string, taxDifference: string) =>
+      `La base de ${period} subió después de declarar. Presenta una rectificatoria del 1683 con la nueva base y paga la diferencia de ${taxDifference} con intereses. Consúltalo con tu contador.`,
     down: (period: string) =>
       `La base de ${period} bajó después de declarar. Una rectificatoria que reduce el tributo la revisa SUNAT antes de surtir efecto; consulta con tu contador si conviene presentarla o pedir la devolución.`,
     document_changed:
@@ -151,5 +157,5 @@ export const taxCopy = {
     neverSol: "Casero nunca te pide tu Clave SOL.",
   },
   disclaimer:
-    "Casero calcula con los cobros que registraste. No presenta ni paga por ti; confírmalo con tu contador.",
+    "Casero calcula con los pagos recibidos que registraste. No presenta ni paga por ti; confírmalo con tu contador.",
 } as const;

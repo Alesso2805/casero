@@ -103,6 +103,8 @@ function afterDeclaringText(declaration: Declaration, month: Month): string | nu
         period,
         formatSoles(after.tax_difference_cents),
       );
+    case "base_up":
+      return text.after.base_up(period, formatSoles(after.tax_difference_cents));
     case "down":
       return text.after.down(period);
     case "document_changed":
