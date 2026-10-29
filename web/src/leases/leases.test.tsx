@@ -803,6 +803,27 @@ describe("lease page", () => {
     expect(credit.amount_cents).toBe(10000);
   });
 
+  test("ends a lease that has not started today, without asking for a date", async () => {
+    const api = mockLease({
+      "/api/app/leases": () => json([{ ...LEASE, start_date: "2026-12-01" }]),
+      [`${LEASE_PATH}/termination`]: updatedLease,
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Terminar el contrato" }));
+    const note = screen.getByText(/Este contrato todavía no empieza/);
+    expect(document.activeElement).toBe(note);
+    expect(screen.queryByLabelText(/Fecha en que terminó/)).toBeNull();
+    expect(screen.queryByLabelText(/Descuento por los días que no usó/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Terminar contrato" }));
+
+    expect(await screen.findByText("Listo, el contrato quedó terminado.")).toBeDefined();
+    expect(await bodyOf(api, `${LEASE_PATH}/termination`)).toEqual({
+      ended_on: "2026-10-27",
+      credit: null,
+    });
+  });
+
   test("explains why an end date is refused", async () => {
     mockLease({
       [`${LEASE_PATH}/termination`]: () => json({ detail: "end_before_control" }, 422),

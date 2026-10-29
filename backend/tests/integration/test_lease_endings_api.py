@@ -121,3 +121,26 @@ async def test_an_end_after_today_or_before_the_control_month_is_refused(
         response = terminate(client, lease_id, ended_on=ended_on)
 
     assert (response.status_code, response.json()["detail"]) == (422, detail)
+
+
+@pytest.mark.parametrize(
+    ("start", "rents"),
+    [("2026-12-01", []), ("2026-10-30", [("rent", "2026-10", True)])],
+)
+async def test_a_lease_that_has_not_started_ends_today_and_owes_back_what_was_paid(
+    database: Database, request: pytest.FixtureRequest, start: str, rents: list[object]
+) -> None:
+    with client_for(database, request) as client:
+        ahead = {"start_date": start, "control_from_period": start[:7], "end_date": None}
+        lease_id = start_lease(client, **ahead)
+        paid = {"id": str(uuid7()), "amount_cents": 80_000, "received_on": "2026-10-20"}
+        payments = f"/api/app/leases/{lease_id}/payments"
+        assert send(client, "POST", payments, {**paid, "method": "yape"}).status_code == 201
+        yesterday = terminate(client, lease_id, ended_on="2026-10-26")
+        ended = terminate(client, lease_id, ended_on="2026-10-27")
+        statement = client.get(f"/api/app/leases/{lease_id}/statement").json()
+
+    assert (yesterday.status_code, yesterday.json()["detail"]) == (422, "end_before_start")
+    assert (ended.status_code, ended.json()["ended_at"]) == (200, "2026-10-27")
+    assert [(c["kind"], c["period"], c["voided"]) for c in statement["charges"]] == rents
+    assert statement["credit_cents"] == 80_000

@@ -138,6 +138,8 @@ export const leasesCopy = {
     terminateHint:
       "Los meses que empiezan después de esa fecha ya no se cobran. Para terminarlo más adelante, cambia la fecha de fin.",
     credit: "Descuento por los días que no usó, en soles (opcional)",
+    terminateNotStarted:
+      "Este contrato todavía no empieza. Si lo terminas, termina hoy: no se cobra ningún mes y lo que ya te pagaron queda para devolver al inquilino.",
     terminateConfirm: "Terminar contrato",
     terminated: "Listo, el contrato quedó terminado.",
     prior: "Registrar una deuda anterior",

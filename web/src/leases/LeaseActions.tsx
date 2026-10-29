@@ -228,29 +228,44 @@ function EndDateForm({ lease, onDone, onCancel }: FormProps) {
   );
 }
 
+function NotStartedNote() {
+  const note = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    note.current?.focus();
+  }, []);
+  return (
+    <p ref={note} tabIndex={-1}>
+      {t.terminateNotStarted}
+    </p>
+  );
+}
+
 function TerminationForm({ lease, onDone, onCancel }: FormProps) {
-  const [endedOn, setEndedOn] = useState(limaToday);
+  const [today] = useState(limaToday);
+  const [endedOn, setEndedOn] = useState(today);
   const [credit, setCredit] = useState("");
   const [creditId] = useState(uuidv7);
   const first = useFirstField();
-  const creditCents = parseSolesToCents(credit) ?? 0;
+  const notStarted = lease.start_date > today;
+  const creditCents = notStarted ? 0 : (parseSolesToCents(credit) ?? 0);
   const saving = useLeaseWrite(lease.id, () =>
     outcomeOf(
       api.POST("/api/app/leases/{lease_id}/termination", {
         params: { path: { lease_id: lease.id } },
         body: {
-          ended_on: endedOn,
+          ended_on: notStarted ? today : endedOn,
           credit: creditCents > 0 ? { id: creditId, amount_cents: creditCents } : null,
         },
       }),
     ),
   );
+  const fieldsReady = endedOn !== "" && (credit.trim() === "" || creditCents > 0);
   return (
     <ActionForm
       id="termination"
       title={t.terminate}
       submit={t.terminateConfirm}
-      ready={endedOn !== "" && (credit.trim() === "" || creditCents > 0)}
+      ready={notStarted || fieldsReady}
       pending={saving.isPending}
       problem={problemOf(saving.isError, saving.data)}
       onSubmit={() => {
@@ -262,30 +277,36 @@ function TerminationForm({ lease, onDone, onCancel }: FormProps) {
       }}
       onCancel={onCancel}
     >
-      <Field id="termination-date" label={t.terminateDate} hint={t.terminateHint}>
-        <input
-          id="termination-date"
-          ref={first}
-          type="date"
-          aria-describedby="termination-date-hint"
-          className={inputClass}
-          value={endedOn}
-          onChange={(event) => {
-            setEndedOn(event.target.value);
-          }}
-        />
-      </Field>
-      <Field id="termination-credit" label={t.credit}>
-        <input
-          id="termination-credit"
-          inputMode="decimal"
-          className={inputClass}
-          value={credit}
-          onChange={(event) => {
-            setCredit(event.target.value);
-          }}
-        />
-      </Field>
+      {notStarted ? (
+        <NotStartedNote />
+      ) : (
+        <>
+          <Field id="termination-date" label={t.terminateDate} hint={t.terminateHint}>
+            <input
+              id="termination-date"
+              ref={first}
+              type="date"
+              aria-describedby="termination-date-hint"
+              className={inputClass}
+              value={endedOn}
+              onChange={(event) => {
+                setEndedOn(event.target.value);
+              }}
+            />
+          </Field>
+          <Field id="termination-credit" label={t.credit}>
+            <input
+              id="termination-credit"
+              inputMode="decimal"
+              className={inputClass}
+              value={credit}
+              onChange={(event) => {
+                setCredit(event.target.value);
+              }}
+            />
+          </Field>
+        </>
+      )}
     </ActionForm>
   );
 }
