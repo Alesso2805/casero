@@ -142,6 +142,7 @@ from casero.ledger.api import leases as leases_api
 from casero.ledger.api import payments as payments_api
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.collections import CollectionsStore, GetCollections
+from casero.ledger.application.declared import DeclaredMonths
 from casero.ledger.application.lease_changes import (
     ChangeRent,
     ChargedPeriods,
@@ -718,8 +719,9 @@ def create_app(
         connection: Transaction,
     ) -> VoidPayment:
         ledger: LedgerStore = SqlLedger(connection)
+        declared: DeclaredMonths = SqlTaxPayments(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return VoidPayment(ledger, audit, app_clock)
+        return VoidPayment(ledger, declared, audit, app_clock)
 
     async def provide_statement(
         connection: Transaction,
@@ -769,8 +771,9 @@ def create_app(
 
     async def provide_void_charge(connection: Transaction) -> VoidCharge:
         charges: ChargeStore = SqlLedger(connection)
+        declared: DeclaredMonths = SqlTaxPayments(connection)
         audit: AuditLog = SqlAuditLog(connection)
-        return VoidCharge(charges, audit, app_clock)
+        return VoidCharge(charges, declared, audit, app_clock)
 
     app.include_router(
         charges_api.create_router(

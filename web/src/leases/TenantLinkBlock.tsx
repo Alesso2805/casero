@@ -6,6 +6,7 @@ import { primaryButton, secondaryButton } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatLimaDay } from "../landing/dates";
+import { ConfirmButton } from "./ConfirmButton";
 import { leasesCopy as text } from "./copy";
 import { inputClass } from "./writes";
 
@@ -124,16 +125,17 @@ export function TenantLinkBlock({ leaseId }: { leaseId: string }) {
           >
             {t.renew}
           </button>
-          <button
-            type="button"
-            className={secondaryButton}
-            disabled={change.isPending}
-            onClick={() => {
+          <ConfirmButton
+            id="tenant-link-revoke"
+            label={t.revoke}
+            question={t.revokeQuestion}
+            confirmLabel={t.revokeConfirm}
+            cancelLabel={t.cancel}
+            busy={change.isPending}
+            onConfirm={() => {
               change.mutate("revoke");
             }}
-          >
-            {t.revoke}
-          </button>
+          />
         </>
       ) : (
         answer?.kind === "link" && (

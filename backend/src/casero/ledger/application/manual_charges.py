@@ -11,6 +11,8 @@ from casero.leases.application.leases import (
     lease_problem,
     opening_balance_due,
 )
+from casero.ledger.application.declared import DeclaredMonths, months_a_void_changes
+from casero.ledger.application.payments import LeaseLedger
 from casero.ledger.domain.allocation import Charge
 from casero.shared.kernel.audit import AuditEntry, AuditLog
 from casero.shared.kernel.clock import Clock
@@ -53,6 +55,8 @@ class ChargeStore(Protocol):
     async def lock_lease(self, lease_id: UUID) -> bool: ...
 
     async def charge(self, charge_id: UUID) -> ChargeRecord | None: ...
+
+    async def lease_ledger(self, lease_id: UUID) -> LeaseLedger | None: ...
 
     async def correction_of(self, charge_id: UUID) -> UUID | None: ...
 
@@ -244,25 +248,40 @@ class RecordPriorDebt:
 
 
 @dataclass(frozen=True)
+class VoidedCharge:
+    record: ChargeRecord
+    paid_to_sunat: list[Period]
+
+
+@dataclass(frozen=True)
 class VoidCharge:
-    """Voiding is idempotent: doing it again returns the voided charge (rule 5)."""
+    """Voiding is idempotent: doing it again returns the voided charge (rule 5).
+
+    Either way it says which months already paid to SUNAT it changed: voiding a credit or the
+    debt from 2025 or before moves the taxed part of later payments.
+    """
 
     store: ChargeStore
+    declared: DeclaredMonths
     audit: AuditLog
     clock: Clock
 
     async def __call__(
         self, context: AccountContext, charge_id: UUID, reason: str
-    ) -> ChargeRecord | Literal["charge_not_found"]:
+    ) -> VoidedCharge | Literal["charge_not_found"]:
         found = await self.store.charge(charge_id)
         if found is None:
             return "charge_not_found"
         await self.store.lock_lease(found.lease_id)
         record = await self.store.charge(charge_id)
-        if record is None:
+        ledger = await self.store.lease_ledger(found.lease_id)
+        if record is None or ledger is None:
             return "charge_not_found"
+        payments = [r.payment for r in ledger.payments]
+        changed = months_a_void_changes(ledger.charges, payments, charge_id=charge_id)
+        paid = await self.declared.paid_to_sunat(record.lease_id, changed) if changed else []
         if record.charge.voided:
-            return record
+            return VoidedCharge(record, paid)
         now = self.clock.now()
         await self.store.void_charge(context.account_id, charge_id, reason, context.user_id, now)
         await self.audit.record(
@@ -276,4 +295,4 @@ class VoidCharge:
                 now,
             )
         )
-        return replace(record, charge=replace(record.charge, voided=True))
+        return VoidedCharge(replace(record, charge=replace(record.charge, voided=True)), paid)

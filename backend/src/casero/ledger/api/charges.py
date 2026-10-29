@@ -62,6 +62,12 @@ class ChargeResponse(BaseModel):
     voided: bool
 
 
+class VoidedChargeResponse(ChargeResponse):
+    paid_to_sunat: list[str] = Field(
+        description="Months (YYYY-MM) already paid to SUNAT whose declaration this void changed"
+    )
+
+
 def charge_response(record: ChargeRecord) -> ChargeResponse:
     charge = record.charge
     return ChargeResponse(
@@ -159,12 +165,15 @@ def create_router(
         body: VoidRequest,
         context: Annotated[AccountContext, Depends(current_account)],
         void: Annotated[VoidCharge, Depends(provide_void)],
-    ) -> ChargeResponse:
+    ) -> VoidedChargeResponse:
         """Void a charge with a reason; voiding it again returns it unchanged."""
         result = await void(context, charge_id, body.reason)
         if result == "charge_not_found":
             raise HTTPException(status_code=404, detail=result)
-        return charge_response(result)
+        return VoidedChargeResponse(
+            **charge_response(result.record).model_dump(),
+            paid_to_sunat=[str(p) for p in result.paid_to_sunat],
+        )
 
     @router.post(
         "/api/app/leases/{lease_id}/charges/prior-debts",

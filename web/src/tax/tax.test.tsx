@@ -205,7 +205,7 @@ describe("Formularios de SUNAT", () => {
 
     expect(
       await screen.findByText(
-        "No registraste cobros en octubre de 2026, así que no hay formularios 1683 de ese mes.",
+        "No registraste pagos recibidos en octubre de 2026, así que no hay formularios 1683 de ese mes.",
       ),
     ).toBeDefined();
     expect(screen.getByRole("button", { name: "Mes siguiente" })).toHaveProperty("disabled", true);
@@ -215,7 +215,7 @@ describe("Formularios de SUNAT", () => {
     mockApi({ [PATH]: () => json(SEPTEMBER) });
     await renderPage("/app/impuestos");
 
-    const payments = await screen.findByRole("link", { name: "Cobros de 2026 (CSV)" });
+    const payments = await screen.findByRole("link", { name: "Pagos recibidos en 2026 (CSV)" });
     expect(payments.getAttribute("href")).toBe("/api/app/exports/payments.csv?year=2026");
     expect(
       screen.getByRole("link", { name: "Formularios de 2026 (CSV)" }).getAttribute("href"),
@@ -361,6 +361,7 @@ describe("pagos a SUNAT", () => {
             tenant(2, "Luis", after("down")),
             tenant(3, "Rosa", after("document_changed")),
             tenant(4, "Eva", after("overdue_unpaid")),
+            tenant(5, "Juan", after("base_up", 50000, 2500)),
           ],
         }),
     });
@@ -375,5 +376,10 @@ describe("pagos a SUNAT", () => {
     expect(within(card("Luis")).getByText(/La base de setiembre de 2026 bajó/)).toBeDefined();
     expect(within(card("Rosa")).getByText(/Formulario 1693/)).toBeDefined();
     expect(within(card("Eva")).getByText(/Esta declaración venció el 21\/10\/2026/)).toBeDefined();
+    expect(
+      within(card("Juan")).getByText(
+        "La base de setiembre de 2026 subió después de declarar. Presenta una rectificatoria del 1683 con la nueva base y paga la diferencia de S/ 25.00 con intereses. Consúltalo con tu contador.",
+      ),
+    ).toBeDefined();
   });
 });

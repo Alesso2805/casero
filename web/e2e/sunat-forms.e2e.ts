@@ -110,9 +110,9 @@ test("a landlord registers, rents two rooms to one tenant and gets one 1683", as
   }
 
   await page.goto("/app/impuestos");
-  const shown = page.getByRole("heading", { name: /^Cobros de / });
+  const shown = page.getByRole("heading", { name: /^Pagos recibidos en / });
   await expect(shown).toBeVisible();
-  while ((await shown.textContent()) !== "Cobros de enero de 2026") {
+  while ((await shown.textContent()) !== "Pagos recibidos en enero de 2026") {
     const before = (await shown.textContent()) ?? "";
     await page.getByRole("button", { name: "Mes anterior" }).click();
     await expect(shown).not.toHaveText(before);
