@@ -164,6 +164,7 @@ describe("collections panel", () => {
       "/api/app/leases": () => json(LEASES),
       "/api/app/renters": () => json(RENTERS),
       "/api/app/properties": () => json([PROPERTY]),
+      [`/api/app/leases/${String(LEASES[0]?.id)}/tenant-link`]: () => json({ link: null }),
       [`/api/app/leases/${String(LEASES[0]?.id)}/statement`]: () =>
         json({
           lease_id: LEASES[0]?.id,
