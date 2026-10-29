@@ -9,6 +9,7 @@ import { formatSoles } from "../landing/money";
 import { leasesCopy } from "../leases/copy";
 import { fetchLeases, fetchRenters } from "../leases/LeasesPage";
 import { fetchProperties } from "../properties/PropertiesPage";
+import { WhatsAppButton } from "../reminders/WhatsAppButton";
 import { collectionsCopy as text } from "./copy";
 
 type Collections = components["schemas"]["CollectionsResponse"];
@@ -115,6 +116,11 @@ function LeaseLine({
           <span className="text-stone-600">{text.reminded(remindedDaysAgo)}</span>
         )}
       </Link>
+      {line.status !== "up_to_date" && (
+        <div className="px-3 pb-3">
+          <WhatsAppButton leaseId={line.lease_id} renterName={renter} />
+        </div>
+      )}
     </li>
   );
 }

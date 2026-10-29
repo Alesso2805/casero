@@ -392,6 +392,34 @@ describe("lease page", () => {
     });
   }
 
+  test("offers the WhatsApp reminder while a rent is unpaid", async () => {
+    mockLease();
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(
+      await screen.findByRole("button", { name: "Enviar por WhatsApp a Ana Quispe" }),
+    ).toBeDefined();
+    expect(screen.getByText(/Mejor entre las 8:00 y las 20:00/)).toBeDefined();
+  });
+
+  test("has no WhatsApp reminder once every rent is paid", async () => {
+    mockLease({
+      [STATEMENT_PATH]: () =>
+        json({
+          ...STATEMENT,
+          balance_cents: 0,
+          up_to_date: true,
+          charges: STATEMENT.charges.map((line) =>
+            line.status === null ? line : { ...line, outstanding_cents: 0, status: "paid" },
+          ),
+        }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByRole("button", { name: "Registrar pago" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Enviar por WhatsApp/ })).toBeNull();
+  });
+
   test("opens from the lease card", async () => {
     mockLease();
     await renderPage("/app/contratos");
