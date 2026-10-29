@@ -1103,7 +1103,7 @@ export interface components {
              */
             doc_number: string | null;
             /** Doc Type */
-            doc_type: string | null;
+            doc_type: ("dni" | "ce" | "passport" | "ruc") | null;
             /**
              * Incomplete
              * @description Without the tenant's document it cannot be filed

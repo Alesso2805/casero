@@ -7,7 +7,7 @@ from uuid import UUID
 from casero.accounts.application.entitlements import GetEntitlements
 from casero.accounts.application.profile import Profiles
 from casero.leases.application.leases import LeaseStore
-from casero.leases.application.renters import RenterDocument, RenterDocuments
+from casero.leases.application.renters import DocType, RenterDocument, RenterDocuments
 from casero.ledger.application.collected import collected_payments, rents_charged
 from casero.ledger.application.collections import CollectionsStore
 from casero.properties.application.properties import PropertyStore
@@ -24,7 +24,7 @@ TAXED = ("standard", "company_tenant")
 class DeclarationCard:
     declaration: Declaration
     renter_name: str
-    doc_type: str | None
+    doc_type: DocType | None
     doc_number: str | None
     company_tenant: bool
 

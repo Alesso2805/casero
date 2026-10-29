@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from casero.accounts.application.context import AccountContext
+from casero.leases.application.renters import DocType
 from casero.shared.kernel.periods import PERIOD_PATTERN, Period
 from casero.tax.application.declarations import DueStatus, GetDeclarations
 
@@ -14,7 +15,7 @@ from casero.tax.application.declarations import DueStatus, GetDeclarations
 class DeclarationResponse(BaseModel):
     renter_id: UUID
     renter_name: str
-    doc_type: str | None
+    doc_type: DocType | None
     doc_number: str | None = Field(description="In clear only here, to copy into the 1683")
     incomplete: bool = Field(description="Without the tenant's document it cannot be filed")
     company_tenant: bool
