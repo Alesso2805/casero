@@ -17,6 +17,7 @@ import type { components } from "../api/schema";
 import { formatDay } from "../landing/dates";
 import { formatSoles, parseSolesToCents } from "../landing/money";
 import { AdjustmentForm, ChargeActions } from "./ChargeActions";
+import { LeaseActions } from "./LeaseActions";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
 import { fetchLeases, fetchRenters } from "./LeasesPage";
@@ -95,7 +96,7 @@ function statusText(charge: ChargeLine, today: string): string {
   }
 }
 
-function Summary({ statement }: { statement: Statement }) {
+function Summary({ statement, ended }: { statement: Statement; ended: boolean }) {
   if (statement.balance_cents > 0) {
     return (
       <p className="rounded-lg bg-amber-50 p-4 text-xl font-semibold text-amber-900">
@@ -105,9 +106,9 @@ function Summary({ statement }: { statement: Statement }) {
   }
   return (
     <p className="rounded-lg bg-green-50 p-4 text-xl font-semibold text-green-900">
-      {statement.credit_cents > 0
-        ? text.lease.inFavor(formatSoles(statement.credit_cents))
-        : text.lease.upToDate}
+      {statement.credit_cents <= 0
+        ? text.lease.upToDate
+        : (ended ? text.lease.toReturn : text.lease.inFavor)(formatSoles(statement.credit_cents))}
     </p>
   );
 }
@@ -484,7 +485,7 @@ export function LeasePage() {
       {statement.data?.kind === "missing" && <p role="alert">{text.lease.missing}</p>}
       {statement.data?.kind === "statement" && (
         <>
-          <Summary statement={statement.data.statement} />
+          <Summary statement={statement.data.statement} ended={Boolean(lease?.ended_at)} />
           {notice && (
             <div
               ref={noticeBox}
@@ -585,6 +586,15 @@ export function LeasePage() {
               </ul>
             )}
           </section>
+          {lease && (
+            <LeaseActions
+              lease={lease}
+              statement={statement.data.statement}
+              onDone={(message) => {
+                setNotice({ message, bankThreshold: null, beforeControl: false });
+              }}
+            />
+          )}
         </>
       )}
       <Link to="/app/contratos" className={textLink}>
