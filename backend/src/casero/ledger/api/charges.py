@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import AfterValidator, BaseModel, Field
 
 from casero.accounts.application.context import AccountContext
-from casero.ledger.api.payments import MAX_CENTS, WRITE_ERRORS, VoidRequest, client_generated
+from casero.ledger.api.payments import MAX_CENTS, WRITE_ERRORS, VoidRequest
 from casero.ledger.application.manual_charges import (
     AdjustLease,
     ChargeCreated,
@@ -21,6 +21,7 @@ from casero.ledger.application.manual_charges import (
 )
 from casero.ledger.domain.allocation import ChargeKind
 from casero.shared.infrastructure.csrf import require_csrf
+from casero.shared.kernel.ids import client_generated
 
 
 def not_zero(cents: int) -> int:

@@ -313,8 +313,8 @@ async def seed_lease(
             "tax_payments",
             ids["tax_payments"],
             "INSERT INTO tax_payments (id, account_id, period, renter_doc_hmac, renter_id,"
-            " amount_cents, paid_on, order_number, created_by, created_at)"
-            " VALUES ($1, $2, '2026-10', $3, $4, 2500, $5, 'ORD-1', $6, $7)",
+            " amount_cents, paid_on, order_number, base_cents, created_by, created_at)"
+            " VALUES ($1, $2, '2026-10', $3, $4, 2500, $5, 'ORD-1', 50000, $6, $7)",
             (os.urandom(32), renter_id, SEEDED_ON, user_id, SEEDED_AT),
         ),
         (

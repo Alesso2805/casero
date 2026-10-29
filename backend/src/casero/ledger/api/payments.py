@@ -18,9 +18,9 @@ from casero.ledger.application.payments import (
 from casero.ledger.domain.allocation import ChargeKind, ChargeStatus
 from casero.ledger.domain.payments import PaymentMethod
 from casero.shared.infrastructure.csrf import require_csrf
+from casero.shared.kernel.ids import client_generated
 
 MAX_CENTS = 10**11
-UUID_V7 = 7
 
 Note = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
@@ -32,12 +32,6 @@ WRITE_ERRORS: dict[int | str, dict[str, Any]] = {
     **READ_ERRORS,
     403: {"description": "No account, unverified email past its deadline, or `csrf`"},
 }
-
-
-def client_generated(value: UUID) -> UUID:
-    if value.version != UUID_V7:
-        raise ValueError("the id must be a uuid v7 generated when the form opens")
-    return value
 
 
 class PaymentRequest(BaseModel):

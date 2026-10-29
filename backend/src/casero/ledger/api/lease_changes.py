@@ -8,7 +8,7 @@ from pydantic import AfterValidator, BaseModel, Field
 
 from casero.accounts.application.context import AccountContext
 from casero.ledger.api.leases import LeaseResponse, lease_response
-from casero.ledger.api.payments import MAX_CENTS, WRITE_ERRORS, client_generated
+from casero.ledger.api.payments import MAX_CENTS, WRITE_ERRORS
 from casero.ledger.application.lease_changes import (
     ChangeRent,
     EndingCredit,
@@ -18,6 +18,7 @@ from casero.ledger.application.lease_changes import (
     SetEndDate,
 )
 from casero.shared.infrastructure.csrf import require_csrf
+from casero.shared.kernel.ids import client_generated
 
 
 class RentChangeRequest(BaseModel):

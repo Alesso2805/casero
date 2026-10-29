@@ -2283,6 +2283,104 @@
         "title": "StatementResponse",
         "type": "object"
       },
+      "TaxPaymentRequest": {
+        "properties": {
+          "amount_cents": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 100000000000.0,
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_number": {
+            "description": "SUNAT's n\u00famero de orden, digits only",
+            "pattern": "^[0-9]{1,20}$",
+            "title": "Order Number",
+            "type": "string"
+          },
+          "paid_on": {
+            "format": "date",
+            "title": "Paid On",
+            "type": "string"
+          },
+          "period": {
+            "pattern": "^([0-9]{4})-(0[1-9]|1[0-2])$",
+            "title": "Period",
+            "type": "string"
+          },
+          "renter_id": {
+            "format": "uuid",
+            "title": "Renter Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "period",
+          "renter_id",
+          "amount_cents",
+          "paid_on",
+          "order_number"
+        ],
+        "title": "TaxPaymentRequest",
+        "type": "object"
+      },
+      "TaxPaymentResponse": {
+        "properties": {
+          "amount_cents": {
+            "title": "Amount Cents",
+            "type": "integer"
+          },
+          "base_cents": {
+            "description": "The declaration's base when the payment was recorded",
+            "title": "Base Cents",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "order_number": {
+            "title": "Order Number",
+            "type": "string"
+          },
+          "paid_on": {
+            "format": "date",
+            "title": "Paid On",
+            "type": "string"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          },
+          "renter_id": {
+            "format": "uuid",
+            "title": "Renter Id",
+            "type": "string"
+          },
+          "voided": {
+            "title": "Voided",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "period",
+          "renter_id",
+          "amount_cents",
+          "paid_on",
+          "order_number",
+          "base_cents",
+          "voided"
+        ],
+        "title": "TaxPaymentResponse",
+        "type": "object"
+      },
       "TemplateRequest": {
         "properties": {
           "body": {
@@ -2737,6 +2835,21 @@
           "reason"
         ],
         "title": "VoidRequest",
+        "type": "object"
+      },
+      "VoidTaxPaymentRequest": {
+        "properties": {
+          "reason": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "VoidTaxPaymentRequest",
         "type": "object"
       }
     }
@@ -4277,6 +4390,113 @@
           }
         },
         "summary": "Month Declarations"
+      }
+    },
+    "/api/app/tax/payments": {
+      "post": {
+        "description": "Record what the landlord paid SUNAT for one declaration; the id comes from the client.",
+        "operationId": "record_tax_payment_api_app_tax_payments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaxPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The same id was already recorded with the same content"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxPaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, `csrf`, or `tax_module_unavailable` in the plan"
+          },
+          "404": {
+            "description": "`declaration_not_found`: nothing collected from them that month"
+          },
+          "409": {
+            "description": "The id exists with other content or in another account"
+          },
+          "422": {
+            "description": "Invalid data, `unknown_year`, `declaration_incomplete` (no tenant document), `paid_before_period` or `paid_in_future`"
+          }
+        },
+        "summary": "Record Tax Payment"
+      }
+    },
+    "/api/app/tax/payments/{payment_id}/void": {
+      "post": {
+        "description": "Void a SUNAT payment with a reason; voiding it again returns it unchanged.",
+        "operationId": "void_tax_payment_api_app_tax_payments__payment_id__void_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidTaxPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxPaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email past its deadline, `csrf`, or `tax_module_unavailable` in the plan"
+          },
+          "404": {
+            "description": "`tax_payment_not_found`"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Void Tax Payment"
       }
     },
     "/api/app/units/{unit_id}": {
