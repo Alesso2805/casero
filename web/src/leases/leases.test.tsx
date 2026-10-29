@@ -387,6 +387,7 @@ describe("lease page", () => {
       "/api/app/renters": () => json([RENTER]),
       "/api/app/properties": () => json([PROPERTY]),
       [STATEMENT_PATH]: () => json(STATEMENT),
+      [`/api/app/leases/${LEASE.id}/tenant-link`]: () => json({ link: null }),
       ...routes,
     });
   }
@@ -784,6 +785,61 @@ describe("lease page", () => {
 
     expect(await screen.findByText("Listo, registramos la devolución.")).toBeDefined();
     expect((await bodyOf(api, adjustments)).amount_cents).toBe(2000);
+  });
+
+  const LINK_PATH = `/api/app/leases/${LEASE.id}/tenant-link`;
+  const LINK = {
+    url: "https://casero.example/i#t=AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+    created_at: "2026-10-27T15:00:00Z",
+    last_used_at: null,
+  };
+
+  test("creates the tenant's link and copies it", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    mockLease({
+      [LINK_PATH]: (request) => json(request.method === "POST" ? LINK : { link: null }, 201),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Crear enlace" }));
+
+    expect(await screen.findByDisplayValue(LINK.url)).toBeDefined();
+    expect(screen.getByText("Todavía no lo ha abierto.")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Copiar enlace" }));
+    expect(await screen.findByText(/Enlace copiado/)).toBeDefined();
+    expect(writeText).toHaveBeenCalledWith(LINK.url);
+  });
+
+  test("shows when the tenant last opened the link and revokes it", async () => {
+    const api = mockLease({
+      [LINK_PATH]: () => json({ link: { ...LINK, last_used_at: "2026-10-26T20:00:00Z" } }),
+      [`${LINK_PATH}/revoke`]: () => json({ link: null }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    expect(await screen.findByText("Lo abrió por última vez el 26/10/2026.")).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Desactivar el enlace" }));
+
+    expect(await screen.findByText("Listo, el enlace ya no funciona.")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Crear enlace" })).toBeDefined();
+    expect(api.requestsTo(`${LINK_PATH}/revoke`)[0]?.headers.get("X-CSRF-Token")).toBe(
+      "csrf-token",
+    );
+  });
+
+  test("explains when the plan has no tenant portal", async () => {
+    mockLease({
+      [LINK_PATH]: (request) =>
+        request.method === "POST"
+          ? json({ detail: "portal_unavailable" }, 403)
+          : json({ link: null }),
+    });
+    await renderPage(`/app/contratos/${LEASE.id}`);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Crear enlace" }));
+
+    expect(await screen.findByText(/Tu plan no incluye el portal del inquilino/)).toBeDefined();
   });
 
   test("sends visitors without a session to log in", async () => {
