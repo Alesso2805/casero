@@ -851,6 +851,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tenant/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Statement
+         * @description The tenant's balance and history, with the token in the X-Tenant-Token header.
+         */
+        get: operations["statement_api_tenant_statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1648,6 +1668,33 @@ export interface components {
             /** Up To Date */
             up_to_date: boolean;
         };
+        /** TenantChargeResponse */
+        TenantChargeResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "rent" | "rent_correction" | "opening_balance" | "adjustment";
+            /** Outstanding Cents */
+            outstanding_cents: number;
+            /** Partial */
+            partial: boolean;
+            /** Period */
+            period: string | null;
+            /** Pre 2026 */
+            pre_2026: boolean | null;
+            /** Status */
+            status: ("paid" | "overdue" | "due_today" | "due_soon" | "pending") | null;
+            /** Voided */
+            voided: boolean;
+        };
         /** TenantLinkResponse */
         TenantLinkResponse: {
             /**
@@ -1666,6 +1713,42 @@ export interface components {
         /** TenantLinkStatus */
         TenantLinkStatus: {
             link: components["schemas"]["TenantLinkResponse"] | null;
+        };
+        /** TenantPaymentResponse */
+        TenantPaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /** Method */
+            method: string;
+            /**
+             * Received On
+             * Format: date
+             */
+            received_on: string;
+            /** Voided */
+            voided: boolean;
+        };
+        /**
+         * TenantStatementResponse
+         * @description An explicit DTO: never the landlord's RUC, email or notes (CS-18).
+         */
+        TenantStatementResponse: {
+            /** Balance Cents */
+            balance_cents: number;
+            /** Charges */
+            charges: components["schemas"]["TenantChargeResponse"][];
+            /** Credit Cents */
+            credit_cents: number;
+            /** Landlord Name */
+            landlord_name: string;
+            /** Payments */
+            payments: components["schemas"]["TenantPaymentResponse"][];
+            /** Renter Name */
+            renter_name: string;
+            /** Unit */
+            unit: string;
+            /** Up To Date */
+            up_to_date: boolean;
         };
         /** TerminationRequest */
         TerminationRequest: {
@@ -3909,6 +3992,58 @@ export interface operations {
                 };
             };
             /** @description Too many requests from this client */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    statement_api_tenant_statement_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-tenant-token"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantStatementResponse"];
+                };
+            };
+            /** @description `portal_unavailable`: the plan or the lease lost the portal */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `link_not_found`: unknown, revoked or expired link */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description `too_many_requests` from this client */
             429: {
                 headers: {
                     [name: string]: unknown;

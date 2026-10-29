@@ -79,3 +79,41 @@ def test_ar20_meta_detects_unscoped_routes_and_unchecked_writes_in_included_rout
 
     assert routes_without_account(app, set()) == ["GET /api/app/leaky"]
     assert writes_without_csrf(app) == ["POST /api/app/unchecked"]
+
+
+TENANT_PREFIX = "/api/tenant/"
+
+
+def tenant_routes_without_access(app: FastAPI) -> list[str]:
+    return sorted(
+        f"{method} {path}"
+        for (method, path), route in operations(app, TENANT_PREFIX).items()
+        if "tenant_access" not in dependency_names(route.dependant)
+    )
+
+
+def test_ar21_every_tenant_route_resolves_the_link_first() -> None:
+    app = offline_app()
+
+    assert operations(app, TENANT_PREFIX)
+    assert tenant_routes_without_access(app) == []
+
+
+def test_ar21_meta_detects_a_tenant_route_without_the_link() -> None:
+    app = FastAPI()
+    router = APIRouter()
+
+    async def tenant_access() -> str:
+        return "lease"
+
+    async def resolved(_: Annotated[str, Depends(tenant_access)]) -> None:
+        return None
+
+    async def open_door() -> None:
+        return None
+
+    router.get("/api/tenant/resolved")(resolved)
+    router.get("/api/tenant/open")(open_door)
+    app.include_router(router)
+
+    assert tenant_routes_without_access(app) == ["GET /api/tenant/open"]

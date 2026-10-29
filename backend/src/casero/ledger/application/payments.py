@@ -6,11 +6,16 @@ from uuid import UUID
 from casero.accounts.application.context import AccountContext
 from casero.ledger.domain.allocation import (
     Charge,
-    ChargeStatus,
     Payment,
     allocate,
     charge_status,
     debit_order,
+)
+from casero.ledger.domain.allocation import (
+    ChargeKind as ChargeKind,
+)
+from casero.ledger.domain.allocation import (
+    ChargeStatus as ChargeStatus,
 )
 from casero.ledger.domain.charges import RentChange, rent_for
 from casero.ledger.domain.payments import (

@@ -1,8 +1,11 @@
 import base64
 import hashlib
+import re
 from uuid import UUID
 
 NONCE_BYTES = 16
+# HMAC-SHA256 is 32 bytes: 43 base64url characters without padding.
+TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_-]{43}")
 
 
 def signed_message(link_id: UUID, nonce: bytes) -> bytes:
@@ -22,3 +25,7 @@ def token_hash(token: str) -> bytes:
 def link_url(public_url: str, token: str) -> str:
     """The token travels in the fragment, which browsers never send to a server."""
     return f"{public_url.rstrip('/')}/i#t={token}"
+
+
+def well_formed(token: str) -> bool:
+    return TOKEN_PATTERN.fullmatch(token) is not None
