@@ -1119,7 +1119,7 @@ export interface components {
              * @description `up`/`down`: the base changed after paying; `document_changed`: paid with another tenant document; `overdue_unpaid`: past due with no payment recorded
              * @enum {string}
              */
-            kind: "up" | "down" | "document_changed" | "overdue_unpaid";
+            kind: "up" | "base_up" | "down" | "document_changed" | "overdue_unpaid";
             /** Tax Difference Cents */
             tax_difference_cents: number;
         };

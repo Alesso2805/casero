@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-ChangeKind = Literal["up", "down", "document_changed", "overdue_unpaid"]
+# "up" when money was recorded after the last SUNAT payment; "base_up" when the base rose
+# without it, for example after voiding the debt from 2025 or before.
+ChangeKind = Literal["up", "base_up", "down", "document_changed", "overdue_unpaid"]
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,7 @@ def after_declaring(
     tax_cents: int,
     paid: list[PaidDeclaration],
     paid_with_another_document: bool,
+    last_collected_at: datetime | None,
     due_on: date | None,
     today: date,
 ) -> AfterDeclaring | None:
@@ -37,10 +40,13 @@ def after_declaring(
     if paid_with_another_document:
         return AfterDeclaring("document_changed")
     if paid:
-        declared = max(paid, key=lambda payment: payment.created_at).base_cents
+        latest = max(paid, key=lambda payment: payment.created_at)
+        declared = latest.base_cents
         if base_cents > declared:
             owed = tax_cents - sum(payment.amount_cents for payment in paid)
-            return AfterDeclaring("up", base_cents - declared, max(owed, 0))
+            collected = last_collected_at is not None and last_collected_at > latest.created_at
+            kind: ChangeKind = "up" if collected else "base_up"
+            return AfterDeclaring(kind, base_cents - declared, max(owed, 0))
         if base_cents < declared:
             return AfterDeclaring("down", declared - base_cents)
         return None
