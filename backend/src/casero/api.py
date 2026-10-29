@@ -200,12 +200,15 @@ from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import Clock, SystemClock
 from casero.tax.api import calculator as calculator_api
 from casero.tax.api import declarations as declarations_api
+from casero.tax.api import payments as tax_payments_api
 from casero.tax.application.calculator import (
     CalculateTax,
     CalculatorRateLimiter,
     TaxRuleBook,
 )
 from casero.tax.application.declarations import GetDeclarations
+from casero.tax.application.payments import RecordTaxPayment, TaxPaymentStore, VoidTaxPayment
+from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
 from casero.tenant_portal.api import portal as tenant_portal_api
@@ -863,6 +866,28 @@ def create_app(
         )
 
     app.include_router(declarations_api.create_router(current_account, provide_declarations))
+
+    async def provide_record_tax_payment(
+        connection: Transaction,
+        declarations: Annotated[GetDeclarations, Depends(provide_declarations)],
+    ) -> RecordTaxPayment:
+        store: TaxPaymentStore = SqlTaxPayments(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return RecordTaxPayment(declarations, store, audit, app_clock)
+
+    async def provide_void_tax_payment(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> VoidTaxPayment:
+        store: TaxPaymentStore = SqlTaxPayments(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return VoidTaxPayment(entitlements, store, audit, app_clock)
+
+    app.include_router(
+        tax_payments_api.create_router(
+            current_account, provide_record_tax_payment, provide_void_tax_payment
+        )
+    )
 
     @app.get("/api/health", responses={503: {"description": "`database_unavailable`"}})
     async def health() -> HealthResponse:

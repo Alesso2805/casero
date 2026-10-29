@@ -16,10 +16,10 @@ from casero.leases.application.leases import (
 )
 from casero.ledger.application.leases import Created, CreateLease, NewLease
 from casero.shared.infrastructure.csrf import require_csrf
+from casero.shared.kernel.ids import client_generated
 from casero.shared.kernel.periods import Period
 
 MAX_CENTS = 10**11
-UUID_V7 = 7
 
 PeriodText = Annotated[str, StringConstraints(pattern=r"^[0-9]{4}-(0[1-9]|1[0-2])$")]
 Cents = Annotated[int, Field(gt=0, le=MAX_CENTS)]
@@ -36,12 +36,6 @@ READ_ERRORS: dict[int | str, dict[str, Any]] = {
     401: {"description": "No valid session"},
     403: {"description": "No account, or the email is unverified past its deadline"},
 }
-
-
-def client_generated(value: UUID) -> UUID:
-    if value.version != UUID_V7:
-        raise ValueError("the id must be a uuid v7 generated when the form opens")
-    return value
 
 
 class LeaseRequest(BaseModel):

@@ -631,6 +631,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/tax/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record Tax Payment
+         * @description Record what the landlord paid SUNAT for one declaration; the id comes from the client.
+         */
+        post: operations["record_tax_payment_api_app_tax_payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/tax/payments/{payment_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Tax Payment
+         * @description Void a SUNAT payment with a reason; voiding it again returns it unchanged.
+         */
+        post: operations["void_tax_payment_api_app_tax_payments__payment_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/units/{unit_id}": {
         parameters: {
             query?: never;
@@ -1873,6 +1913,64 @@ export interface components {
             /** Up To Date */
             up_to_date: boolean;
         };
+        /** TaxPaymentRequest */
+        TaxPaymentRequest: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Order Number
+             * @description SUNAT's número de orden, digits only
+             */
+            order_number: string;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
+            /** Period */
+            period: string;
+            /**
+             * Renter Id
+             * Format: uuid
+             */
+            renter_id: string;
+        };
+        /** TaxPaymentResponse */
+        TaxPaymentResponse: {
+            /** Amount Cents */
+            amount_cents: number;
+            /**
+             * Base Cents
+             * @description The declaration's base when the payment was recorded
+             */
+            base_cents: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Number */
+            order_number: string;
+            /**
+             * Paid On
+             * Format: date
+             */
+            paid_on: string;
+            /** Period */
+            period: string;
+            /**
+             * Renter Id
+             * Format: uuid
+             */
+            renter_id: string;
+            /** Voided */
+            voided: boolean;
+        };
         /** TemplateRequest */
         TemplateRequest: {
             /** Body */
@@ -2045,6 +2143,11 @@ export interface components {
         };
         /** VoidRequest */
         VoidRequest: {
+            /** Reason */
+            reason: string;
+        };
+        /** VoidTaxPaymentRequest */
+        VoidTaxPaymentRequest: {
             /** Reason */
             reason: string;
         };
@@ -3795,6 +3898,128 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    record_tax_payment_api_app_tax_payments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description The same id was already recorded with the same content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxPaymentResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, `csrf`, or `tax_module_unavailable` in the plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `declaration_not_found`: nothing collected from them that month */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The id exists with other content or in another account */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, `unknown_year`, `declaration_incomplete` (no tenant document), `paid_before_period` or `paid_in_future` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    void_tax_payment_api_app_tax_payments__payment_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidTaxPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxPaymentResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email past its deadline, `csrf`, or `tax_module_unavailable` in the plan */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `tax_payment_not_found` */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
