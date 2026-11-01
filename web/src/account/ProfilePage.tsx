@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { ConsentSection } from "./ConsentSection";
 import { accountCopy as text } from "./copy";
+import { DataDownload } from "./DataDownload";
 import { primaryButton, TextField, textLink } from "./fields";
 import { hasRucShape, isValidRuc, rucGroup } from "./ruc";
 
@@ -247,6 +248,7 @@ export function ProfilePage() {
       {loaded.data?.kind === "profile" && (
         <>
           <ProfileForm profile={loaded.data.profile} />
+          <DataDownload />
           <ConsentSection />
         </>
       )}
