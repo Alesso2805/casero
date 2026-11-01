@@ -131,6 +131,53 @@ async def test_list_account_ids_separates_jobs_from_due_purges(
     assert later.account_id not in purge
 
 
+async def consent_event(
+    owner: asyncpg.Connection, account: seed.SeededAccount, table: str, at: datetime
+) -> None:
+    document_id = await owner.fetchval(
+        "SELECT id FROM legal_documents WHERE kind = 'sensitive_consent' AND version = '0.1'"
+    )
+    key = (uuid7(), account.account_id, account.user_id, document_id, at)
+    if table == "legal_withdrawals":
+        await owner.execute(
+            "INSERT INTO legal_withdrawals (id, account_id, user_id, document_id, withdrawn_at)"
+            " VALUES ($1, $2, $3, $4, $5)",
+            *key,
+        )
+    else:
+        await owner.execute(
+            "INSERT INTO legal_acceptances (id, account_id, user_id, document_id, accepted_at,"
+            " ip_hash) VALUES ($1, $2, $3, $4, $5, $6)",
+            *key,
+            os.urandom(32),
+        )
+
+
+async def blocked_from_jobs_and_portal(
+    database: Database, account: seed.SeededAccount
+) -> tuple[bool, bool]:
+    async with rolled_back(database.dsn("casero_worker")) as worker:
+        rows = await worker.fetch("SELECT app_list_account_ids('jobs', $1)", TODAY)
+    async with rolled_back(database.dsn("casero_app")) as app:
+        link = await resolve(app, account.token_hashes[account.lease_ids[0]])
+    return account.account_id not in {row[0] for row in rows}, not link
+
+
+async def test_a_withdrawn_consent_stops_jobs_and_the_tenant_link_until_it_is_given_again(
+    database: Database, owner: asyncpg.Connection, account: seed.SeededAccount
+) -> None:
+    await consent_event(owner, account, "legal_acceptances", NOW)
+    before = await blocked_from_jobs_and_portal(database, account)
+    await consent_event(owner, account, "legal_withdrawals", NOW)
+    withdrawn_on_a_tie = await blocked_from_jobs_and_portal(database, account)
+    await consent_event(owner, account, "legal_acceptances", NOW + timedelta(minutes=1))
+    given_again = await blocked_from_jobs_and_portal(database, account)
+
+    assert before == (False, False)
+    assert withdrawn_on_a_tie == (True, True)
+    assert given_again == (False, False)
+
+
 async def test_list_account_ids_rejects_unknown_purposes(database: Database) -> None:
     async with rolled_back(database.dsn("casero_worker")) as worker:
         with pytest.raises(asyncpg.InvalidParameterValueError):
