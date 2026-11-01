@@ -57,7 +57,7 @@ Settings are always set with `set_config(name, :value, true)` and bound paramete
 | `app_resolve_tenant_token(p_hash, p_today)` | `casero_app` | Resolve a tenant link to its account and lease |
 | `app_cancel_deletion(p_token_hash, p_now)` | `casero_app` | Validate the single-use token, clear the deletion schedule, clear and return `deletion_contact_enc`. The application decrypts it and restores the user's email in the same transaction |
 | `app_list_account_ids(p_purpose, p_today)` | `casero_worker` | List accounts for scheduled jobs or for purge |
-| `purge_account(p_account_id, p_today, p_email)` | `casero_worker` | Delete an account whose scheduled deletion has passed (ADR-0007). `p_email` is used only to delete that email's invites and is never logged |
+| `purge_account(p_account_id, p_today)` | `casero_worker` | Delete an account whose scheduled deletion has passed and whose files were all queued and deleted (ADR-0007) |
 
 All four are owned by `casero_owner`, set a fixed `search_path`, validate their arguments, receive dates as parameters instead of calling `CURRENT_DATE` or `now()`, and have `EXECUTE` revoked from `PUBLIC`.
 

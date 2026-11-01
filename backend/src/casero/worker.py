@@ -13,7 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from casero.accounts.application.entitlements import GetEntitlements
 from casero.accounts.application.profile import Profiles
+from casero.accounts.application.purge import ObjectStore, PurgeAccount, PurgeRecords
 from casero.accounts.infrastructure.account import SqlPlans, SqlProfiles, SqlSubscriptions
+from casero.accounts.infrastructure.purge import NoObjectStore, SqlPurgeRecords
 from casero.admin.application.alerts import AlertLog, AlertMailer, OpsReadings, RaiseAlerts
 from casero.admin.application.complaint_emails import (
     ComplaintMailer,
@@ -111,6 +113,16 @@ def account_jobs(clock: Clock) -> dict[str, AccountWork]:
     return {"close_leases": close_leases, "rent_charges": rent_charges}
 
 
+def purge_work(clock: Clock) -> AccountWork:
+    objects: ObjectStore = NoObjectStore()
+
+    async def purge(connection: AsyncConnection, account_id: UUID, today: date) -> None:
+        records: PurgeRecords = SqlPurgeRecords(connection)
+        await PurgeAccount(records, objects, clock)(account_id, today)
+
+    return purge
+
+
 def tax_reminder_work(settings: WorkerSettings, clock: Clock) -> AccountWork:
     mailer: TaxReminderMailer = SmtpMailer(settings.smtp, clock)
     unsubscribe: UnsubscribeLinks = UnsubscribeLinkMaker(
@@ -200,6 +212,9 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
             name: DailyAccountJob(engine, clock, name, work)
             for name, work in account_jobs(clock).items()
         },
+        "purge_accounts": DailyAccountJob(
+            engine, clock, "purge_accounts", purge_work(clock), purpose="purge"
+        ),
         "tax_reminders": from_lima_hour(
             TAX_REMINDERS_FROM_HOUR,
             clock,

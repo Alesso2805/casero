@@ -1,5 +1,6 @@
 from collections.abc import Awaitable, Callable
 from datetime import date, datetime
+from typing import Literal
 from uuid import UUID
 
 import structlog
@@ -37,6 +38,7 @@ DONE = text(
 ACCOUNTS = text("SELECT app_list_account_ids(:purpose, :today)")
 
 type AccountWork = Callable[[AsyncConnection, UUID, date], Awaitable[None]]
+type AccountPurpose = Literal["jobs", "purge"]
 
 log = structlog.get_logger()
 
@@ -104,11 +106,19 @@ class DailyAccountJob:
     that same transaction, so a crash leaves the account to be retried on the next tick.
     """
 
-    def __init__(self, engine: AsyncEngine, clock: Clock, name: str, work: AccountWork) -> None:
+    def __init__(
+        self,
+        engine: AsyncEngine,
+        clock: Clock,
+        name: str,
+        work: AccountWork,
+        purpose: AccountPurpose = "jobs",
+    ) -> None:
         self._engine = engine
         self._clock = clock
         self._name = name
         self._work = work
+        self._purpose = purpose
 
     async def __call__(self) -> None:
         today = self._clock.today_lima()
@@ -118,7 +128,9 @@ class DailyAccountJob:
                 return
             accounts = [
                 row[0]
-                for row in await connection.execute(ACCOUNTS, {"purpose": "jobs", "today": today})
+                for row in await connection.execute(
+                    ACCOUNTS, {"purpose": self._purpose, "today": today}
+                )
             ]
         finished = [await self._run(account_id, today, run_key) for account_id in accounts]
         if all(finished):
