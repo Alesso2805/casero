@@ -24,6 +24,7 @@ export function mockApi(routes: Record<string, Route>) {
   const allRoutes: Record<string, Route> = {
     "/api/public/business": () => json(testBusiness),
     "/api/public/csrf": 204,
+    "/api/app/legal": () => json({ pending: [], consent_withdrawn: false }),
     ...routes,
   };
   vi.stubGlobal(

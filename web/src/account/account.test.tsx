@@ -215,6 +215,84 @@ describe("account home", () => {
     ).toBeDefined();
   });
 
+  const VERIFIED = () => json({ ...ME, email_verified: true, verify_by: null });
+  const NEW_TERMS = {
+    id: "01a175b4-8f38-727d-a7dc-40a7a7b30002",
+    kind: "terms",
+    version: "0.2",
+    url: "/legal/terminos/0.2",
+  };
+  const CONSENT = {
+    id: "01a175b4-8f38-727d-a7dc-40a7a7b30003",
+    kind: "sensitive_consent",
+    version: "0.1",
+    url: "/legal/consentimiento-datos-sensibles/0.1",
+  };
+
+  test("asks to accept a new version before showing the account", async () => {
+    let accepted = false;
+    const api = mockApi({
+      "/api/app/me": VERIFIED,
+      ...EMPTY_HOME,
+      "/api/app/legal": () =>
+        json({ pending: accepted ? [] : [NEW_TERMS], consent_withdrawn: false }),
+      "/api/app/legal/acceptances": () => {
+        accepted = true;
+        return json({ pending: [], consent_withdrawn: false });
+      },
+    });
+    await renderPage("/app");
+
+    expect(
+      await screen.findByRole("heading", { name: "Actualizamos nuestros documentos" }),
+    ).toBeDefined();
+    expect(screen.queryByRole("link", { name: "Mis inmuebles" })).toBeNull();
+    expect(screen.getByRole("link", { name: "términos y condiciones" })).toHaveProperty(
+      "pathname",
+      "/legal/terminos/0.2",
+    );
+    const submit = screen.getByRole("button", { name: "Aceptar y continuar" });
+    expect(submit).toHaveProperty("disabled", true);
+    await userEvent.click(screen.getByLabelText(/Acepto los/));
+    await userEvent.click(submit);
+
+    expect(await screen.findByRole("link", { name: "Mis inmuebles" })).toBeDefined();
+    expect(await api.requestsTo("/api/app/legal/acceptances")[0]?.json()).toEqual({
+      document_ids: [NEW_TERMS.id],
+    });
+  });
+
+  test("a withdrawn consent blocks the account until it is given again", async () => {
+    mockApi({
+      "/api/app/me": VERIFIED,
+      ...EMPTY_HOME,
+      "/api/app/legal": () => json({ pending: [CONSENT], consent_withdrawn: true }),
+    });
+    await renderPage("/app");
+
+    expect(await screen.findByRole("heading", { name: "Tu cuenta está bloqueada" })).toBeDefined();
+    expect(screen.queryByRole("link", { name: "Mis contratos" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeDefined();
+    expect(
+      await screen.findByLabelText(new RegExp(`Consiento de forma expresa que ${testBusiness.name}`)),
+    ).toBeDefined();
+  });
+
+  test("says when a newer version appeared while accepting", async () => {
+    mockApi({
+      "/api/app/me": VERIFIED,
+      ...EMPTY_HOME,
+      "/api/app/legal": () => json({ pending: [NEW_TERMS], consent_withdrawn: false }),
+      "/api/app/legal/acceptances": () => json({ detail: "document_not_current" }, 422),
+    });
+    await renderPage("/app");
+
+    await userEvent.click(await screen.findByLabelText(/Acepto los/));
+    await userEvent.click(screen.getByRole("button", { name: "Aceptar y continuar" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Hay una versión más nueva");
+  });
+
   test("says when the account could not be loaded", async () => {
     mockApi({ "/api/app/me": 500 });
     await renderPage("/app");
