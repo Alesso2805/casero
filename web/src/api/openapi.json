@@ -56,6 +56,19 @@
             "title": "Features",
             "type": "object"
           },
+          "grace_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day of grace, while it lasts",
+            "title": "Grace Until"
+          },
           "max_active_leases": {
             "title": "Max Active Leases",
             "type": "integer"
@@ -93,6 +106,7 @@
           "status",
           "trial_ends_at",
           "ends_at",
+          "grace_until",
           "max_active_leases",
           "features"
         ],
@@ -1848,6 +1862,63 @@
           "voided"
         ],
         "title": "PaymentResponse",
+        "type": "object"
+      },
+      "PendingDueResponse": {
+        "properties": {
+          "due_on": {
+            "format": "date",
+            "title": "Due On",
+            "type": "string"
+          },
+          "pending_cents": {
+            "title": "Pending Cents",
+            "type": "integer"
+          },
+          "period": {
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period",
+          "due_on",
+          "pending_cents"
+        ],
+        "title": "PendingDueResponse",
+        "type": "object"
+      },
+      "PlanResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "max_active_leases": {
+            "title": "Max Active Leases",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_month_cents": {
+            "title": "Price Month Cents",
+            "type": "integer"
+          },
+          "price_year_cents": {
+            "title": "Price Year Cents",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "price_month_cents",
+          "price_year_cents",
+          "max_active_leases"
+        ],
+        "title": "PlanResponse",
         "type": "object"
       },
       "PriorDebtRequest": {
@@ -4725,6 +4796,35 @@
         "summary": "Void Payment"
       }
     },
+    "/api/app/plans": {
+      "get": {
+        "description": "The plans with their prices, from the cheapest.",
+        "operationId": "plans_api_app_plans_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PlanResponse"
+                  },
+                  "title": "Response Plans Api App Plans Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or a legal step pending"
+          }
+        },
+        "summary": "Plans"
+      }
+    },
     "/api/app/properties": {
       "get": {
         "description": "Every property of the account with its units, archived ones included.",
@@ -5258,6 +5358,35 @@
           }
         },
         "summary": "Void Tax Payment"
+      }
+    },
+    "/api/app/tax/pending-dues": {
+      "get": {
+        "description": "What is still owed to SUNAT for the months not yet due.",
+        "operationId": "pending_dues_api_app_tax_pending_dues_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PendingDueResponse"
+                  },
+                  "title": "Response Pending Dues Api App Tax Pending Dues Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or a legal step pending"
+          }
+        },
+        "summary": "Pending Dues"
       }
     },
     "/api/app/tax/upcoming": {

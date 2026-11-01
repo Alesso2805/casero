@@ -92,6 +92,7 @@ from casero.shared.kernel.clock import LIMA, Clock, SystemClock
 from casero.tax.application.calculator import TaxRuleBook
 from casero.tax.application.declarations import GetDeclarations
 from casero.tax.application.sunat_payments import TaxPaymentStore
+from casero.tax.application.upcoming import GetPendingDues
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 
@@ -185,11 +186,11 @@ def trial_ended_work(settings: WorkerSettings, engine: AsyncEngine, clock: Clock
         profiles: Profiles = SqlProfiles(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
         owner: AccountOwner = SqlAccountOwner(connection)
+        declarations = declarations_in(connection, entitlements, clock)
         await SendTrialEnded(
             entitlements,
             profiles,
-            rule_book,
-            declarations_in(connection, entitlements, clock),
+            GetPendingDues(declarations, profiles, rule_book, clock),
             owner,
             bounced,
             log,
