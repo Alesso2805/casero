@@ -5,6 +5,7 @@ export interface Business {
   name: string;
   ruc: string;
   address: string;
+  yape: string;
   complaints_inbox: string;
   privacy_inbox: string;
 }

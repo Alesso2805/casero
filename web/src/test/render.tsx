@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryHistory, createRouter, RouterProvider } from "@tanstack/react-router";
-import { render } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 
 import { ErrorPage, NotFoundPage } from "../errors";
 import { routeTree } from "../router";
@@ -19,5 +19,14 @@ export async function renderPage(path: string) {
     </QueryClientProvider>,
   );
   await router.load();
-  return result;
+  // An absence is only proof once the data that could have shown the element has arrived.
+  const settled = async () => {
+    await waitFor(() => {
+      if (queryClient.isFetching() > 0) {
+        throw new Error("Queries still running");
+      }
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve)));
+  };
+  return { ...result, settled };
 }

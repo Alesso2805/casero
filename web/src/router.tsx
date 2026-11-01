@@ -89,6 +89,13 @@ const profileRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/ProfilePage"), "ProfilePage"),
 });
 
+const planRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/app/plan",
+  staticData: { title: "Mi plan" },
+  component: lazyRouteComponent(() => import("./account/PlanPage"), "PlanPage"),
+});
+
 const propertiesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/app/inmuebles",
@@ -211,6 +218,7 @@ export const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute,
   profileRoute,
+  planRoute,
   propertiesRoute,
   newPropertyRoute,
   propertyRoute,

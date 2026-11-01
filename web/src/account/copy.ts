@@ -48,10 +48,40 @@ export const accountCopy = {
     logOut: "Cerrar sesión",
     logOutEverywhere: "Cerrar sesión en todos mis dispositivos",
     profile: "Mis datos",
+    plan: "Mi plan",
     properties: "Mis inmuebles",
     leases: "Mis contratos",
     declarations: "Formularios de SUNAT",
     templates: "Mensajes de cobro",
+  },
+  plan: {
+    title: "Mi plan",
+    trial: (date: string) => `Estás en la prueba gratis de Casero hasta el ${date}.`,
+    active: (date: string) => `Tienes el plan Casero hasta el ${date}.`,
+    activeOpen: "Tienes el plan Casero.",
+    grace: (date: string) => `Tu plan venció, pero puedes seguir usando todo hasta el ${date}.`,
+    free: "Estás en el plan Gratis.",
+    plansTitle: "Los planes",
+    noPrice: "Gratis",
+    price: (month: string, year: string) => `${month} al mes o ${year} al año`,
+    leases: (count: number) =>
+      `Hasta ${String(count)} ${count === 1 ? "contrato activo" : "contratos activos"}`,
+    freeFeatures: "Cobros, mensajes por WhatsApp y enlace del inquilino.",
+    paidFeatures:
+      "Además, Formularios de SUNAT con sus recordatorios, constancias en PDF y archivos para tu contador.",
+    payTitle: "Cómo pagar",
+    payYape: (number: string, name: string) =>
+      `Yapea el monto del plan al ${number}, a nombre de ${name}.`,
+    payProof: "Envía la captura por WhatsApp a ese mismo número, con el correo de tu cuenta.",
+    payActivation: "Activamos tu plan a mano y te enviamos tu boleta.",
+  },
+  trialNotice: {
+    ended: (date: string) =>
+      `Tu prueba gratis terminó. Puedes seguir usando todo hasta el ${date}. Después tu cuenta pasa al plan Gratis, sin los Formularios de SUNAT ni sus recordatorios.`,
+    owed: "Todavía tienes formularios 1683 por pagar:",
+    due: (period: string, amount: string, date: string) =>
+      `${period}: ${amount}, vencen el ${date}`,
+    open: "Ver mi plan",
   },
   deletion: {
     title: "Eliminar mi cuenta",
