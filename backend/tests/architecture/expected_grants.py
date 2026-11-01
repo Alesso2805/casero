@@ -61,9 +61,7 @@ ACCOUNT_TABLES = frozenset(
     }
 )
 
-EDITABLE_ACCOUNT_TABLES = frozenset(
-    {"accounts", "properties", "units", "renters", "message_templates"}
-)
+EDITABLE_ACCOUNT_TABLES = frozenset({"properties", "units", "renters", "message_templates"})
 
 ACCOUNT_TABLE_PRIVILEGES = {
     table: READ_INSERT_UPDATE if table in EDITABLE_ACCOUNT_TABLES else READ_AND_INSERT
@@ -85,6 +83,7 @@ ACCOUNT_COLUMN_UPDATES = {
 TABLE_PRIVILEGES = {
     "casero_app": {
         **ACCOUNT_TABLE_PRIVILEGES,
+        "subscription_payments": SELECT,
         "users": CRUD,
         "sessions": CRUD,
         "email_tokens": CRUD,
@@ -103,6 +102,8 @@ TABLE_PRIVILEGES = {
     },
     "casero_worker": {
         **ACCOUNT_TABLE_PRIVILEGES,
+        "subscriptions": SELECT,
+        "subscription_payments": SELECT,
         "account_members": SELECT,
         "plans": SELECT,
         "tax_rule_sets": SELECT,
@@ -136,6 +137,20 @@ TABLE_PRIVILEGES = {
 COLUMN_PRIVILEGES = {
     "casero_app": {
         **ACCOUNT_COLUMN_UPDATES,
+        "accounts": {
+            "UPDATE": frozenset(
+                {
+                    "display_name",
+                    "taxpayer_kind",
+                    "ruc",
+                    "ruc_group",
+                    "daily_digest",
+                    "deletion_requested_at",
+                    "deletion_scheduled_for",
+                    "deletion_contact_enc",
+                }
+            )
+        },
         "registration_invites": {"UPDATE": frozenset({"used_at"})},
         "waitlist_entries": {"SELECT": frozenset({"email"})},
     },

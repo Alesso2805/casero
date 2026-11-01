@@ -171,12 +171,15 @@ async def test_ar16_in_the_tenant_context_writes_are_refused_but_the_link_is_tou
     assert (renamed, touched) == ("UPDATE 0", "UPDATE 1")
 
 
+@pytest.mark.parametrize("in_context", [False, True])
 async def test_ar17_admin_sees_rows_only_where_it_has_a_policy(
-    database: Database, seeded: tuple[SeededAccount, SeededAccount]
+    database: Database, seeded: tuple[SeededAccount, SeededAccount], in_context: bool
 ) -> None:
     async with rolled_back(database.superuser_dsn()) as superuser:
         await superuser.execute(f"GRANT SELECT ON {', '.join(ACCOUNT_TABLES)} TO casero_admin")
         await superuser.execute("SET LOCAL ROLE casero_admin")
+        if in_context:
+            await seed.set_context(superuser, seeded[0].account_id)
 
         assert await tables_with_visible_rows(superuser) == ADMIN_TABLES
 
