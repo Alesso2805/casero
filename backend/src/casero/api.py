@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.accounts.api import account as account_api
+from casero.accounts.api import data_export as data_export_api
 from casero.accounts.api import legal as legal_api
 from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
@@ -18,6 +19,7 @@ from casero.accounts.application.context import (
     Memberships,
     OpenAccount,
 )
+from casero.accounts.application.data_export import DataSections, ExportMyData
 from casero.accounts.application.entitlements import (
     GetEntitlements,
     PlanCatalog,
@@ -55,6 +57,7 @@ from casero.accounts.infrastructure.account import (
     SqlProfiles,
     SqlSubscriptions,
 )
+from casero.accounts.infrastructure.data_export import SqlAccountData
 from casero.accounts.infrastructure.legal import SqlLegalRecords
 from casero.accounts.infrastructure.registration import (
     SqlAccountRecords,
@@ -141,6 +144,7 @@ from casero.leases.application.renters import (
     UpdateRenter,
 )
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
+from casero.leases.infrastructure.data_export import SqlLeaseData
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterHolders, SqlRenterStore
 from casero.ledger.api import charges as charges_api
@@ -172,6 +176,7 @@ from casero.ledger.application.payments import (
     RecordPayment,
     VoidPayment,
 )
+from casero.ledger.infrastructure.data_export import SqlLedgerData
 from casero.ledger.infrastructure.ledger import SqlLedger
 from casero.ledger.infrastructure.opening_balances import SqlOpeningBalances
 from casero.ledger.infrastructure.rent_charges import SqlRentCharges
@@ -187,6 +192,7 @@ from casero.properties.application.properties import (
     UpdateProperty,
     UpdateUnit,
 )
+from casero.properties.infrastructure.data_export import SqlPropertyData
 from casero.properties.infrastructure.properties import SqlPropertyStore
 from casero.reminders.api import reminders as reminders_api
 from casero.reminders.api import templates as templates_api
@@ -198,6 +204,7 @@ from casero.reminders.application.reminders import (
     TenantLinkUrls,
 )
 from casero.reminders.application.templates import ListTemplates, SaveTemplate, TemplateStore
+from casero.reminders.infrastructure.data_export import SqlReminderData
 from casero.reminders.infrastructure.reminders import SqlRecipientStore, SqlReminderLog
 from casero.reminders.infrastructure.templates import SqlTemplateStore
 from casero.shared.infrastructure import client_errors as client_errors_api
@@ -225,6 +232,7 @@ from casero.tax.application.exports import ExportDeclarations, ExportPayments
 from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
 from casero.tax.application.sunat_payments import TaxPaymentStore
 from casero.tax.application.upcoming import GetUpcomingDue
+from casero.tax.infrastructure.data_export import SqlTaxData
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from casero.tenant_portal.api import links as tenant_links_api
@@ -244,6 +252,7 @@ from casero.tenant_portal.application.portal import (
     PortalReader,
     TenantGate,
 )
+from casero.tenant_portal.infrastructure.data_export import SqlTenantPortalData
 from casero.tenant_portal.infrastructure.links import HmacLinkSigner, SqlLinks
 from casero.tenant_portal.infrastructure.portal import SqlPortalReader, SqlTenantGate
 
@@ -586,6 +595,35 @@ def create_app(
         subscriptions: SubscriptionReader = SqlSubscriptions(connection)
         plans: PlanCatalog = SqlPlans(connection)
         return GetEntitlements(subscriptions, plans, app_clock)
+
+    async def provide_export_my_data(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> ExportMyData:
+        account_data: DataSections = SqlAccountData(connection)
+        property_data: DataSections = SqlPropertyData(connection)
+        lease_data: DataSections = SqlLeaseData(connection, config.field_cipher)
+        ledger_data: DataSections = SqlLedgerData(connection)
+        tax_data: DataSections = SqlTaxData(connection)
+        reminder_data: DataSections = SqlReminderData(connection)
+        portal_data: DataSections = SqlTenantPortalData(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ExportMyData(
+            entitlements,
+            (
+                account_data,
+                property_data,
+                lease_data,
+                ledger_data,
+                tax_data,
+                reminder_data,
+                portal_data,
+            ),
+            audit,
+            app_clock,
+        )
+
+    app.include_router(data_export_api.create_router(account_for_rights, provide_export_my_data))
 
     async def provide_account_summary(
         connection: Transaction,

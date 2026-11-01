@@ -1,6 +1,3 @@
-import csv
-import io
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -17,12 +14,8 @@ from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.ids import new_id
 from casero.shared.kernel.money import CENTS_PER_SOL
 from casero.shared.kernel.periods import Period
+from casero.shared.kernel.spreadsheet import csv_text
 from casero.tax.application.declarations import TAXED, GetDeclarations
-
-# A spreadsheet runs a cell that starts with one of these as a formula (CSV injection).
-FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
-# Excel needs the BOM to read the file as UTF-8, or the accents break.
-UTF8_BOM = "﻿"
 
 METHOD_NAMES = {
     "cash": "Efectivo",
@@ -62,18 +55,6 @@ DECLARATION_COLUMNS = (
 )
 
 Unavailable = Literal["accountant_export_unavailable"]
-
-
-def spreadsheet_cell(value: str) -> str:
-    return f"'{value}" if value.startswith(FORMULA_STARTS) else value
-
-
-def csv_text(columns: Sequence[str], rows: Iterable[Sequence[str]]) -> str:
-    buffer = io.StringIO()
-    writer = csv.writer(buffer, lineterminator="\r\n")
-    writer.writerow(columns)
-    writer.writerows([spreadsheet_cell(value) for value in row] for row in rows)
-    return UTF8_BOM + buffer.getvalue()
 
 
 def soles(cents: int) -> str:
