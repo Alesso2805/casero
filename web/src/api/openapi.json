@@ -467,6 +467,24 @@
         "title": "ChargeResponse",
         "type": "object"
       },
+      "ChooseToolsRequest": {
+        "properties": {
+          "lease_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Lease Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lease_ids"
+        ],
+        "title": "ChooseToolsRequest",
+        "type": "object"
+      },
       "ClientError": {
         "properties": {
           "name": {
@@ -1377,6 +1395,25 @@
           "ending_soon"
         ],
         "title": "LeaseResponse",
+        "type": "object"
+      },
+      "LeaseToolsResponse": {
+        "properties": {
+          "lease_id": {
+            "format": "uuid",
+            "title": "Lease Id",
+            "type": "string"
+          },
+          "tools_enabled": {
+            "title": "Tools Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "lease_id",
+          "tools_enabled"
+        ],
+        "title": "LeaseToolsResponse",
         "type": "object"
       },
       "LegalDocumentResponse": {
@@ -2914,6 +2951,34 @@
         "title": "TokenRequest",
         "type": "object"
       },
+      "ToolsStatusResponse": {
+        "properties": {
+          "leases": {
+            "description": "The active leases",
+            "items": {
+              "$ref": "#/components/schemas/LeaseToolsResponse"
+            },
+            "title": "Leases",
+            "type": "array"
+          },
+          "limit": {
+            "description": "Active leases the plan covers with WhatsApp and the portal",
+            "title": "Limit",
+            "type": "integer"
+          },
+          "over_limit": {
+            "title": "Over Limit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "limit",
+          "over_limit",
+          "leases"
+        ],
+        "title": "ToolsStatusResponse",
+        "type": "object"
+      },
       "UnitRequest": {
         "properties": {
           "kind": {
@@ -3605,6 +3670,70 @@
           }
         },
         "summary": "Export Payments"
+      }
+    },
+    "/api/app/lease-tools": {
+      "get": {
+        "description": "Which active leases keep WhatsApp and the tenant portal.",
+        "operationId": "lease_tools_api_app_lease_tools_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolsStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or a legal step pending"
+          }
+        },
+        "summary": "Lease Tools"
+      },
+      "put": {
+        "description": "Choose who keeps the tools while the account is over its plan's limit.",
+        "operationId": "choose_lease_tools_api_app_lease_tools_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseToolsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolsStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or a legal step pending"
+          },
+          "404": {
+            "description": "`lease_not_found`: not an active lease of this account"
+          },
+          "422": {
+            "description": "Invalid data, or `too_many_leases` for the plan"
+          }
+        },
+        "summary": "Choose Lease Tools"
       }
     },
     "/api/app/leases": {

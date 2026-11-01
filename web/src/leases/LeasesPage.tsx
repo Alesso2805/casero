@@ -8,6 +8,7 @@ import { formatSoles } from "../landing/money";
 import { primaryButton, textLink } from "../account/fields";
 import { fetchProperties } from "../properties/PropertiesPage";
 import { leasesCopy as text } from "./copy";
+import { LeaseToolsChooser } from "./LeaseToolsChooser";
 
 type Lease = components["schemas"]["LeaseResponse"];
 type Renter = components["schemas"]["RenterResponse"];
@@ -96,6 +97,12 @@ export function LeasesPage() {
   const all = leases.data?.kind === "data" ? leases.data.data : [];
   const active = all.filter((lease) => lease.ended_at === null);
   const ended = all.filter((lease) => lease.ended_at !== null);
+  const tenantsOfLeases = new Map(
+    active.map((lease) => [
+      lease.id,
+      `${names.get(lease.renter_id) ?? text.list.unknownRenter} · ${units.get(lease.unit_id) ?? text.list.unknownUnit}`,
+    ]),
+  );
   const card = (lease: Lease) => (
     <LeaseCard
       key={lease.id}
@@ -122,6 +129,7 @@ export function LeasesPage() {
           >
             {text.list.add}
           </Link>
+          <LeaseToolsChooser names={tenantsOfLeases} />
           <ul className="flex flex-col gap-4">{active.map(card)}</ul>
           {ended.length > 0 && (
             <details>

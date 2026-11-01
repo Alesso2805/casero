@@ -190,6 +190,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/lease-tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Lease Tools
+         * @description Which active leases keep WhatsApp and the tenant portal.
+         */
+        get: operations["lease_tools_api_app_lease_tools_get"];
+        /**
+         * Choose Lease Tools
+         * @description Choose who keeps the tools while the account is over its plan's limit.
+         */
+        put: operations["choose_lease_tools_api_app_lease_tools_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/leases": {
         parameters: {
             query?: never;
@@ -1360,6 +1384,11 @@ export interface components {
             /** Voided */
             voided: boolean;
         };
+        /** ChooseToolsRequest */
+        ChooseToolsRequest: {
+            /** Lease Ids */
+            lease_ids: string[];
+        };
         /** ClientError */
         ClientError: {
             /** Name */
@@ -1741,6 +1770,16 @@ export interface components {
              * Format: uuid
              */
             unit_id: string;
+        };
+        /** LeaseToolsResponse */
+        LeaseToolsResponse: {
+            /**
+             * Lease Id
+             * Format: uuid
+             */
+            lease_id: string;
+            /** Tools Enabled */
+            tools_enabled: boolean;
         };
         /** LegalDocumentResponse */
         LegalDocumentResponse: {
@@ -2367,6 +2406,21 @@ export interface components {
             /** Token */
             token: string;
         };
+        /** ToolsStatusResponse */
+        ToolsStatusResponse: {
+            /**
+             * Leases
+             * @description The active leases
+             */
+            leases: components["schemas"]["LeaseToolsResponse"][];
+            /**
+             * Limit
+             * @description Active leases the plan covers with WhatsApp and the portal
+             */
+            limit: number;
+            /** Over Limit */
+            over_limit: boolean;
+        };
         /** UnitRequest */
         UnitRequest: {
             /**
@@ -2953,6 +3007,92 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    lease_tools_api_app_lease_tools_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsStatusResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or a legal step pending */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    choose_lease_tools_api_app_lease_tools_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChooseToolsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ToolsStatusResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or a legal step pending */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `lease_not_found`: not an active lease of this account */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `too_many_leases` for the plan */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

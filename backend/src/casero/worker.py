@@ -52,9 +52,11 @@ from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, Un
 from casero.leases.application.closing import CloseExpiredLeases, LeaseClosings
 from casero.leases.application.leases import LeaseStore
 from casero.leases.application.renters import RenterDocuments
+from casero.leases.application.tools import EnsureLeaseTools, LeaseToolsStore
 from casero.leases.infrastructure.closings import SqlLeaseClosings
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterHolders
+from casero.leases.infrastructure.tools import SqlLeaseTools
 from casero.ledger.application.charges import EnsureRentCharges, RentChargeStore
 from casero.ledger.application.collections import CollectionsStore
 from casero.ledger.infrastructure.ledger import SqlLedger
@@ -129,7 +131,17 @@ def account_jobs(clock: Clock) -> dict[str, AccountWork]:
         store: RentChargeStore = SqlRentCharges(connection)
         await EnsureRentCharges(store, clock)(account_id, today)
 
-    return {"close_leases": close_leases, "rent_charges": rent_charges}
+    async def lease_tools(connection: AsyncConnection, account_id: UUID, _: date) -> None:
+        entitlements = GetEntitlements(SqlSubscriptions(connection), SqlPlans(connection), clock)
+        store: LeaseToolsStore = SqlLeaseTools(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        await EnsureLeaseTools(entitlements, store, audit, clock)(account_id)
+
+    return {
+        "close_leases": close_leases,
+        "rent_charges": rent_charges,
+        "lease_tools": lease_tools,
+    }
 
 
 def purge_work(clock: Clock) -> AccountWork:
