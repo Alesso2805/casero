@@ -241,9 +241,7 @@ async def test_purge_refuses_an_account_that_is_not_due(
 
     async with rolled_back(database.dsn("casero_worker")) as worker:
         with pytest.raises(asyncpg.ObjectNotInPrerequisiteStateError):
-            await worker.execute(
-                "SELECT purge_account($1, $2, $3)", account.account_id, TODAY, account.email
-            )
+            await worker.execute("SELECT purge_account($1, $2)", account.account_id, TODAY)
 
 
 async def test_purge_refuses_while_storage_objects_are_pending(
@@ -260,9 +258,7 @@ async def test_purge_refuses_while_storage_objects_are_pending(
 
     async with rolled_back(database.dsn("casero_worker")) as worker:
         with pytest.raises(asyncpg.ObjectNotInPrerequisiteStateError):
-            await worker.execute(
-                "SELECT purge_account($1, $2, $3)", account.account_id, TODAY, account.email
-            )
+            await worker.execute("SELECT purge_account($1, $2)", account.account_id, TODAY)
 
 
 @pytest.mark.parametrize("role", ["casero_app", "casero_worker", "casero_admin"])
@@ -283,8 +279,8 @@ async def test_ledger_tables_reject_update_and_delete(database: Database, role: 
     ("role", "call"),
     [
         ("casero_app", "SELECT app_list_account_ids('jobs', '2026-10-25')"),
-        ("casero_app", "SELECT purge_account(gen_random_uuid(), '2026-10-25', 'x@example.test')"),
-        ("casero_admin", "SELECT purge_account(gen_random_uuid(), '2026-10-25', 'x@example.test')"),
+        ("casero_app", "SELECT purge_account(gen_random_uuid(), '2026-10-25')"),
+        ("casero_admin", "SELECT purge_account(gen_random_uuid(), '2026-10-25')"),
         (
             "casero_worker",
             "SELECT * FROM app_resolve_tenant_token(gen_random_uuid()::text::bytea, '2026-10-25')",

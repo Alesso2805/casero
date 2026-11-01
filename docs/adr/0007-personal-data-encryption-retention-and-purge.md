@@ -64,15 +64,15 @@ Voucher files are unique by `(account_id, sha256)` only among rows that are not 
    - The original email is encrypted into `deletion_contact_enc`.
    - `users.email` becomes `deleted+<id>@invalid`.
    - Access is blocked.
+   - That email's `registration_invites` are deleted.
    - The purge is scheduled 30 days later.
 2. **Cancel:** the email link calls `app_cancel_deletion(p_token_hash, p_now)` (ADR-0002). In the same transaction, the application decrypts the returned envelope and restores the email.
 3. **Purge, phase 1:** the worker queues every object of the account in `pending_object_deletions` and deletes each one with all its versions.
-4. **Purge, phase 2:** when the queue is empty, the worker decrypts `deletion_contact_enc` and calls `purge_account(p_account_id, p_today, p_email)`, which:
+4. **Purge, phase 2:** when the queue is empty, the worker calls `purge_account(p_account_id, p_today)`, which refuses while any file is unqueued or undeleted, and:
    - checks that the scheduled date has passed;
-   - deletes rows in dependency order: account data, `job_runs` and `pending_object_deletions` of the account, `registration_invites` for that email, and the user with their sessions and email tokens;
+   - deletes rows in dependency order: account data, `job_runs` and `pending_object_deletions` of the account, and the user with their sessions and email tokens;
    - keeps only the anonymized `accounts` row, marked as purged, and its `subscription_payments`.
 
-   `p_email` is used only to delete those invites and is never written to any log, by the worker or by the function.
 
 Backups are encrypted, locked for 30 days and expire after 30 days in their own Backblaze B2 bucket (`docs/ops/storage-buckets.md`), so purged data disappears from them within that window. The privacy policy says so.
 
@@ -84,6 +84,10 @@ Backups are encrypted, locked for 30 days and expire after 30 days in their own 
 
 ## Enforcement
 
-- A test that no row with the account id, the user, or an invite with the email remains after a purge.
+- A test that no row with the account id or the user remains after a purge, and one that no invite with the email remains after the request.
 - A test that the document does not appear in plain text in the database, logs or error tracking.
 - Envelope round-trip tests, including a rejected ciphertext with mismatched associated data.
+
+## Amendment (CS-25, 2026-11-01)
+
+The worker keeps holding no encryption keys. SPEC first had it decrypt the contact only to pass the email to `purge_account`, for deleting that email's invites. The API, which has the keys, now deletes those invites when the deletion is requested, and `purge_account` takes no email. If the user cancels, the invites stay deleted, which loses nothing: they were already used.

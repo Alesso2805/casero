@@ -58,14 +58,6 @@ async def test_purge_leaves_only_the_anonymized_account_and_its_payments(
         TODAY,
     )
     await owner.execute(
-        "INSERT INTO registration_invites (id, email, token_hash, expires_at)"
-        " VALUES ($1, $2, $3, $4)",
-        uuid7(),
-        account.email.upper(),
-        os.urandom(32),
-        NOW,
-    )
-    await owner.execute(
         "INSERT INTO sessions (id, user_id, token_hash, created_at, last_seen_at, expires_at)"
         " VALUES ($1, $2, $3, $4, $4, $4)",
         uuid7(),
@@ -75,8 +67,7 @@ async def test_purge_leaves_only_the_anonymized_account_and_its_payments(
     )
     await owner.execute(
         "INSERT INTO pending_object_deletions (storage_key, account_id, requested_at, attempts,"
-        " done_at) VALUES ($1, $2, $3, 1, $3)",
-        f"{account.account_id}/{uuid7()}",
+        " done_at) SELECT storage_key, account_id, $2, 1, $2 FROM files WHERE account_id = $1",
         account.account_id,
         NOW,
     )
@@ -87,9 +78,7 @@ async def test_purge_leaves_only_the_anonymized_account_and_its_payments(
             row[0] for row in await worker.fetch("SELECT app_list_account_ids('purge', $1)", TODAY)
         ]
         assert account.account_id in due
-        await worker.execute(
-            "SELECT purge_account($1, $2, $3)", account.account_id, TODAY, account.email
-        )
+        await worker.execute("SELECT purge_account($1, $2)", account.account_id, TODAY)
     finally:
         await worker.close()
 
@@ -104,8 +93,6 @@ async def test_purge_leaves_only_the_anonymized_account_and_its_payments(
     assert purged is not None
     assert tuple(purged) == (None, None, None, TODAY)
     assert await owner.fetchval("SELECT count(*) FROM users WHERE id = $1", account.user_id) == 0
-    invites = "SELECT count(*) FROM registration_invites WHERE lower(email) = lower($1)"
-    assert await owner.fetchval(invites, account.email) == 0
 
 
 async def test_a_filed_complaint_is_read_by_the_worker_and_the_admin_only(

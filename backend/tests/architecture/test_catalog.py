@@ -117,7 +117,7 @@ async def test_ar19_functions_follow_the_security_definer_contract(
 
 
 async def test_ar19_meta_detects_function_problems(owner: asyncpg.Connection) -> None:
-    await owner.execute("GRANT EXECUTE ON FUNCTION purge_account(uuid, date, text) TO casero_app")
+    await owner.execute("GRANT EXECUTE ON FUNCTION purge_account(uuid, date) TO casero_app")
     await owner.execute("ALTER FUNCTION app_list_account_ids(text, date) RESET search_path")
     await owner.execute("CREATE FUNCTION stray() RETURNS integer LANGUAGE sql AS 'SELECT 1'")
 
