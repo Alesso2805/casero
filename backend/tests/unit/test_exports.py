@@ -1,4 +1,5 @@
-from casero.tax.application.exports import csv_text, soles, spreadsheet_cell
+from casero.shared.kernel.spreadsheet import csv_text, spreadsheet_cell
+from casero.tax.application.exports import soles
 
 
 def test_cells_a_spreadsheet_would_run_as_formulas_are_quoted() -> None:

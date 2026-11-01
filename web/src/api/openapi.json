@@ -3481,6 +3481,27 @@
         "summary": "Export Declarations"
       }
     },
+    "/api/app/exports/my-data.zip": {
+      "get": {
+        "description": "Everything the account holds, also available while the account is blocked.",
+        "operationId": "export_my_data_api_app_exports_my_data_zip_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {}
+            },
+            "description": "A ZIP with JSON and CSV files"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or `data_export_unavailable`"
+          }
+        },
+        "summary": "Export My Data"
+      }
+    },
     "/api/app/exports/payments.csv": {
       "get": {
         "description": "The year's payments for the accountant, with the part outside the 1683's base.",
