@@ -71,8 +71,14 @@ from casero.reminders.application.tax_reminders import (
     TaxReminderMailer,
     UnsubscribeLinks,
 )
+from casero.reminders.application.trial_end import (
+    BouncedAddresses,
+    SendTrialEnded,
+    TrialEmailLog,
+)
 from casero.reminders.infrastructure.reminders import SqlReminderLog
 from casero.reminders.infrastructure.tax_reminders import SqlAccountOwner
+from casero.reminders.infrastructure.trial_end import SqlTrialEmailLog
 from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.error_tracking import init_error_tracking
@@ -154,6 +160,47 @@ def purge_work(clock: Clock) -> AccountWork:
     return purge
 
 
+def declarations_in(
+    connection: AsyncConnection, entitlements: GetEntitlements, clock: Clock
+) -> GetDeclarations:
+    profiles: Profiles = SqlProfiles(connection)
+    properties: PropertyStore = SqlPropertyStore(connection)
+    leases: LeaseStore = SqlLeaseStore(connection)
+    renters: RenterDocuments = SqlRenterHolders(connection)
+    books: CollectionsStore = SqlLedger(connection)
+    rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+    tax_payments: TaxPaymentStore = SqlTaxPayments(connection)
+    return GetDeclarations(
+        entitlements, profiles, properties, leases, renters, books, rule_book, tax_payments, clock
+    )
+
+
+def trial_ended_work(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> AccountWork:
+    mailer: TaxReminderMailer = SmtpMailer(settings.smtp, clock)
+    bounced: BouncedAddresses = SuppressionLookup(engine, settings.email_hash_key)
+    log: TrialEmailLog = SqlTrialEmailLog(engine)
+
+    async def send(connection: AsyncConnection, account_id: UUID, today: date) -> None:
+        entitlements = GetEntitlements(SqlSubscriptions(connection), SqlPlans(connection), clock)
+        profiles: Profiles = SqlProfiles(connection)
+        rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        owner: AccountOwner = SqlAccountOwner(connection)
+        await SendTrialEnded(
+            entitlements,
+            profiles,
+            rule_book,
+            declarations_in(connection, entitlements, clock),
+            owner,
+            bounced,
+            log,
+            mailer,
+            settings.public_url,
+            clock,
+        )(account_id, today)
+
+    return send
+
+
 def tax_reminder_work(settings: WorkerSettings, clock: Clock) -> AccountWork:
     mailer: TaxReminderMailer = SmtpMailer(settings.smtp, clock)
     unsubscribe: UnsubscribeLinks = UnsubscribeLinkMaker(
@@ -163,26 +210,11 @@ def tax_reminder_work(settings: WorkerSettings, clock: Clock) -> AccountWork:
     async def send(connection: AsyncConnection, account_id: UUID, today: date) -> None:
         entitlements = GetEntitlements(SqlSubscriptions(connection), SqlPlans(connection), clock)
         profiles: Profiles = SqlProfiles(connection)
-        properties: PropertyStore = SqlPropertyStore(connection)
-        leases: LeaseStore = SqlLeaseStore(connection)
-        renters: RenterDocuments = SqlRenterHolders(connection)
-        books: CollectionsStore = SqlLedger(connection)
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
-        tax_payments: TaxPaymentStore = SqlTaxPayments(connection)
         owner: AccountOwner = SqlAccountOwner(connection)
         suppressions: Suppressions = SqlSuppressionStore(connection, settings.email_hash_key)
         log: TaxReminderLog = SqlReminderLog(connection)
-        declarations = GetDeclarations(
-            entitlements,
-            profiles,
-            properties,
-            leases,
-            renters,
-            books,
-            rule_book,
-            tax_payments,
-            clock,
-        )
+        declarations = declarations_in(connection, entitlements, clock)
         await SendTaxReminders(
             entitlements,
             profiles,
@@ -247,6 +279,13 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
         },
         "purge_accounts": DailyAccountJob(
             engine, clock, "purge_accounts", purge_work(clock), purpose="purge"
+        ),
+        "trial_ended_emails": from_lima_hour(
+            TAX_REMINDERS_FROM_HOUR,
+            clock,
+            DailyAccountJob(
+                engine, clock, "trial_ended_emails", trial_ended_work(settings, engine, clock)
+            ),
         ),
         "tax_reminders": from_lima_hour(
             TAX_REMINDERS_FROM_HOUR,

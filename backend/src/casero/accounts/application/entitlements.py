@@ -3,24 +3,28 @@ from typing import Protocol
 
 from casero.accounts.domain.entitlements import (
     FEATURES,
+    GRACE_PERIOD,
     Entitlements,
     Feature,
     Plan,
     Subscription,
     SubscriptionStatus,
     effective_plan_code,
+    is_trial_lapsing,
     subscription_status,
 )
 from casero.shared.kernel.clock import Clock
 
 __all__ = [
     "FEATURES",
+    "GRACE_PERIOD",
     "Entitlements",
     "Feature",
     "GetEntitlements",
     "PlanCatalog",
     "SubscriptionReader",
     "SubscriptionStatus",
+    "is_trial_lapsing",
 ]
 
 
