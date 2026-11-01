@@ -143,6 +143,7 @@ from casero.identity.infrastructure.sessions import (
 from casero.identity.infrastructure.sns import SnsSignatureVerifier
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, SqlUserEmails
 from casero.leases.api import renters as renters_api
+from casero.leases.api import tools as lease_tools_api
 from casero.leases.application.leases import LeaseStore, ListLeases
 from casero.leases.application.renters import (
     CreateRenter,
@@ -151,10 +152,12 @@ from casero.leases.application.renters import (
     RenterStore,
     UpdateRenter,
 )
+from casero.leases.application.tools import ChooseLeaseTools, GetLeaseTools, LeaseToolsStore
 from casero.leases.infrastructure.active_leases import SqlActiveLeases
 from casero.leases.infrastructure.data_export import SqlLeaseData
 from casero.leases.infrastructure.leases import SqlLeaseStore
 from casero.leases.infrastructure.renters import SqlRenterHolders, SqlRenterStore
+from casero.leases.infrastructure.tools import SqlLeaseTools
 from casero.ledger.api import charges as charges_api
 from casero.ledger.api import collections as collections_api
 from casero.ledger.api import lease_changes as lease_changes_api
@@ -785,6 +788,28 @@ def create_app(
     app.include_router(
         renters_api.create_router(
             current_account, provide_list_renters, provide_create_renter, provide_update_renter
+        )
+    )
+
+    async def provide_lease_tools(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> GetLeaseTools:
+        store: LeaseToolsStore = SqlLeaseTools(connection)
+        return GetLeaseTools(entitlements, store)
+
+    async def provide_choose_lease_tools(
+        connection: Transaction,
+        entitlements: Annotated[GetEntitlements, Depends(provide_entitlements)],
+    ) -> ChooseLeaseTools:
+        profiles: Profiles = SqlProfiles(connection)
+        store: LeaseToolsStore = SqlLeaseTools(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return ChooseLeaseTools(entitlements, profiles, store, audit, app_clock)
+
+    app.include_router(
+        lease_tools_api.create_router(
+            current_account, provide_lease_tools, provide_choose_lease_tools
         )
     )
 

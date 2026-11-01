@@ -294,7 +294,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 | --- | --- |
 | Estado de la suscripción | Se calcula desde fechas: en prueba, activa, en gracia (7 días tras vencer) o gratis. La prueba gratis también tiene esos 7 días, porque un pago por Yape se activa a mano y no debe dejar a nadie sin sus funciones mientras tanto |
 | Al superar el límite | No se pueden crear contratos nuevos. El límite se verifica bloqueando la fila de la cuenta para evitar altas simultáneas |
-| Al bajar de plan | El arrendador elige qué contratos conservan WhatsApp y portal hasta el límite (por defecto, los más antiguos). Los demás siguen generando cargos y aceptando pagos, pero sin esas funciones hasta que se termine otro contrato o se vuelva a pagar |
+| Al bajar de plan | El arrendador elige qué contratos conservan WhatsApp y portal hasta el límite (por defecto, los más antiguos). Los demás siguen generando cargos y aceptando pagos, pero sin esas funciones hasta que se termine otro contrato o se vuelva a pagar. El worker ajusta `tools_enabled` cada día según el plan, sin deshacer la elección del arrendador mientras siga por encima del límite |
 | Meses pagados | Los meses de la prueba gratis no cuentan como pagados; al terminar la prueba se envía un único correo y un aviso en la app con los vencimientos de SUNAT pendientes. Las declaraciones de meses de cobro dentro de un período pagado conservan su tarjeta y sus recordatorios aunque la suscripción venza después |
 | Datos | Nunca se borran por bajar de plan; la exportación legal siempre está disponible |
 

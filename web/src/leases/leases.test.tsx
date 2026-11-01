@@ -289,6 +289,66 @@ describe("new lease", () => {
   });
 });
 
+describe("leases over the plan's limit", () => {
+  const OTHER = { ...LEASE, id: "0195a0b0-0000-7000-8000-000000000099" };
+  const OVER = {
+    limit: 1,
+    over_limit: true,
+    leases: [
+      { lease_id: LEASE.id, tools_enabled: true },
+      { lease_id: OTHER.id, tools_enabled: false },
+    ],
+  };
+
+  function mockOver(tools: (request: Request) => Response) {
+    return mockApi({
+      "/api/app/leases": () => json([LEASE, OTHER]),
+      "/api/app/renters": () => json([RENTER]),
+      "/api/app/properties": () => json([PROPERTY]),
+      "/api/app/lease-tools": tools,
+    });
+  }
+
+  test("lets the landlord choose who keeps WhatsApp and the link", async () => {
+    const api = mockOver((request) =>
+      json(
+        request.method === "GET"
+          ? OVER
+          : {
+              ...OVER,
+              leases: [
+                { lease_id: LEASE.id, tools_enabled: false },
+                { lease_id: OTHER.id, tools_enabled: true },
+              ],
+            },
+      ),
+    );
+    await renderPage("/app/contratos");
+
+    const boxes = await screen.findAllByRole("checkbox");
+    expect(screen.getByText(/Tu plan incluye estas funciones en 1 contrato\./)).toBeDefined();
+    expect(boxes.map((box) => (box as HTMLInputElement).checked)).toEqual([true, false]);
+    expect(boxes[1]).toHaveProperty("disabled", true);
+    for (const box of boxes) {
+      await userEvent.click(box);
+    }
+    await userEvent.click(screen.getByRole("button", { name: "Guardar mi elección" }));
+
+    expect((await screen.findByRole("status")).textContent).toBe("Listo, guardamos tu elección.");
+    const [, request] = api.requestsTo("/api/app/lease-tools");
+    expect(request?.method).toBe("PUT");
+    expect(await request?.json()).toEqual({ lease_ids: [OTHER.id] });
+  });
+
+  test("shows nothing while the plan covers every lease", async () => {
+    mockOver(() => json({ ...OVER, limit: 10, over_limit: false }));
+    await renderPage("/app/contratos");
+
+    await screen.findAllByRole("link", { name: /Ver cobros|detalle/i });
+    expect(screen.queryByRole("heading", { name: "WhatsApp y enlace del inquilino" })).toBeNull();
+  });
+});
+
 describe("lease page", () => {
   const STATEMENT_PATH = `/api/app/leases/${LEASE.id}/statement`;
   const PAYMENTS_PATH = `/api/app/leases/${LEASE.id}/payments`;

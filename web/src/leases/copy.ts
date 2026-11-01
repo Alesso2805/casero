@@ -1,4 +1,12 @@
 export const leasesCopy = {
+  tools: {
+    title: "WhatsApp y enlace del inquilino",
+    intro: (limit: number) =>
+      `Tu plan incluye estas funciones en ${String(limit)} ${limit === 1 ? "contrato" : "contratos"}. Elige ${limit === 1 ? "cuál las conserva" : "cuáles las conservan"}. Los demás siguen con sus cobros y sus pagos, sin enviar mensajes por WhatsApp y sin enlace.`,
+    save: "Guardar mi elección",
+    sending: "Guardando…",
+    saved: "Listo, guardamos tu elección.",
+  },
   list: {
     title: "Mis contratos",
     empty: "Todavía no registras contratos. Cuando registres uno, aquí verás a quién le alquilas cada unidad.",
