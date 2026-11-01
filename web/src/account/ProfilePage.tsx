@@ -9,6 +9,7 @@ import type { components } from "../api/schema";
 import { ConsentSection } from "./ConsentSection";
 import { accountCopy as text } from "./copy";
 import { DataDownload } from "./DataDownload";
+import { DeleteAccount } from "./DeleteAccount";
 import { primaryButton, TextField, textLink } from "./fields";
 import { hasRucShape, isValidRuc, rucGroup } from "./ruc";
 
@@ -250,6 +251,7 @@ export function ProfilePage() {
           <ProfileForm profile={loaded.data.profile} />
           <DataDownload />
           <ConsentSection />
+          <DeleteAccount />
         </>
       )}
       {loaded.isError && (
