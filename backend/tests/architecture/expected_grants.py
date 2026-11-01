@@ -107,7 +107,7 @@ TABLE_PRIVILEGES = {
         "plans": SELECT,
         "tax_rule_sets": SELECT,
         "sunat_due_dates": SELECT,
-        "complaints": SELECT,
+        "complaints": frozenset({"SELECT", "DELETE"}),
         "holidays": SELECT,
         "waitlist_entries": frozenset({"SELECT", "DELETE"}),
         "rate_limit_buckets": frozenset({"DELETE"}),
