@@ -1,6 +1,6 @@
 # Libro de Reclamaciones: leer y responder
 
-Hasta que exista `make complaint-respond` (CS-25), los reclamos se leen y se responden a mano con el rol `casero_admin`. El plazo es de 15 días hábiles, sin prórroga, y la fecha límite está en `due_at`. Cada reclamo nuevo llega como aviso a `CASERO_COMPLAINTS_INBOX`, solo con su número y su plazo.
+Los reclamos se leen con el rol `casero_admin` y se responden con `make complaint-respond`. El plazo es de 15 días hábiles, sin prórroga, y la fecha límite está en `due_at`. Cada reclamo nuevo llega como aviso a `CASERO_COMPLAINTS_INBOX`, solo con su número y su plazo, y si sigue sin respuesta a los 7 y a los 12 días hábiles llega una alerta a `CASERO_ALERTS_INBOX`.
 
 ## 1. Entrar a la base
 
@@ -24,22 +24,19 @@ Para ver uno completo: `SELECT * FROM complaints WHERE number = '000000001-2026'
 
 ## 3. Responder
 
-1. Escribir la respuesta por el medio que eligió el consumidor (`response_channel`):
-   - `email`: desde el correo de reclamos a su `email`;
-   - `letter`: una carta a su `address`, guardando la constancia de envío.
-2. Registrar la respuesta y la fecha en que se comunicó, en una sola transacción:
+1. Escribir la respuesta en un archivo de texto en el servidor, por ejemplo `/tmp/respuesta.txt`.
+2. Enviarla y registrarla, según el medio que eligió el consumidor (`response_channel`):
+   - `email`: el comando la envía a su correo, con `Reply-To` al correo de reclamos, y registra la fecha. Si el correo falla, no se registra nada y se vuelve a intentar.
+     ```sh
+     docker compose --env-file .env --env-file image.env run --rm -T migrate python -m casero.worker complaint-respond <número> < /tmp/respuesta.txt
+     ```
+   - `letter`: enviar la carta a su `address`, guardar la constancia de envío, y registrar el texto con la fecha de envío:
+     ```sh
+     docker compose --env-file .env --env-file image.env run --rm -T migrate python -m casero.worker complaint-respond <número> <AAAA-MM-DD> < /tmp/respuesta.txt
+     ```
+3. Borrar el archivo. Cada respuesta queda en `staff_audit_log`.
 
-```sql
-BEGIN;
-UPDATE complaints
-SET response = '<texto de la respuesta>', responded_at = '<AAAA-MM-DD HH:MM>-05'
-WHERE number = '<número>' AND responded_at IS NULL;
-INSERT INTO staff_audit_log (id, staff_user_id, actor, action, entity, entity_id, at)
-SELECT gen_random_uuid(), NULL, 'cli', 'complaint.respond', 'complaints', id,
-       '<AAAA-MM-DD HH:MM>-05'
-FROM complaints WHERE number = '<número>';
-COMMIT;
-```
+En local es `make complaint-respond NUMBER=<número> FILE=<archivo>`, con `SENT_ON=<AAAA-MM-DD>` si es por carta.
 
 Si un reclamo vino marcado como queja pero trata del servicio, se atiende como reclamo.
 
@@ -87,11 +84,13 @@ Cada uno se resuelve con el paso 4.
 
 Si la página no pudo registrar un reclamo, le pide al consumidor que imprima la hoja y la envíe a la cuenta de Gmail de reclamos. Cuando llegue uno así:
 
-1. Dentro del día siguiente a que el libro vuelva a funcionar (Reglamento, art. 4-A), registrarlo en `/libro-de-reclamaciones` con los datos y el correo del consumidor, para que le llegue la copia.
-2. Empezar el detalle con: `Recibido por correo el DD/MM/AAAA HH:MM.`
-3. Responder dentro de los 15 días hábiles contados desde que llegó el correo, no desde `due_at`.
-
-Cuando exista `make complaint-register --filed-at` (CS-25), se usará ese comando con la fecha original.
+1. Dentro del día siguiente a que el libro vuelva a funcionar (Reglamento, art. 4-A), registrarlo con la fecha y la hora en que llegó el correo. El número, el año y `due_at` salen de esa fecha, y el worker envía la copia al consumidor como siempre.
+   Se escribe la hoja en un archivo JSON con los mismos campos que el formulario (`POST /api/public/complaints`), por ejemplo `/tmp/reclamo.json`:
+   ```sh
+   docker compose --env-file .env --env-file image.env run --rm -T migrate python -m casero.worker complaint-register <AAAA-MM-DDTHH:MM> < /tmp/reclamo.json
+   ```
+   Sin zona horaria, la fecha se toma como hora de Lima. En local es `make complaint-register FILED_AT=<fecha> FILE=<archivo>`.
+2. Borrar el archivo, que tiene datos personales. El registro queda en `staff_audit_log`.
 
 ## Libro físico de respaldo
 
@@ -99,7 +98,7 @@ En el domicilio fiscal se guarda un libro físico, comprado o impreso con la her
 
 ## Conservación
 
-Los reclamos se conservan 2 años desde que se presentan (Reglamento, art. 12). El borrado automático llega con CS-25.
+Los reclamos se conservan 2 años desde que se presentan (Reglamento, art. 12); después el worker los borra solo.
 
 ## Registro
 

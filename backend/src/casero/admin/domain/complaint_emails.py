@@ -143,6 +143,18 @@ def consumer_copy(complaint: Complaint, business: BusinessIdentity) -> Email:
     )
 
 
+def response_email(complaint: Complaint, text: str, reply_to: str) -> Email:
+    sheet = complaint.sheet
+    if sheet.email is None:
+        raise ValueError("An email answer needs the consumer's email")
+    return Email(
+        to=sheet.email,
+        subject=f"Respuesta a tu {KIND_NOUNS[sheet.kind]} N.° {complaint.number}",
+        text=text,
+        reply_to=reply_to,
+    )
+
+
 def inbox_notice(complaint: Complaint, business: BusinessIdentity, copy: CopyStatus) -> Email:
     sheet = complaint.sheet
     article = "un reclamo" if sheet.kind == "claim" else "una queja"

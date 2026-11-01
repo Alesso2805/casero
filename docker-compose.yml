@@ -47,6 +47,8 @@ services:
     environment:
       CASERO_MIGRATION_DATABASE_URL: postgresql+asyncpg://casero_owner:${CASERO_OWNER_PASSWORD:-casero_owner_dev}@postgres:5432/casero
       CASERO_ADMIN_DATABASE_URL: postgresql+asyncpg://casero_admin:${CASERO_ADMIN_PASSWORD:-casero_admin_dev}@postgres:5432/casero
+      CASERO_COMPLAINTS_INBOX: ${CASERO_COMPLAINTS_INBOX:-reclamos@casero.localhost}
+      <<: *mail
       CASERO_PUBLIC_URL: http://localhost
     depends_on:
       postgres:

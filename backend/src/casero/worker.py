@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import os
 import signal
 import sys
 from collections.abc import Awaitable, Callable, Mapping
@@ -16,17 +17,32 @@ from casero.accounts.application.profile import Profiles
 from casero.accounts.application.purge import ObjectStore, PurgeAccount, PurgeRecords
 from casero.accounts.infrastructure.account import SqlPlans, SqlProfiles, SqlSubscriptions
 from casero.accounts.infrastructure.purge import NoObjectStore, SqlPurgeRecords
+from casero.admin.api.complaints import FileComplaintRequest
 from casero.admin.application.alerts import AlertLog, AlertMailer, OpsReadings, RaiseAlerts
+from casero.admin.application.complaint_commands import (
+    ComplaintResponses,
+    RegisterComplaint,
+    RespondToComplaint,
+    ResponseMailer,
+    ResponseOutcome,
+    StaffActions,
+)
 from casero.admin.application.complaint_emails import (
     ComplaintMailer,
     ComplaintOutbox,
     SendComplaintEmails,
     SuppressedAddresses,
 )
+from casero.admin.application.complaints import ComplaintRepository
 from casero.admin.application.retention import ForgetExpiredData, RetentionStore
 from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.alerts import SqlAlertLog, SqlOpsReadings
+from casero.admin.infrastructure.complaint_commands import (
+    SqlComplaintResponses,
+    SqlStaffActions,
+)
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
+from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.admin.infrastructure.retention import SqlRetention
 from casero.identity.infrastructure.email_suppressions import (
     SqlSuppressionStore,
@@ -62,7 +78,7 @@ from casero.shared.infrastructure.jobs import AccountWork, DailyAccountJob
 from casero.shared.infrastructure.logs import configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import purge_expired_buckets
-from casero.shared.infrastructure.settings import WorkerSettings
+from casero.shared.infrastructure.settings import WorkerSettings, smtp_from_environment
 from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import LIMA, Clock, SystemClock
 from casero.tax.application.calculator import TaxRuleBook
@@ -256,6 +272,93 @@ async def print_complaint_copy(number: str) -> int:
     return 0
 
 
+RESPONSE_MESSAGES: dict[ResponseOutcome, str] = {
+    "responded": "Listo: la respuesta quedó registrada.",
+    "not_found": "No hay un reclamo con ese número.",
+    "already_responded": "Ese reclamo ya tiene respuesta.",
+    "needs_sent_on": "Es una respuesta por carta: indica SENT_ON con la fecha de envío.",
+    "email_failed": "No se pudo enviar el correo, así que no se registró nada.",
+}
+
+
+async def respond_to_complaint(
+    database_url: str,
+    mailer: ResponseMailer,
+    complaints_inbox: str,
+    clock: Clock,
+    number: str,
+    text: str,
+    sent_on: date | None,
+) -> ResponseOutcome:
+    """casero_admin answers: the panel's role, with a grant only on these columns."""
+    engine = create_engine(database_url)
+    try:
+        async with engine.connect() as connection:
+            transaction = await connection.begin()
+            responses: ComplaintResponses = SqlComplaintResponses(connection)
+            actions: StaffActions = SqlStaffActions(connection)
+            respond = RespondToComplaint(responses, mailer, actions, complaints_inbox, clock)
+            outcome = await respond(number, text, sent_on)
+            await (transaction.commit() if outcome == "responded" else transaction.rollback())
+            return outcome
+    finally:
+        await engine.dispose()
+
+
+async def register_complaint(
+    database_url: str, clock: Clock, sheet_json: str, filed_at: datetime
+) -> str:
+    """As casero_owner, like load-tax-config: casero_admin stays without INSERT on complaints."""
+    sheet = FileComplaintRequest.model_validate_json(sheet_json).to_sheet()
+    engine = create_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            repository: ComplaintRepository = SqlComplaintRepository(connection)
+            actions: StaffActions = SqlStaffActions(connection)
+            complaint = await RegisterComplaint(repository, actions, clock)(sheet, filed_at)
+            return complaint.number
+    finally:
+        await engine.dispose()
+
+
+def lima_moment(text: str) -> datetime:
+    moment = datetime.fromisoformat(text)
+    return moment if moment.tzinfo else moment.replace(tzinfo=LIMA)
+
+
+def complaint_command(arguments: list[str]) -> int:
+    """`complaint-respond NUMBER [SENT_ON]` and `complaint-register FILED_AT`, reading stdin."""
+    clock = SystemClock()
+    if arguments[0] == "complaint-register" and len(arguments) == 2:
+        number = asyncio.run(
+            register_complaint(
+                os.environ["CASERO_MIGRATION_DATABASE_URL"],
+                clock,
+                sys.stdin.read(),
+                lima_moment(arguments[1]),
+            )
+        )
+        print(f"Listo: quedó registrado con el número {number}.")
+        return 0
+    if arguments[0] == "complaint-respond" and len(arguments) in (2, 3):
+        mailer: ResponseMailer = SmtpMailer(smtp_from_environment(os.environ), clock)
+        outcome = asyncio.run(
+            respond_to_complaint(
+                os.environ["CASERO_ADMIN_DATABASE_URL"],
+                mailer,
+                os.environ["CASERO_COMPLAINTS_INBOX"],
+                clock,
+                arguments[1],
+                sys.stdin.read().strip(),
+                date.fromisoformat(arguments[2]) if len(arguments) == 3 else None,
+            )
+        )
+        print(RESPONSE_MESSAGES[outcome], file=sys.stdout if outcome == "responded" else sys.stderr)
+        return 0 if outcome == "responded" else 1
+    print("Uso: docs/ops/complaints.md", file=sys.stderr)
+    return 2
+
+
 async def run_jobs(jobs: Mapping[str, Job]) -> bool:
     """True when every job ran without crashing."""
     healthy = True
@@ -330,6 +433,8 @@ def main() -> None:
     configure_logging()
     if sys.argv[1:2] == ["complaint-copy"] and len(sys.argv) == 3:
         sys.exit(asyncio.run(print_complaint_copy(sys.argv[2])))
+    if sys.argv[1:2] in (["complaint-respond"], ["complaint-register"]):
+        sys.exit(complaint_command(sys.argv[1:]))
     asyncio.run(run())
 
 
