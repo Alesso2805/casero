@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { api } from "../api/client";
 import type { components } from "../api/schema";
+import { ConsentSection } from "./ConsentSection";
 import { accountCopy as text } from "./copy";
 import { primaryButton, TextField, textLink } from "./fields";
 import { hasRucShape, isValidRuc, rucGroup } from "./ruc";
@@ -243,7 +244,12 @@ export function ProfilePage() {
     <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.profile.title}</h1>
       {loaded.data?.kind === "paused" && <p role="alert">{text.profile.paused}</p>}
-      {loaded.data?.kind === "profile" && <ProfileForm profile={loaded.data.profile} />}
+      {loaded.data?.kind === "profile" && (
+        <>
+          <ProfileForm profile={loaded.data.profile} />
+          <ConsentSection />
+        </>
+      )}
       {loaded.isError && (
         <p role="alert" className="text-red-800">
           {text.errors.failure}

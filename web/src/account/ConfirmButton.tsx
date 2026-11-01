@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { primaryButton, secondaryButton } from "../account/fields";
+import { primaryButton, secondaryButton } from "./fields";
 
 /** An action that can't be undone with one tap: it asks first, then confirms or cancels. */
 export function ConfirmButton({
