@@ -72,12 +72,12 @@ describe("landing page", () => {
 });
 
 describe("privacy page", () => {
-  test("renders the short privacy policy with the business identity", async () => {
+  test("renders the privacy policy with the business identity", async () => {
     mockApi({});
     await renderPage("/privacidad");
 
     expect(
-      await screen.findByRole("heading", { name: "Política de privacidad de Casero (versión corta)" }),
+      await screen.findByRole("heading", { name: "Política de privacidad de Casero", level: 1 }),
     ).toBeDefined();
     expect(await screen.findByText(new RegExp(`RUC ${testBusiness.ruc}`))).toBeDefined();
     expect(screen.getByRole("link", { name: "Libro de Reclamaciones" })).toBeDefined();

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-import policy from "../../../docs/legal/privacy-short.md?raw";
+import policy from "../../../docs/legal/privacy.md?raw";
 import { copy } from "./copy";
 import { LegalArticle } from "./LegalArticle";
 import { PublicFooter } from "./PublicFooter";
