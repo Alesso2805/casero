@@ -1,4 +1,4 @@
-.PHONY: up down test lint migrate load-tax-config invite check-bucket-policy
+.PHONY: up down test lint migrate load-tax-config invite grant-founder complaint-respond complaint-register check-bucket-policy
 
 up:
 	docker compose up --detach --build
@@ -22,6 +22,15 @@ load-tax-config:
 
 invite:
 	docker compose run --rm migrate python -m casero.accounts.infrastructure.invites $(EMAIL)
+
+grant-founder:
+	docker compose run --rm migrate python -m casero.accounts.infrastructure.founders $(EMAIL)
+
+complaint-respond:
+	docker compose run --rm -T migrate python -m casero.worker complaint-respond $(NUMBER) $(SENT_ON) < $(FILE)
+
+complaint-register:
+	docker compose run --rm -T migrate python -m casero.worker complaint-register $(FILED_AT) < $(FILE)
 
 check-bucket-policy:
 	cd backend && uv run python scripts/check_bucket_policy.py

@@ -145,6 +145,10 @@ El registro está cerrado por defecto (`REGISTRATION_MODE=closed`). Para la beta
    docker compose --env-file .env --env-file image.env run --rm migrate python -m casero.accounts.infrastructure.invites <correo>
    ```
 3. Enviar el enlace que imprime al fundador por un canal privado (WhatsApp o correo). Solo sirve para registrarse con ese correo; si se pierde o vence, se crea otro.
+4. Cuando se registre, darle el año de fundador, que cuenta desde ese momento y queda en `staff_audit_log`:
+   ```sh
+   docker compose --env-file .env --env-file image.env run --rm migrate python -m casero.accounts.infrastructure.founders <correo>
+   ```
 
 El lanzamiento (CS-27) cambia a `REGISTRATION_MODE=open`.
 
