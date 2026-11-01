@@ -53,6 +53,12 @@ export const accountCopy = {
     declarations: "Formularios de SUNAT",
     templates: "Mensajes de cobro",
   },
+  dataDownload: {
+    title: "Tus datos",
+    intro:
+      "Descarga una copia de todo lo que tienes en Casero, en archivos que se abren en Excel. Trae los documentos completos de tus inquilinos: guárdala en un lugar seguro.",
+    link: "Descargar mis datos",
+  },
   legalGate: {
     updatedTitle: "Actualizamos nuestros documentos",
     updatedIntro: "Para seguir usando Casero, lee los cambios y acéptalos.",

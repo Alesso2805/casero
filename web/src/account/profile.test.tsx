@@ -147,6 +147,15 @@ describe("profile page", () => {
     );
   });
 
+  test("offers the download of the landlord's data", async () => {
+    mockApi({ "/api/app/account/profile": () => json(EMPTY) });
+    await renderPage("/app/mis-datos");
+
+    const link = await screen.findByRole("link", { name: "Descargar mis datos" });
+    expect(link).toHaveProperty("pathname", "/api/app/exports/my-data.zip");
+    expect(link.hasAttribute("download")).toBe(true);
+  });
+
   test("withdraws the consent only after confirming, and goes to the blocked account", async () => {
     let withdrawn = false;
     const api = mockApi({

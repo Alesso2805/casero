@@ -247,6 +247,7 @@ describe("account home", () => {
       await screen.findByRole("heading", { name: "Actualizamos nuestros documentos" }),
     ).toBeDefined();
     expect(screen.queryByRole("link", { name: "Mis inmuebles" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Descargar mis datos" })).toBeDefined();
     expect(screen.getByRole("link", { name: "términos y condiciones" })).toHaveProperty(
       "pathname",
       "/legal/terminos/0.2",
@@ -273,6 +274,10 @@ describe("account home", () => {
     expect(await screen.findByRole("heading", { name: "Tu cuenta está bloqueada" })).toBeDefined();
     expect(screen.queryByRole("link", { name: "Mis contratos" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeDefined();
+    expect(screen.getByRole("link", { name: "Descargar mis datos" })).toHaveProperty(
+      "pathname",
+      "/api/app/exports/my-data.zip",
+    );
     expect(
       await screen.findByLabelText(new RegExp(`Consiento de forma expresa que ${testBusiness.name}`)),
     ).toBeDefined();
