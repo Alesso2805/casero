@@ -199,6 +199,35 @@ async def test_the_free_plan_cannot_record_or_void_sunat_payments(
     ]
 
 
+async def test_a_sunat_payment_of_a_paid_month_can_be_voided_after_the_plan_lapses(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    clock = FixedClock(NOW)
+    email = f"{uuid7()}@example.com"
+    with client_for(database, request, clock) as client:
+        register(client, email)
+        save_ruc(client)
+        ana = add_renter(client, "Ana", ANA_DNI)
+        [lease] = start_leases(client, {"renter_id": ana})
+        pay(client, lease, 80_000, "2026-10-05")
+        payment_id = send(client, "POST", PAYMENTS, tax_payment(ana)).json()["id"]
+        await owner_rows(
+            database, "UPDATE users SET email_verified_at = $1 WHERE email = $2", NOW, email
+        )
+        await owner_rows(
+            database,
+            "UPDATE subscriptions s SET trial_ends_at = '2026-10-01', ends_at = '2026-11-02'"
+            " FROM renters r WHERE r.account_id = s.account_id AND r.id = $1",
+            UUID(ana),
+        )
+        clock.advance(timedelta(days=19))
+        voided = send(client, "POST", f"{PAYMENTS}/{payment_id}/void", {"reason": "Error"})
+        missing = send(client, "POST", f"{PAYMENTS}/{uuid7()}/void", {"reason": "Error"})
+
+    assert voided.status_code == 200
+    assert (missing.status_code, missing.json()["detail"]) == (403, "tax_module_unavailable")
+
+
 def october_card(client: TestClient, renter_id: str) -> Any:
     month = client.get("/api/app/tax/declarations?period=2026-10").json()
     return next(card for card in month["declarations"] if card["renter_id"] == renter_id)

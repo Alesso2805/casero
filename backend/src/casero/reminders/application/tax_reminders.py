@@ -81,8 +81,6 @@ class SendTaxReminders:
     clock: Clock
 
     async def __call__(self, account_id: UUID, today: date) -> None:
-        if not (await self.entitlements()).allows("tax_reminders"):
-            return
         profile = await self.profiles.current()
         group = profile.ruc_group
         if group is None:
@@ -100,6 +98,8 @@ class SendTaxReminders:
         if due is None:
             return
         due_period, due_on = due
+        if not (await self.entitlements()).allows_month("tax_reminders", due_period):
+            return
         month = await self.declarations(due_period)
         if isinstance(month, str):
             return

@@ -118,11 +118,13 @@ class VoidTaxPayment:
     async def __call__(
         self, context: AccountContext, payment_id: UUID, reason: str
     ) -> TaxPaymentRecord | Literal["tax_module_unavailable", "tax_payment_not_found"]:
-        if not (await self.entitlements()).allows("tax_module"):
-            return "tax_module_unavailable"
+        entitlements = await self.entitlements()
         record = await self.store.get(payment_id)
         if record is None:
-            return "tax_payment_not_found"
+            allowed = entitlements.allows("tax_module")
+            return "tax_payment_not_found" if allowed else "tax_module_unavailable"
+        if not entitlements.allows_month("tax_module", record.period):
+            return "tax_module_unavailable"
         now = self.clock.now()
         if await self.store.void(context.account_id, payment_id, reason, context.user_id, now):
             await self.audit.record(

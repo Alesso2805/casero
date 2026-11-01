@@ -87,7 +87,7 @@ class GetDeclarations:
     async def __call__(
         self, period: Period
     ) -> MonthDeclarations | Literal["tax_module_unavailable", "unknown_year"]:
-        if not (await self.entitlements()).allows("tax_module"):
+        if not (await self.entitlements()).allows_month("tax_module", period):
             return "tax_module_unavailable"
         rules = await self.rule_book.rules_for(period.year)
         if rules is None:
