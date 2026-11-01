@@ -18,9 +18,9 @@ pytestmark = pytest.mark.anyio
 NOW = datetime(2026, 10, 26, 15, 0, tzinfo=UTC)
 TODAY = date(2026, 10, 26)
 DOCUMENTS = [
-    LegalVersion("terms", uuid7()),
-    LegalVersion("privacy", uuid7()),
-    LegalVersion("sensitive_consent", uuid7()),
+    LegalVersion("terms", uuid7(), "0.1", "/legal/terminos/0.1"),
+    LegalVersion("privacy", uuid7(), "0.1", "/legal/privacidad/0.1"),
+    LegalVersion("sensitive_consent", uuid7(), "0.1", "/legal/consentimiento/0.1"),
 ]
 REGISTRATION = Registration(
     email="ana@example.com",

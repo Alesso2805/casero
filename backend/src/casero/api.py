@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.accounts.api import account as account_api
+from casero.accounts.api import legal as legal_api
 from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
 from casero.accounts.application.account import AccountNames, GetAccountSummary
@@ -21,6 +22,12 @@ from casero.accounts.application.entitlements import (
     GetEntitlements,
     PlanCatalog,
     SubscriptionReader,
+)
+from casero.accounts.application.legal import (
+    AcceptLegalDocuments,
+    GetLegalStatus,
+    LegalRecords,
+    WithdrawConsent,
 )
 from casero.accounts.application.profile import (
     GetProfile,
@@ -48,6 +55,7 @@ from casero.accounts.infrastructure.account import (
     SqlProfiles,
     SqlSubscriptions,
 )
+from casero.accounts.infrastructure.legal import SqlLegalRecords
 from casero.accounts.infrastructure.registration import (
     SqlAccountRecords,
     SqlInvites,
@@ -525,7 +533,7 @@ def create_app(
         users: AccountUsers = SqlAccountUsers(connection)
         return AccessGate(users, app_clock)
 
-    async def current_account(
+    async def account_for_rights(
         session: Annotated[Session, Depends(current_session)],
         gate: Annotated[AccessGate, Depends(provide_access_gate)],
         open_account: Annotated[OpenAccount, Depends(provide_open_account)],
@@ -535,6 +543,41 @@ def create_app(
         context = await open_account(session.user_id)
         if context is None:
             raise HTTPException(status_code=403, detail="no_account")
+        return context
+
+    async def provide_legal_status(connection: Transaction) -> GetLegalStatus:
+        versions: LegalVersions = SqlLegalVersions(connection)
+        records: LegalRecords = SqlLegalRecords(connection, config.acceptance_ip_key)
+        return GetLegalStatus(versions, records, app_clock)
+
+    async def provide_accept_legal(connection: Transaction) -> AcceptLegalDocuments:
+        versions: LegalVersions = SqlLegalVersions(connection)
+        records: LegalRecords = SqlLegalRecords(connection, config.acceptance_ip_key)
+        return AcceptLegalDocuments(versions, records, app_clock)
+
+    async def provide_withdraw_consent(connection: Transaction) -> WithdrawConsent:
+        versions: LegalVersions = SqlLegalVersions(connection)
+        records: LegalRecords = SqlLegalRecords(connection, config.acceptance_ip_key)
+        return WithdrawConsent(versions, records, app_clock)
+
+    app.include_router(
+        legal_api.create_router(
+            account_for_rights,
+            provide_legal_status,
+            provide_accept_legal,
+            provide_withdraw_consent,
+        )
+    )
+
+    async def current_account(
+        context: Annotated[AccountContext, Depends(account_for_rights)],
+        legal: Annotated[GetLegalStatus, Depends(provide_legal_status)],
+    ) -> AccountContext:
+        status = await legal(context)
+        if status.consent_withdrawn:
+            raise HTTPException(status_code=403, detail="consent_withdrawn")
+        if status.pending:
+            raise HTTPException(status_code=403, detail="legal_acceptance_required")
         return context
 
     async def provide_entitlements(

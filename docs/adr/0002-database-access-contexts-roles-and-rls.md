@@ -82,3 +82,12 @@ All four are owned by `casero_owner`, set a fixed `search_path`, validate their 
 - Tests that the functions work with `app.account_id` empty.
 - Two-account tests on every endpoint (CS-07 onwards).
 - A test that no `/api/tenant/*` response contains the landlord's RUC or email (CS-18).
+
+## Amendment (CS-25, 2026-11-01)
+
+The account context now has two entry points, with the same `app.account_id` scoping:
+
+- `current_account` also refuses an account with a legal step pending: 403 `legal_acceptance_required` for a current version not yet accepted, 403 `consent_withdrawn` when the sensitive-data consent is withdrawn.
+- `account_for_rights` skips those two checks. The law keeps the data subject's rights available on a blocked account, so it serves only reading the legal status, accepting, withdrawing, exporting and deleting. The list is closed: the AR-20 test names each route, so a new route can't use it by accident.
+
+The status is computed on each request from `legal_acceptances` and `legal_withdrawals`. Both are append-only, so nothing is stored about the account's state, and a tie between an acceptance and a withdrawal counts as withdrawn.

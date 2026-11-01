@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "AcceptanceRequest": {
+        "properties": {
+          "document_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Document Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "document_ids"
+        ],
+        "title": "AcceptanceRequest",
+        "type": "object"
+      },
       "AccountResponse": {
         "properties": {
           "display_name": {
@@ -1328,6 +1347,63 @@
           "ending_soon"
         ],
         "title": "LeaseResponse",
+        "type": "object"
+      },
+      "LegalDocumentResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "terms",
+              "privacy",
+              "sensitive_consent"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "version",
+          "url"
+        ],
+        "title": "LegalDocumentResponse",
+        "type": "object"
+      },
+      "LegalStatusResponse": {
+        "properties": {
+          "consent_withdrawn": {
+            "description": "The sensitive-data consent is withdrawn: only rights routes work",
+            "title": "Consent Withdrawn",
+            "type": "boolean"
+          },
+          "pending": {
+            "description": "Current versions the user still has to accept",
+            "items": {
+              "$ref": "#/components/schemas/LegalDocumentResponse"
+            },
+            "title": "Pending",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pending",
+          "consent_withdrawn"
+        ],
+        "title": "LegalStatusResponse",
         "type": "object"
       },
       "LoginRequest": {
@@ -3177,7 +3253,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "Account"
@@ -3202,7 +3278,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "Profile"
@@ -3326,7 +3402,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "Collections"
@@ -3472,7 +3548,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "List Leases"
@@ -3909,7 +3985,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           },
           "404": {
             "description": "`lease_not_found`"
@@ -4185,6 +4261,94 @@
         "summary": "Prepare Reminder"
       }
     },
+    "/api/app/legal": {
+      "get": {
+        "description": "What the user must accept, and whether the consent is withdrawn.",
+        "operationId": "legal_status_api_app_legal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or `csrf` on a write"
+          }
+        },
+        "summary": "Legal Status"
+      }
+    },
+    "/api/app/legal/acceptances": {
+      "post": {
+        "description": "Accept current versions; giving the consent again also unblocks the account.",
+        "operationId": "accept_documents_api_app_legal_acceptances_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or `csrf` on a write"
+          },
+          "422": {
+            "description": "Invalid data, or `document_not_current`"
+          }
+        },
+        "summary": "Accept Documents"
+      }
+    },
+    "/api/app/legal/consent-withdrawal": {
+      "post": {
+        "description": "Withdraw the sensitive-data consent; the account then only exports or deletes.",
+        "operationId": "withdraw_consent_api_app_legal_consent_withdrawal_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or `csrf` on a write"
+          }
+        },
+        "summary": "Withdraw Consent"
+      }
+    },
     "/api/app/me": {
       "get": {
         "description": "Who is signed in.",
@@ -4230,7 +4394,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "List Templates"
@@ -4373,7 +4537,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "List Properties"
@@ -4613,7 +4777,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "List Renters"
@@ -5057,7 +5221,7 @@
             "description": "No valid session"
           },
           "403": {
-            "description": "No account, or the email is unverified past its deadline"
+            "description": "No account, unverified email, or a legal step pending"
           }
         },
         "summary": "Last Reminders"

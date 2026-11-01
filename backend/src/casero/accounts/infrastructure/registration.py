@@ -19,7 +19,8 @@ CONSUME_INVITE = text(
     "UPDATE registration_invites SET used_at = :now WHERE id = :id AND used_at IS NULL"
 )
 CURRENT_DOCUMENTS = text(
-    "SELECT DISTINCT ON (kind) kind, id FROM legal_documents WHERE published_at <= :today"
+    "SELECT DISTINCT ON (kind) kind, id, version, url FROM legal_documents"
+    " WHERE published_at <= :today"
     " ORDER BY kind, published_at DESC, version DESC"
 )
 INSERT_ACCOUNT = text(
@@ -70,7 +71,7 @@ class SqlLegalVersions:
 
     async def current(self, today: date) -> list[LegalVersion]:
         rows = await self._connection.execute(CURRENT_DOCUMENTS, {"today": today})
-        return [LegalVersion(row.kind, row.id) for row in rows]
+        return [LegalVersion(row.kind, row.id, row.version, row.url) for row in rows]
 
 
 class SqlAccountRecords:
