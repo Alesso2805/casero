@@ -169,6 +169,31 @@ async def test_five_days_and_one_day_before_it_emails_what_is_owed(
     ]
 
 
+@pytest.mark.parametrize(
+    ("trial_ends_at", "reminded"), [(date(2026, 10, 1), True), (date(2026, 11, 2), False)]
+)
+async def test_a_paid_month_is_still_reminded_after_the_plan_lapses_and_a_trial_month_is_not(
+    database: Database,
+    request: pytest.FixtureRequest,
+    worker_engine: AsyncEngine,
+    trial_ends_at: date,
+    reminded: bool,
+) -> None:
+    with client_for(database, request, FixedClock(NOW)) as client:
+        account_id, _, _ = await landlord_owing_october(database, client)
+    await owner_rows(
+        database,
+        "UPDATE subscriptions SET trial_ends_at = $2, ends_at = '2026-11-02' WHERE account_id = $1",
+        account_id,
+        trial_ends_at,
+    )
+    mailer = RecordingMailer()
+
+    await run_for(worker_engine, account_id, FIVE_DAYS_BEFORE, mailer)
+
+    assert bool(mailer.sent) is reminded
+
+
 @pytest.mark.parametrize("new_document", [False, True])
 async def test_what_was_paid_to_sunat_is_left_out(
     database: Database,

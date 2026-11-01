@@ -8,11 +8,37 @@ from casero.accounts.domain.entitlements import (
     Subscription,
     SubscriptionStatus,
     effective_plan_code,
+    is_paid_month,
     subscription_status,
 )
+from casero.shared.kernel.periods import Period
 
 TRIAL = Subscription("casero", date(2026, 10, 26), date(2026, 11, 25), date(2026, 11, 25), None)
 PAID = Subscription("casero", date(2026, 10, 26), None, date(2027, 10, 26), None)
+AFTER_TRIAL = Subscription(
+    "casero", date(2026, 10, 26), date(2026, 11, 25), date(2027, 2, 10), None
+)
+
+
+@pytest.mark.parametrize(
+    ("subscription", "period", "paid"),
+    [
+        (None, Period(2026, 12), False),
+        (TRIAL, Period(2026, 11), False),
+        (TRIAL, Period(2026, 12), False),
+        (AFTER_TRIAL, Period(2026, 10), False),
+        (AFTER_TRIAL, Period(2026, 11), False),
+        (AFTER_TRIAL, Period(2026, 12), True),
+        (AFTER_TRIAL, Period(2027, 2), True),
+        (AFTER_TRIAL, Period(2027, 3), False),
+        (PAID, Period(2026, 11), True),
+        (Subscription("casero", date(2026, 10, 1), None, None, None), Period(2026, 11), False),
+    ],
+)
+def test_a_month_is_paid_when_it_starts_in_the_paid_part(
+    subscription: Subscription | None, period: Period, paid: bool
+) -> None:
+    assert is_paid_month(subscription, period) is paid
 
 
 @pytest.mark.parametrize(

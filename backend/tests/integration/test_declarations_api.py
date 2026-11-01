@@ -180,6 +180,36 @@ async def test_the_free_plan_has_no_tax_module(
     assert (lapsed.status_code, lapsed.json()["detail"]) == (403, "tax_module_unavailable")
 
 
+async def test_a_paid_month_keeps_its_cards_after_the_plan_lapses(
+    database: Database, request: pytest.FixtureRequest
+) -> None:
+    clock = FixedClock(NOW)
+    email = f"{uuid7()}@example.com"
+    with client_for(database, request, clock) as client:
+        register(client, email)
+        owner = await asyncpg.connect(database.dsn("casero_owner"))
+        try:
+            await owner.execute(
+                "UPDATE users SET email_verified_at = $1 WHERE email = $2", NOW, email
+            )
+            await owner.execute(
+                "UPDATE subscriptions s SET trial_ends_at = '2026-10-01', ends_at = '2026-11-02'"
+                " FROM account_members m JOIN users u ON u.id = m.user_id"
+                " WHERE s.account_id = m.account_id AND u.email = $1",
+                email,
+            )
+        finally:
+            await owner.close()
+        clock.advance(timedelta(days=19))
+        paid = client.get(OCTOBER)
+        after_it = client.get(OCTOBER.replace("2026-10", "2026-12"))
+        before_it = client.get(OCTOBER.replace("2026-10", "2026-09"))
+
+    assert paid.status_code == 200
+    assert (after_it.status_code, after_it.json()["detail"]) == (403, "tax_module_unavailable")
+    assert (before_it.status_code, before_it.json()["detail"]) == (403, "tax_module_unavailable")
+
+
 @pytest.mark.parametrize(
     ("period", "detail"), [("2027-01", "unknown_year"), ("2026-13", None), ("octubre", None)]
 )
