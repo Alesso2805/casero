@@ -3,7 +3,9 @@ from datetime import UTC, date, datetime
 import pytest
 from structlog.testing import capture_logs
 
-from casero.admin.application.alerts import RaiseAlerts, schedule_years
+from casero.admin.application.alerts import RaiseAlerts, UnansweredComplaint, schedule_years
+from casero.admin.application.retention import years_before
+from casero.admin.domain.complaints import add_business_days, business_days_between
 from casero.shared.kernel.email import Email
 
 pytestmark = pytest.mark.anyio
@@ -30,7 +32,11 @@ class Readings:
         failed: dict[str, int] | None = None,
         stuck_jobs: list[str] | None = None,
         missing_rules: set[int] | None = None,
+        unanswered: list[UnansweredComplaint] | None = None,
+        holidays: frozenset[date] = frozenset(),
     ) -> None:
+        self.unanswered = unanswered or []
+        self.holidays = holidays
         self.missing_rules = missing_rules or set()
         self.stuck = stuck or []
         self.stuck_jobs = stuck_jobs or []
@@ -51,6 +57,12 @@ class Readings:
 
     async def failed_runs_since(self, since: datetime) -> dict[str, int]:
         return self.failed
+
+    async def unanswered_complaints(self) -> list[UnansweredComplaint]:
+        return self.unanswered
+
+    async def holidays_after(self, day: date) -> frozenset[date]:
+        return self.holidays
 
 
 class AlertLog:
@@ -158,3 +170,43 @@ async def test_nothing_to_report_sends_nothing() -> None:
         await raise_alerts(Readings(), mailer)()
 
     assert (logs, mailer.sent) == ([], [])
+
+
+async def test_an_unanswered_complaint_alerts_once_at_7_and_once_at_12_business_days() -> None:
+    complaint = UnansweredComplaint("000000001-2026", date(2026, 10, 16), date(2026, 11, 6))
+    readings, alerts, mailer = Readings(unanswered=[complaint]), AlertLog(), Mailer()
+
+    def alerts_on(day: datetime) -> RaiseAlerts:
+        return RaiseAlerts(readings, alerts, mailer, "dueno@example.com", Clock(day))
+
+    await alerts_on(datetime(2026, 10, 26, 15, tzinfo=UTC))()
+    assert mailer.sent == []
+
+    await alerts_on(datetime(2026, 10, 27, 15, tzinfo=UTC))()
+    await alerts_on(datetime(2026, 10, 27, 16, tzinfo=UTC))()
+    await alerts_on(datetime(2026, 11, 3, 15, tzinfo=UTC))()
+
+    assert [email.subject for email in mailer.sent] == [
+        "Casero: el reclamo 000000001-2026 lleva 7 días hábiles sin respuesta",
+        "Casero: el reclamo 000000001-2026 lleva 12 días hábiles sin respuesta",
+    ]
+    assert "06/11/2026" in mailer.sent[0].text
+
+
+def test_business_days_count_like_the_deadline() -> None:
+    filed_on = date(2026, 10, 16)
+    holidays = frozenset({date(2026, 10, 20)})
+    deadline = add_business_days(filed_on, 15, holidays)
+
+    assert business_days_between(filed_on, filed_on, holidays) == 0
+    assert business_days_between(filed_on, date(2026, 10, 19), holidays) == 1
+    assert business_days_between(filed_on, date(2026, 10, 21), holidays) == 2
+    assert business_days_between(filed_on, deadline, holidays) == 15
+
+
+def test_a_leap_day_goes_back_to_the_28th() -> None:
+    def at(year: int, month: int, day: int) -> datetime:
+        return datetime(year, month, day, 15, tzinfo=UTC)
+
+    assert years_before(at(2028, 2, 29), 1) == at(2027, 2, 28)
+    assert years_before(at(2028, 3, 1), 2) == at(2026, 3, 1)

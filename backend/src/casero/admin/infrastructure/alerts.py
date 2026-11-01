@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from casero.admin.application.alerts import UnansweredComplaint
 from casero.admin.application.complaint_emails import COPY_JOB, NOTICE_JOB
 from casero.shared.infrastructure.jobs import claim_once, finish_run
+from casero.shared.kernel.clock import LIMA
 
 ALERT_JOB = "alert"
 
@@ -22,6 +24,11 @@ FAILED = text(
     "SELECT job, count(*) AS failures FROM job_runs WHERE status = 'failed'"
     " AND finished_at >= :since AND job <> :alert_job GROUP BY job"
 )
+UNANSWERED = text(
+    "SELECT number, created_at, due_at FROM complaints WHERE responded_at IS NULL"
+    " ORDER BY created_at"
+)
+HOLIDAYS_AFTER = text("SELECT date FROM holidays WHERE date > :day")
 
 
 class SqlOpsReadings:
@@ -63,6 +70,19 @@ class SqlOpsReadings:
         async with self._engine.connect() as connection:
             rows = await connection.execute(FAILED, {"since": since, "alert_job": ALERT_JOB})
             return {row.job: row.failures for row in rows}
+
+    async def unanswered_complaints(self) -> list[UnansweredComplaint]:
+        async with self._engine.connect() as connection:
+            rows = await connection.execute(UNANSWERED)
+            return [
+                UnansweredComplaint(row.number, row.created_at.astimezone(LIMA).date(), row.due_at)
+                for row in rows
+            ]
+
+    async def holidays_after(self, day: date) -> frozenset[date]:
+        async with self._engine.connect() as connection:
+            rows = await connection.execute(HOLIDAYS_AFTER, {"day": day})
+            return frozenset(row.date for row in rows)
 
 
 class SqlAlertLog:

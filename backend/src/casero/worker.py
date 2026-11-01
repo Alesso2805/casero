@@ -23,9 +23,11 @@ from casero.admin.application.complaint_emails import (
     SendComplaintEmails,
     SuppressedAddresses,
 )
+from casero.admin.application.retention import ForgetExpiredData, RetentionStore
 from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.alerts import SqlAlertLog, SqlOpsReadings
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
+from casero.admin.infrastructure.retention import SqlRetention
 from casero.identity.infrastructure.email_suppressions import (
     SqlSuppressionStore,
     SuppressionLookup,
@@ -76,6 +78,7 @@ TAX_REMINDERS_FROM_HOUR = 8
 # A failed account is retried 3 times a day (rule 12); an hour apart, a short SMTP outage
 # doesn't use them all.
 TAX_REMINDER_RETRY_EVERY = timedelta(hours=1)
+RETENTION_EVERY = timedelta(hours=1)
 
 type Job = Callable[[], Awaitable[None]]
 type Heartbeat = Callable[[], Awaitable[None]]
@@ -200,6 +203,7 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
     readings: OpsReadings = SqlOpsReadings(engine)
     alert_log: AlertLog = SqlAlertLog(engine)
     alert_mailer: AlertMailer = SmtpMailer(settings.smtp, clock)
+    retention: RetentionStore = SqlRetention(engine)
 
     async def purge_rate_limits() -> None:
         await purge_expired_buckets(engine, clock)
@@ -207,6 +211,7 @@ def build_jobs(settings: WorkerSettings, engine: AsyncEngine, clock: Clock) -> d
     return {
         "complaint_emails": SendComplaintEmails(outbox, mailer, suppressed, clock, identity),
         "rate_limit_purge": purge_rate_limits,
+        "retention": at_most_every(RETENTION_EVERY, clock, ForgetExpiredData(retention, clock)),
         "alerts": RaiseAlerts(readings, alert_log, alert_mailer, settings.alerts_inbox, clock),
         **{
             name: DailyAccountJob(engine, clock, name, work)

@@ -4,6 +4,7 @@ from typing import Protocol
 
 import structlog
 
+from casero.admin.domain.complaints import business_days_between
 from casero.shared.kernel.clock import Clock
 from casero.shared.kernel.email import Email
 
@@ -15,6 +16,8 @@ MONTHS = 12
 RUC_GROUPS = 7
 # From November the next year's SUNAT schedule should already be loaded (SPEC, CS-26).
 NEXT_YEAR_FROM_MONTH = 11
+# Reminders before the 15 business days run out (CS-25).
+UNANSWERED_ALERT_DAYS = (7, 12)
 
 log = structlog.get_logger()
 
@@ -26,6 +29,13 @@ class Alert:
     subject: str
     text: str
     tags: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class UnansweredComplaint:
+    number: str
+    filed_on: date
+    due_on: date
 
 
 class OpsReadings(Protocol):
@@ -42,6 +52,10 @@ class OpsReadings(Protocol):
     async def has_tax_rules(self, year: int) -> bool: ...
 
     async def failed_runs_since(self, since: datetime) -> dict[str, int]: ...
+
+    async def unanswered_complaints(self) -> list[UnansweredComplaint]: ...
+
+    async def holidays_after(self, day: date) -> frozenset[date]: ...
 
 
 class AlertLog(Protocol):
@@ -141,6 +155,7 @@ class RaiseAlerts:
                         tags={"year": str(year)},
                     )
                 )
+        pending += await self._unanswered_complaints(today)
         failed = await self.readings.failed_runs_since(now - FAILURE_WINDOW)
         if failed:
             summary = ", ".join(f"{job} ({count})" for job, count in sorted(failed.items()))
@@ -154,3 +169,26 @@ class RaiseAlerts:
                 )
             )
         return pending
+
+    async def _unanswered_complaints(self, today: date) -> list[Alert]:
+        unanswered = await self.readings.unanswered_complaints()
+        if not unanswered:
+            return []
+        first = min(complaint.filed_on for complaint in unanswered)
+        holidays = await self.readings.holidays_after(first)
+        return [
+            Alert(
+                key=f"complaint:{complaint.number}:{days}",
+                event="complaint.unanswered",
+                subject=f"Casero: el reclamo {complaint.number} lleva {days} días hábiles sin "
+                "respuesta",
+                text=(
+                    f"El plazo vence el {complaint.due_on:%d/%m/%Y} y no se puede prorrogar. "
+                    "Respóndelo como indica docs/ops/complaints.md."
+                ),
+                tags={"days": str(days)},
+            )
+            for complaint in unanswered
+            for days in UNANSWERED_ALERT_DAYS
+            if business_days_between(complaint.filed_on, today, holidays) >= days
+        ]

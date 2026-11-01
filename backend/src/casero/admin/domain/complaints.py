@@ -76,3 +76,14 @@ def add_business_days(filed_on: date, days: int, holidays: frozenset[date]) -> d
         if current.weekday() < FIRST_WEEKEND_DAY and current not in holidays:
             remaining -= 1
     return current
+
+
+def business_days_between(filed_on: date, today: date, holidays: frozenset[date]) -> int:
+    """Business days gone since the filing, counted the same way as add_business_days."""
+    days = 0
+    current = filed_on
+    while current < today:
+        current += timedelta(days=1)
+        if current.weekday() < FIRST_WEEKEND_DAY and current not in holidays:
+            days += 1
+    return days
