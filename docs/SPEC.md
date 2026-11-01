@@ -141,7 +141,7 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 | Contexto | Quién lo usa | Cómo accede |
 | --- | --- | --- |
 | `anonymous` | Rutas `/api/public/*`: registro, inicio de sesión, recuperación, cancelación de la eliminación, Libro de Reclamaciones, lista de espera, calculadora pública | Solo tablas sin RLS y lectura de la configuración tributaria, con dos excepciones: al registrarse crea cuenta, miembro, aceptaciones y suscripción en una transacción fijando antes `app.account_id` con el id generado, y el enlace de cancelación de la eliminación llama a `app_cancel_deletion(p_token_hash, p_now)` (`SECURITY DEFINER`) |
-| `account` | Rutas `/api/app/*` | `current_account` fija `app.account_id` con `set_config(..., true)` dentro de la transacción |
+| `account` | Rutas `/api/app/*` | `current_account` fija `app.account_id` con `set_config(..., true)` dentro de la transacción y responde 403 `legal_acceptance_required` o `consent_withdrawn` si falta aceptar una versión vigente o se retiró el consentimiento; las rutas de derechos (ver el estado legal, aceptar, retirar el consentimiento, exportar y eliminar) usan `account_for_rights`, que fija la cuenta igual pero no revisa eso |
 | `tenant` | Rutas `/api/tenant/*` | `app_resolve_tenant_token(p_hash, p_today)` (`SECURITY DEFINER`, propiedad de `casero_owner`, `search_path` fijo) devuelve cuenta y contrato; luego una sola llamada fija `app.account_id`, `app.context = 'tenant'` y `app.lease_id`, y las políticas `RESTRICTIVE` limitan las filas a ese contrato |
 | `system` | Worker con el rol `casero_worker` | `app_list_account_ids(p_purpose, p_today)` (`SECURITY DEFINER`, p\_purpose ∈ jobs, purge) y una transacción por cuenta; tablas de sistema sin RLS (`job_runs`, `pending_object_deletions`) |
 | `admin` | Rutas `/api/admin/*` | Puerto aparte del mismo proceso, ligado solo a `127.0.0.1` del servidor y usado por túnel SSH, con un pool aparte como `casero_admin` (sin `BYPASSRLS`); ambos se crean solo si `ADMIN_ENABLED=true`; ve filas de cuenta solo por sus políticas en `accounts`, `subscriptions` y `subscription_payments`; sesiones en `staff_sessions`; cada acción queda en `staff_audit_log`; permisos por columna en la tabla de roles |
@@ -155,8 +155,8 @@ Un monolito modular en Python con dos procesos (API y worker), una PWA en React 
 
 | Módulo | Contenido |
 | --- | --- |
-| `identity` | Usuarios, sesiones, verificación, recuperación, aceptaciones legales |
-| `accounts` | Cuenta, registro, perfil tributario, plan, suscripción, `entitlements` (funciones del plan y estado de la suscripción), exportación y eliminación |
+| `identity` | Usuarios, sesiones, verificación, recuperación |
+| `accounts` | Cuenta, registro, aceptaciones legales, perfil tributario, plan, suscripción, `entitlements` (funciones del plan y estado de la suscripción), exportación y eliminación |
 | `properties` | Inmuebles y unidades |
 | `leases` | Inquilinos y contratos, ciclo de vida |
 | `ledger` | Cargos, pagos, garantías, aplicación de pagos, estados, constancias |

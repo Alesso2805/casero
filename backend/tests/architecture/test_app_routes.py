@@ -15,18 +15,34 @@ SESSION_ONLY_ROUTES = frozenset(
     }
 )
 
+# The data subject's rights keep working while the account is blocked by a legal step (AR-20).
+RIGHTS_ROUTES = frozenset(
+    {
+        ("GET", "/api/app/legal"),
+        ("POST", "/api/app/legal/acceptances"),
+        ("POST", "/api/app/legal/consent-withdrawal"),
+    }
+)
 
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 ACCOUNT_PREFIX = "/api/app/"
 
 
-def routes_without_account(app: FastAPI, allowed: Iterable[tuple[str, str]]) -> list[str]:
-    allowed = set(allowed)
+def routes_without_account(
+    app: FastAPI,
+    allowed: Iterable[tuple[str, str]],
+    rights: Iterable[tuple[str, str]] = RIGHTS_ROUTES,
+) -> list[str]:
+    allowed, rights = set(allowed), set(rights)
+
+    def scoped(operation: tuple[str, str], names: set[str]) -> bool:
+        return "current_account" in names or (operation in rights and "account_for_rights" in names)
+
     return sorted(
         f"{method} {path}"
         for (method, path), route in operations(app, ACCOUNT_PREFIX).items()
         if (method, path) not in allowed
-        and "current_account" not in dependency_names(route.dependant)
+        and not scoped((method, path), set(dependency_names(route.dependant)))
     )
 
 
@@ -79,6 +95,29 @@ def test_ar20_meta_detects_unscoped_routes_and_unchecked_writes_in_included_rout
 
     assert routes_without_account(app, set()) == ["GET /api/app/leaky"]
     assert writes_without_csrf(app) == ["POST /api/app/unchecked"]
+
+
+def test_ar20_meta_only_listed_routes_may_skip_the_legal_checks() -> None:
+    app = FastAPI()
+    router = APIRouter()
+
+    async def account_for_rights() -> str:
+        return "account"
+
+    async def rights(_: Annotated[str, Depends(account_for_rights)]) -> None:
+        return None
+
+    router.get("/api/app/listed")(rights)
+    router.get("/api/app/unlisted")(rights)
+    app.include_router(router)
+
+    assert routes_without_account(app, set(), {("GET", "/api/app/listed")}) == [
+        "GET /api/app/unlisted"
+    ]
+
+
+def test_ar20_rights_routes_exist() -> None:
+    assert set(operations(offline_app(), ACCOUNT_PREFIX)) >= RIGHTS_ROUTES
 
 
 TENANT_PREFIX = "/api/tenant/"

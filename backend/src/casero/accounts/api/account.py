@@ -23,7 +23,7 @@ Ruc = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^[0-9]{1
 
 ACCOUNT_ERRORS: dict[int | str, dict[str, Any]] = {
     401: {"description": "No valid session"},
-    403: {"description": "No account, or the email is unverified past its deadline"},
+    403: {"description": "No account, unverified email, or a legal step pending"},
 }
 
 

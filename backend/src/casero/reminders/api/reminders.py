@@ -38,7 +38,7 @@ def create_router(
         "/api/app/whatsapp-reminders",
         responses={
             401: {"description": "No valid session"},
-            403: {"description": "No account, or the email is unverified past its deadline"},
+            403: {"description": "No account, unverified email, or a legal step pending"},
         },
     )
     async def last_reminders(

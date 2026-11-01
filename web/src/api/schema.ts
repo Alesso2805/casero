@@ -401,6 +401,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/legal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Legal Status
+         * @description What the user must accept, and whether the consent is withdrawn.
+         */
+        get: operations["legal_status_api_app_legal_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/legal/acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Documents
+         * @description Accept current versions; giving the consent again also unblocks the account.
+         */
+        post: operations["accept_documents_api_app_legal_acceptances_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/legal/consent-withdrawal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withdraw Consent
+         * @description Withdraw the sensitive-data consent; the account then only exports or deletes.
+         */
+        post: operations["withdraw_consent_api_app_legal_consent_withdrawal_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/me": {
         parameters: {
             query?: never;
@@ -1075,6 +1135,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptanceRequest */
+        AcceptanceRequest: {
+            /** Document Ids */
+            document_ids: string[];
+        };
         /** AccountResponse */
         AccountResponse: {
             /** Display Name */
@@ -1602,6 +1667,36 @@ export interface components {
              * Format: uuid
              */
             unit_id: string;
+        };
+        /** LegalDocumentResponse */
+        LegalDocumentResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "terms" | "privacy" | "sensitive_consent";
+            /** Url */
+            url: string;
+            /** Version */
+            version: string;
+        };
+        /** LegalStatusResponse */
+        LegalStatusResponse: {
+            /**
+             * Consent Withdrawn
+             * @description The sensitive-data consent is withdrawn: only rights routes work
+             */
+            consent_withdrawn: boolean;
+            /**
+             * Pending
+             * @description Current versions the user still has to accept
+             */
+            pending: components["schemas"]["LegalDocumentResponse"][];
         };
         /** LoginRequest */
         LoginRequest: {
@@ -2382,7 +2477,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2416,7 +2511,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2558,7 +2653,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -2730,7 +2825,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3228,7 +3323,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3529,6 +3624,119 @@ export interface operations {
             };
         };
     };
+    legal_status_api_app_legal_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalStatusResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or `csrf` on a write */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    accept_documents_api_app_legal_acceptances_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalStatusResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or `csrf` on a write */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid data, or `document_not_current` */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    withdraw_consent_api_app_legal_consent_withdrawal_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegalStatusResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or `csrf` on a write */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     me_api_app_me_get: {
         parameters: {
             query?: never;
@@ -3581,7 +3789,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3718,7 +3926,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -3987,7 +4195,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -4491,7 +4699,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description No account, or the email is unverified past its deadline */
+            /** @description No account, unverified email, or a legal step pending */
             403: {
                 headers: {
                     [name: string]: unknown;

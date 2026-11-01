@@ -15,3 +15,5 @@ INVITE_LIFETIME = timedelta(days=14)
 class LegalVersion:
     kind: DocumentKind
     document_id: UUID
+    version: str
+    url: str
