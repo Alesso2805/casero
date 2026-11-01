@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Protocol
 from uuid import UUID
 
@@ -10,6 +10,7 @@ from casero.identity.domain.account_emails import (
     VERIFICATION_LIFETIME,
     TokenPurpose,
     access_blocked,
+    cancel_deletion_email,
     password_reset_email,
     verification_email,
 )
@@ -36,6 +37,8 @@ class AccountUsers(Protocol):
     async def mark_verified(self, user_id: UUID, now: datetime) -> None: ...
 
     async def set_password_hash(self, user_id: UUID, password_hash: str) -> None: ...
+
+    async def set_email(self, user_id: UUID, email: str, deleted_at: datetime | None) -> None: ...
 
 
 class EmailTokens(Protocol):
@@ -80,6 +83,9 @@ class AccountLinks:
     def password_reset(self, token: str) -> str:
         return f"{self.public_url.rstrip('/')}/nueva-clave#token={token}"
 
+    def cancel_deletion(self, token: str) -> str:
+        return f"{self.public_url.rstrip('/')}/cancelar-eliminacion#token={token}"
+
 
 @dataclass(frozen=True)
 class AccountEmailSender:
@@ -105,6 +111,20 @@ class AccountEmailSender:
             if purpose == "verify_email"
             else password_reset_email(user.email, self.links.password_reset(token))
         )
+        try:
+            await self.mailer.send(email)
+        except MailDeliveryError:
+            return "failed"
+        return "sent"
+
+    async def send_cancel_deletion(
+        self, user: AccountUser, purge_on: date, expires_at: datetime
+    ) -> SendOutcome:
+        if await self.suppressions.blocks(user.email, None):
+            return "suppressed"
+        token, token_hash = self.tokens.new()
+        await self.store.create(new_id(), user.user_id, "cancel_deletion", token_hash, expires_at)
+        email = cancel_deletion_email(user.email, self.links.cancel_deletion(token), purge_on)
         try:
             await self.mailer.send(email)
         except MailDeliveryError:

@@ -270,6 +270,21 @@
         "title": "CalculatorResponse",
         "type": "object"
       },
+      "CancelDeletionRequest": {
+        "properties": {
+          "token": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "CancelDeletionRequest",
+        "type": "object"
+      },
       "ChargeLineResponse": {
         "properties": {
           "amount_cents": {
@@ -713,6 +728,21 @@
           "order_number"
         ],
         "title": "DeclaredPaymentResponse",
+        "type": "object"
+      },
+      "DeletionResponse": {
+        "properties": {
+          "purge_on": {
+            "description": "The day the data is deleted for good",
+            "format": "date",
+            "title": "Purge On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "purge_on"
+        ],
+        "title": "DeletionResponse",
         "type": "object"
       },
       "DocumentRequest": {
@@ -3259,6 +3289,37 @@
         "summary": "Account"
       }
     },
+    "/api/app/account/deletion": {
+      "post": {
+        "description": "Anonymize the user, close every session and schedule the purge.",
+        "operationId": "request_deletion_api_app_account_deletion_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "No valid session"
+          },
+          "403": {
+            "description": "No account, unverified email, or `csrf`"
+          },
+          "409": {
+            "description": "The deletion was already requested"
+          },
+          "503": {
+            "description": "The cancellation email could not be sent; nothing changed"
+          }
+        },
+        "summary": "Request Deletion"
+      }
+    },
     "/api/app/account/profile": {
       "get": {
         "description": "The landlord's name, declarant type, RUC with its schedule group and email choices.\n\n`declarant_locked` is true once the account has properties, archived ones included.",
@@ -5268,6 +5329,44 @@
           }
         },
         "summary": "Health"
+      }
+    },
+    "/api/public/account-deletion/cancellation": {
+      "post": {
+        "description": "Cancel a scheduled deletion with the token from the emailed link.",
+        "operationId": "cancel_deletion_api_public_account_deletion_cancellation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelDeletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "The link is invalid, used or expired"
+          },
+          "409": {
+            "description": "`email_taken`: that email has another account now"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Deletion"
       }
     },
     "/api/public/client-errors": {

@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from casero.shared.kernel.email import Email
 
-TokenPurpose = Literal["verify_email", "reset_password"]
+TokenPurpose = Literal["verify_email", "reset_password", "cancel_deletion"]
 
 VERIFICATION_LIFETIME = timedelta(days=7)
 RESET_LIFETIME = timedelta(minutes=30)
@@ -32,6 +32,18 @@ def password_reset_email(to: str, link: str) -> Email:
         "tu contraseña no cambia.\n"
     )
     return Email(to=to, subject="Cambia tu contraseña de Casero", text=text)
+
+
+def cancel_deletion_email(to: str, link: str, purge_on: date) -> Email:
+    text = (
+        "Hola:\n\n"
+        "Recibimos tu pedido de eliminar tu cuenta de Casero. Ya no puedes ingresar, y tus datos "
+        f"se borrarán para siempre el {purge_on:%d/%m/%Y}.\n\n"
+        "Si cambiaste de opinión o no fuiste tú, cancélalo antes de esa fecha con este enlace:\n\n"
+        f"{link}\n\n"
+        "Sirve una sola vez. Si quieres eliminar tu cuenta, no tienes que hacer nada.\n"
+    )
+    return Email(to=to, subject="Eliminación de tu cuenta de Casero", text=text)
 
 
 def verify_by(created_at: datetime, email_verified: bool) -> datetime | None:
