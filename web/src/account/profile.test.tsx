@@ -147,6 +147,35 @@ describe("profile page", () => {
     );
   });
 
+  test("deletes the account only after confirming and warns about SUNAT", async () => {
+    const api = mockApi({
+      "/api/app/account/profile": () => json(EMPTY),
+      "/api/app/account/deletion": () => json({ purge_on: "2026-11-26" }),
+    });
+    await renderPage("/app/mis-datos");
+
+    expect(await screen.findByText(/SUNAT puede revisar tus declaraciones/)).toBeDefined();
+    await userEvent.click(await screen.findByRole("button", { name: "Eliminar mi cuenta" }));
+    expect(api.requestsTo("/api/app/account/deletion")).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Sí, eliminar mi cuenta" }));
+
+    expect(await screen.findByRole("heading", { name: "Pediste eliminar tu cuenta" })).toBeDefined();
+    expect(screen.getByText(/Tus datos se borrarán el 26\/11\/2026/)).toBeDefined();
+  });
+
+  test("keeps the account when the cancel link can't be sent", async () => {
+    mockApi({
+      "/api/app/account/profile": () => json(EMPTY),
+      "/api/app/account/deletion": () => json({ detail: "email_failed" }, 503),
+    });
+    await renderPage("/app/mis-datos");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Eliminar mi cuenta" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, eliminar mi cuenta" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain("no eliminamos tu cuenta");
+  });
+
   test("offers the download of the landlord's data", async () => {
     mockApi({ "/api/app/account/profile": () => json(EMPTY) });
     await renderPage("/app/mis-datos");

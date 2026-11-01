@@ -6,6 +6,7 @@ import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { accountCopy as text } from "./copy";
 import { DataDownload } from "./DataDownload";
+import { DeleteAccount } from "./DeleteAccount";
 import { primaryButton } from "./fields";
 
 export type LegalStatus = components["schemas"]["LegalStatusResponse"];
@@ -131,6 +132,7 @@ export function LegalGate({ status }: { status: LegalStatus }) {
         </button>
       </form>
       <DataDownload />
+      <DeleteAccount />
     </section>
   );
 }

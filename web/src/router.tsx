@@ -173,6 +173,20 @@ const newPasswordRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/NewPasswordPage"), "NewPasswordPage"),
 });
 
+const accountDeletedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cuenta-eliminada/$purgeOn",
+  staticData: { title: "Pediste eliminar tu cuenta" },
+  component: lazyRouteComponent(() => import("./account/AccountDeletedPage"), "AccountDeletedPage"),
+});
+
+const cancelDeletionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cancelar-eliminacion",
+  staticData: { title: "Cancelar la eliminación" },
+  component: lazyRouteComponent(() => import("./account/CancelDeletionPage"), "CancelDeletionPage"),
+});
+
 const legalRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/legal/$document",
@@ -209,6 +223,8 @@ export const routeTree = rootRoute.addChildren([
   verifyRoute,
   forgotRoute,
   newPasswordRoute,
+  accountDeletedRoute,
+  cancelDeletionRoute,
   legalRoute,
   legalVersionRoute,
 ]);

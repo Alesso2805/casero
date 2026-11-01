@@ -53,6 +53,36 @@ export const accountCopy = {
     declarations: "Formularios de SUNAT",
     templates: "Mensajes de cobro",
   },
+  deletion: {
+    title: "Eliminar mi cuenta",
+    intro:
+      "Se borrarán tus inmuebles, contratos, inquilinos, cobros y declaraciones 30 días después de pedirlo. Hasta entonces puedes cancelarlo con el enlace que te enviaremos por correo.",
+    sunat:
+      "SUNAT puede revisar tus declaraciones hasta 4 años después. Antes de eliminar tu cuenta, descarga tus datos y guárdalos.",
+    button: "Eliminar mi cuenta",
+    question:
+      "Desde ahora no podrás ingresar a Casero, y tus datos se borrarán en 30 días. ¿Eliminas tu cuenta?",
+    confirm: "Sí, eliminar mi cuenta",
+    cancel: "Cancelar",
+    failure:
+      "No pudimos enviarte el correo para cancelarlo, así que no eliminamos tu cuenta. Vuelve a intentarlo en unos minutos.",
+  },
+  deleted: {
+    title: "Pediste eliminar tu cuenta",
+    body: (date: string) =>
+      `Tus datos se borrarán el ${date}. Si cambias de opinión, usa antes de esa fecha el enlace que te enviamos por correo.`,
+    home: "Volver al inicio",
+  },
+  cancelDeletion: {
+    title: "Cancelar la eliminación de tu cuenta",
+    intro: "Tu cuenta volverá a funcionar con todos tus datos.",
+    confirm: "Sí, conservar mi cuenta",
+    done: "Listo, tu cuenta sigue activa. Ya puedes ingresar con tu correo y tu contraseña.",
+    invalid: "Este enlace no funciona: ya se usó o venció.",
+    taken: (inbox: string) =>
+      `Ese correo ya tiene otra cuenta en Casero, así que no pudimos recuperar la tuya. Escríbenos a ${inbox}.`,
+    login: "Ingresar",
+  },
   dataDownload: {
     title: "Tus datos",
     intro:
