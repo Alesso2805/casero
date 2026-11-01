@@ -22,6 +22,7 @@ RIGHTS_ROUTES = frozenset(
         ("POST", "/api/app/legal/acceptances"),
         ("POST", "/api/app/legal/consent-withdrawal"),
         ("GET", "/api/app/exports/my-data.zip"),
+        ("POST", "/api/app/account/deletion"),
     }
 )
 

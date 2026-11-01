@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from casero.accounts.api import account as account_api
 from casero.accounts.api import data_export as data_export_api
+from casero.accounts.api import deletion as deletion_api
 from casero.accounts.api import legal as legal_api
 from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
@@ -20,6 +21,12 @@ from casero.accounts.application.context import (
     OpenAccount,
 )
 from casero.accounts.application.data_export import DataSections, ExportMyData
+from casero.accounts.application.deletion import (
+    CancelDeletion,
+    ContactSeal,
+    DeletionRecords,
+    RequestDeletion,
+)
 from casero.accounts.application.entitlements import (
     GetEntitlements,
     PlanCatalog,
@@ -58,6 +65,7 @@ from casero.accounts.infrastructure.account import (
     SqlSubscriptions,
 )
 from casero.accounts.infrastructure.data_export import SqlAccountData
+from casero.accounts.infrastructure.deletion import CipherContactSeal, SqlDeletionRecords
 from casero.accounts.infrastructure.legal import SqlLegalRecords
 from casero.accounts.infrastructure.registration import (
     SqlAccountRecords,
@@ -568,6 +576,30 @@ def create_app(
         versions: LegalVersions = SqlLegalVersions(connection)
         records: LegalRecords = SqlLegalRecords(connection, config.acceptance_ip_key)
         return WithdrawConsent(versions, records, app_clock)
+
+    contact_seal: ContactSeal = CipherContactSeal(config.field_cipher)
+
+    async def provide_request_deletion(connection: Transaction) -> RequestDeletion:
+        users: AccountUsers = SqlAccountUsers(connection)
+        records: DeletionRecords = SqlDeletionRecords(connection)
+        sessions: SessionStore = SqlSessionStore(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return RequestDeletion(
+            users, records, contact_seal, email_sender(connection), sessions, audit, app_clock
+        )
+
+    async def provide_cancel_deletion(connection: Transaction) -> CancelDeletion:
+        users: AccountUsers = SqlAccountUsers(connection)
+        records: DeletionRecords = SqlDeletionRecords(connection)
+        scope: AccountScope = SqlAccountScope(connection)
+        audit: AuditLog = SqlAuditLog(connection)
+        return CancelDeletion(email_tokens, records, contact_seal, users, scope, audit, app_clock)
+
+    app.include_router(
+        deletion_api.create_router(
+            account_for_rights, provide_request_deletion, provide_cancel_deletion
+        )
+    )
 
     app.include_router(
         legal_api.create_router(

@@ -23,6 +23,7 @@ MARK_VERIFIED = text(
     "UPDATE users SET email_verified_at = :now WHERE id = :id AND email_verified_at IS NULL"
 )
 SET_PASSWORD = text("UPDATE users SET password_hash = :password_hash WHERE id = :id")
+SET_EMAIL = text("UPDATE users SET email = :email, deleted_at = :deleted_at WHERE id = :id")
 INSERT_TOKEN = text(
     "INSERT INTO email_tokens (id, user_id, purpose, token_hash, expires_at)"
     " VALUES (:id, :user_id, :purpose, :token_hash, :expires_at)"
@@ -65,6 +66,11 @@ class SqlAccountUsers:
     async def set_password_hash(self, user_id: UUID, password_hash: str) -> None:
         await self._connection.execute(
             SET_PASSWORD, {"id": user_id, "password_hash": password_hash}
+        )
+
+    async def set_email(self, user_id: UUID, email: str, deleted_at: datetime | None) -> None:
+        await self._connection.execute(
+            SET_EMAIL, {"id": user_id, "email": email, "deleted_at": deleted_at}
         )
 
 

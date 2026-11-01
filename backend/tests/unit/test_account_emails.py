@@ -52,6 +52,9 @@ class Users:
     async def mark_verified(self, user_id: UUID, now: datetime) -> None:
         self.verified.append(user_id)
 
+    async def set_email(self, user_id: UUID, email: str, deleted_at: datetime | None) -> None:
+        raise AssertionError("not used")
+
     async def set_password_hash(self, user_id: UUID, password_hash: str) -> None:
         self.hashes[user_id] = password_hash
 

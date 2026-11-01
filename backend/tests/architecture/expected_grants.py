@@ -90,7 +90,7 @@ TABLE_PRIVILEGES = {
         "email_tokens": CRUD,
         "account_members": CRUD,
         "rate_limit_buckets": CRUD,
-        "registration_invites": SELECT,
+        "registration_invites": frozenset({"SELECT", "DELETE"}),
         "plans": SELECT,
         "tax_rule_sets": SELECT,
         "sunat_due_dates": SELECT,
