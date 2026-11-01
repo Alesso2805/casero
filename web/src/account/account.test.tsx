@@ -152,6 +152,42 @@ describe("login", () => {
   });
 });
 
+describe("cancelling a deletion", () => {
+  const PATH = "/api/public/account-deletion/cancellation";
+
+  test("asks first, because mail filters open links", async () => {
+    const api = mockApi({ [PATH]: 204 });
+    await renderPage("/cancelar-eliminacion#token=el-token");
+
+    const confirm = await screen.findByRole("button", { name: "Sí, conservar mi cuenta" });
+    expect(api.requestsTo(PATH)).toHaveLength(0);
+    await userEvent.click(confirm);
+
+    expect((await screen.findByRole("status")).textContent).toContain("tu cuenta sigue activa");
+    expect(await api.requestsTo(PATH)[0]?.json()).toEqual({ token: "el-token" });
+  });
+
+  test.each([
+    [400, "Este enlace no funciona"],
+    [409, "Ese correo ya tiene otra cuenta"],
+  ])("explains a %i", async (status, message) => {
+    mockApi({ [PATH]: status });
+    await renderPage("/cancelar-eliminacion#token=el-token");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Sí, conservar mi cuenta" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(message);
+  });
+
+  test("says when the link has no token", async () => {
+    mockApi({});
+    await renderPage("/cancelar-eliminacion");
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Este enlace no funciona");
+    expect(screen.queryByRole("button", { name: "Sí, conservar mi cuenta" })).toBeNull();
+  });
+});
+
 describe("account home", () => {
   test("asks to confirm the email and resends the link", async () => {
     const api = mockApi({
@@ -274,6 +310,7 @@ describe("account home", () => {
     expect(await screen.findByRole("heading", { name: "Tu cuenta está bloqueada" })).toBeDefined();
     expect(screen.queryByRole("link", { name: "Mis contratos" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "Eliminar mi cuenta" })).toBeDefined();
     expect(screen.getByRole("link", { name: "Descargar mis datos" })).toHaveProperty(
       "pathname",
       "/api/app/exports/my-data.zip",
