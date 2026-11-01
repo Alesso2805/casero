@@ -143,8 +143,39 @@ describe("profile page", () => {
 
     expect(await screen.findByRole("alert")).toHaveProperty(
       "textContent",
-      "Tu cuenta está pausada hasta que confirmes tu correo.",
+      "Tu cuenta está pausada. Vuelve al inicio para ver qué falta.",
     );
+  });
+
+  test("withdraws the consent only after confirming, and goes to the blocked account", async () => {
+    let withdrawn = false;
+    const api = mockApi({
+      "/api/app/account/profile": () => json(EMPTY),
+      "/api/app/me": () =>
+        json({
+          user_id: "01a175b4-8f38-727d-a7dc-40a7a7b30001",
+          email: "ana@example.com",
+          email_verified: true,
+          verify_by: null,
+          blocked_until_verified: false,
+        }),
+      "/api/app/legal": () => json({ pending: [], consent_withdrawn: withdrawn }),
+      "/api/app/legal/consent-withdrawal": () => {
+        withdrawn = true;
+        return json({ pending: [], consent_withdrawn: true });
+      },
+    });
+    await renderPage("/app/mis-datos");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Retirar mi consentimiento" }));
+    expect(screen.getByText(/Tu cuenta quedará bloqueada/)).toBeDefined();
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(api.requestsTo("/api/app/legal/consent-withdrawal")).toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: "Retirar mi consentimiento" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sí, retirar mi consentimiento" }));
+
+    expect(await screen.findByRole("heading", { name: "Tu cuenta está bloqueada" })).toBeDefined();
+    expect(api.requestsTo("/api/app/legal/consent-withdrawal")[0]?.method).toBe("POST");
   });
 
   test("sends visitors without a session to log in", async () => {

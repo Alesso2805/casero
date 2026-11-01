@@ -6,6 +6,7 @@ import type { components } from "../api/schema";
 import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { DueNotice } from "../tax/DueNotice";
 import { accountCopy as text } from "./copy";
+import { fetchLegalStatus, isBlocked, LegalGate } from "./LegalGate";
 import { primaryButton, secondaryButton, textLink } from "./fields";
 
 type Me = components["schemas"]["MeResponse"];
@@ -71,6 +72,11 @@ export function AppHome() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: fetchMe });
+  const legal = useQuery({
+    queryKey: ["legal"],
+    queryFn: fetchLegalStatus,
+    enabled: Boolean(me.data),
+  });
   const logOut = useMutation({
     mutationFn: async (everywhere: boolean) => {
       await (everywhere
@@ -103,23 +109,29 @@ export function AppHome() {
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-base">
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
-      <DueNotice />
-      <CollectionsPanel />
-      <Link to="/app/inmuebles" className={textLink}>
-        {text.home.properties}
-      </Link>
-      <Link to="/app/contratos" className={textLink}>
-        {text.home.leases}
-      </Link>
-      <Link to="/app/impuestos" className={textLink}>
-        {text.home.declarations}
-      </Link>
-      <Link to="/app/mensajes" className={textLink}>
-        {text.home.templates}
-      </Link>
-      <Link to="/app/mis-datos" className={textLink}>
-        {text.home.profile}
-      </Link>
+      {legal.isPending && <p role="status">{text.home.loading}</p>}
+      {isBlocked(legal.data) && <LegalGate status={legal.data} />}
+      {!legal.isPending && !isBlocked(legal.data) && (
+        <>
+          <DueNotice />
+          <CollectionsPanel />
+          <Link to="/app/inmuebles" className={textLink}>
+            {text.home.properties}
+          </Link>
+          <Link to="/app/contratos" className={textLink}>
+            {text.home.leases}
+          </Link>
+          <Link to="/app/impuestos" className={textLink}>
+            {text.home.declarations}
+          </Link>
+          <Link to="/app/mensajes" className={textLink}>
+            {text.home.templates}
+          </Link>
+          <Link to="/app/mis-datos" className={textLink}>
+            {text.home.profile}
+          </Link>
+        </>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
           type="button"

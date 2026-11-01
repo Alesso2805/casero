@@ -93,7 +93,7 @@ export const propertiesCopy = {
     rentedShare: "Escribe un número del 1 al 100.",
     conjugalConfirmation:
       "Para elegir esta opción, confirma que el RUC de esta cuenta es el del cónyuge que declara.",
-    paused: "Tu cuenta está pausada hasta que confirmes tu correo.",
+    paused: "Tu cuenta está pausada. Vuelve al inicio para ver qué falta.",
     failure: "Algo salió mal. Vuelve a intentarlo en unos minutos.",
   },
 } as const;
