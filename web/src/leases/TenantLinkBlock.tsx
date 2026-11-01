@@ -6,7 +6,7 @@ import { primaryButton, secondaryButton } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatLimaDay } from "../landing/dates";
-import { ConfirmButton } from "./ConfirmButton";
+import { ConfirmButton } from "../account/ConfirmButton";
 import { leasesCopy as text } from "./copy";
 import { inputClass } from "./writes";
 

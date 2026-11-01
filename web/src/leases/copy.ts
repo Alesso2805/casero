@@ -234,7 +234,7 @@ export const leasesCopy = {
     voidConfirm: "Anular pago",
   },
   errors: {
-    paused: "Tu cuenta está pausada hasta que confirmes tu correo.",
+    paused: "Tu cuenta está pausada. Vuelve al inicio para ver qué falta.",
     failure: "Algo salió mal. Vuelve a intentarlo en unos minutos.",
     alreadyCorrected: "Ese cobro ya tiene una corrección. Revisa los cobros del contrato.",
     required: "Completa este dato.",

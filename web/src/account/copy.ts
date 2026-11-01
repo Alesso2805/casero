@@ -53,10 +53,30 @@ export const accountCopy = {
     declarations: "Formularios de SUNAT",
     templates: "Mensajes de cobro",
   },
+  legalGate: {
+    updatedTitle: "Actualizamos nuestros documentos",
+    updatedIntro: "Para seguir usando Casero, lee los cambios y acéptalos.",
+    withdrawnTitle: "Tu cuenta está bloqueada",
+    withdrawnIntro:
+      "Retiraste tu consentimiento para que Casero trate tus ingresos por alquiler. Mientras tanto, Casero no genera tus cobros ni te envía recordatorios. Si lo das otra vez, todo sigue donde lo dejaste.",
+    acceptPrivacy: "Acepto la",
+    version: (version: string) => `(versión ${version})`,
+    submit: "Aceptar y continuar",
+    sending: "Guardando…",
+    outdated: "Hay una versión más nueva. Vuelve a abrir Casero, revísala y acéptala.",
+  },
   profile: {
     title: "Mis datos",
+    consentTitle: "Tu consentimiento",
+    consentIntro:
+      "Diste tu consentimiento para que Casero trate tus ingresos por alquiler. Puedes retirarlo cuando quieras.",
+    withdraw: "Retirar mi consentimiento",
+    withdrawQuestion:
+      "Tu cuenta quedará bloqueada: Casero dejará de generar tus cobros y de enviarte recordatorios, y solo podrás descargar o eliminar tus datos. ¿Lo retiras?",
+    withdrawConfirm: "Sí, retirar mi consentimiento",
+    withdrawCancel: "Cancelar",
     back: "Volver a mi cuenta",
-    paused: "Tu cuenta está pausada hasta que confirmes tu correo.",
+    paused: "Tu cuenta está pausada. Vuelve al inicio para ver qué falta.",
     displayName: "Tu nombre",
     displayNameHint: "Así te verán tus inquilinos cuando abran su enlace.",
     taxpayerKind: "¿Quién declara estos alquileres ante SUNAT?",

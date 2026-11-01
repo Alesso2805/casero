@@ -4,7 +4,7 @@ import { primaryButton, secondaryButton } from "../account/fields";
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { formatSoles, parseSolesToCents } from "../landing/money";
-import { ConfirmButton } from "./ConfirmButton";
+import { ConfirmButton } from "../account/ConfirmButton";
 import { leasesCopy as text } from "./copy";
 import { limaToday, uuidv7 } from "./terms";
 import { inputClass, type Outcome, outcomeOf, useLeaseWrite } from "./writes";
