@@ -158,6 +158,7 @@ jobs:
       CASERO_BUSINESS_NAME: Negocio de Prueba
       CASERO_BUSINESS_RUC: "10000000001"
       CASERO_BUSINESS_ADDRESS: Av. Ficticia 100, Lima
+      CASERO_BUSINESS_YAPE: "999000111"
       CASERO_COMPLAINTS_INBOX: reclamos@example.com
       CASERO_PRIVACY_INBOX: privacidad@example.com
       REGISTRATION_MODE: open
