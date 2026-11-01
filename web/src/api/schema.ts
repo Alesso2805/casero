@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/account/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request Deletion
+         * @description Anonymize the user, close every session and schedule the purge.
+         */
+        post: operations["request_deletion_api_app_account_deletion_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/account/profile": {
         parameters: {
             query?: never;
@@ -891,6 +911,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/public/account-deletion/cancellation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Deletion
+         * @description Cancel a scheduled deletion with the token from the emailed link.
+         */
+        post: operations["cancel_deletion_api_public_account_deletion_cancellation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/public/client-errors": {
         parameters: {
             query?: never;
@@ -1241,6 +1281,11 @@ export interface components {
             /** Total Tax Cents */
             total_tax_cents: number;
         };
+        /** CancelDeletionRequest */
+        CancelDeletionRequest: {
+            /** Token */
+            token: string;
+        };
         /** ChargeLineResponse */
         ChargeLineResponse: {
             /** Amount Cents */
@@ -1427,6 +1472,15 @@ export interface components {
              * Format: date
              */
             paid_on: string;
+        };
+        /** DeletionResponse */
+        DeletionResponse: {
+            /**
+             * Purge On
+             * Format: date
+             * @description The day the data is deleted for good
+             */
+            purge_on: string;
         };
         /** DocumentRequest */
         DocumentRequest: {
@@ -2499,6 +2553,54 @@ export interface operations {
             };
             /** @description No account, unverified email, or a legal step pending */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    request_deletion_api_app_account_deletion_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionResponse"];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or `csrf` */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The deletion was already requested */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The cancellation email could not be sent; nothing changed */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4786,6 +4888,51 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    cancel_deletion_api_public_account_deletion_cancellation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link is invalid, used or expired */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description `email_taken`: that email has another account now */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
