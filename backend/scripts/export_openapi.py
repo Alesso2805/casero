@@ -1,11 +1,12 @@
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
-from casero.api import create_app
+from casero.api import create_admin_app, create_app
 from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, HmacKeyring
 from casero.shared.infrastructure.mail import SmtpSettings
-from casero.shared.infrastructure.settings import ApiSettings
+from casero.shared.infrastructure.settings import AdminSettings, ApiSettings
 
 UNUSED_SETTINGS = ApiSettings(
     database_url="postgresql+asyncpg://unused@localhost/unused",
@@ -23,12 +24,17 @@ UNUSED_SETTINGS = ApiSettings(
 )
 
 
-def main() -> None:
-    target = Path(sys.argv[1])
-    schema = create_app(UNUSED_SETTINGS).openapi()
+def write_schema(schema: dict[str, Any], target: Path) -> None:
     target.write_text(
         json.dumps(schema, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
     )
+
+
+def main() -> None:
+    public_target, admin_target = (Path(argument) for argument in sys.argv[1:3])
+    write_schema(create_app(UNUSED_SETTINGS).openapi(), public_target)
+    admin = AdminSettings(UNUSED_SETTINGS.database_url, UNUSED_SETTINGS.field_cipher)
+    write_schema(create_admin_app(admin).openapi(), admin_target)
 
 
 if __name__ == "__main__":

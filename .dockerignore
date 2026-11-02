@@ -1,6 +1,7 @@
 .git
 **/node_modules
 **/dist
+**/dist-admin
 **/.venv
 **/__pycache__
 **/.mypy_cache

@@ -17,6 +17,6 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["src", "vite.config.ts"],
-  "exclude": ["src/sw"]
+  "include": ["src", "vite.config.ts", "vite.admin.config.ts"],
+  "exclude": ["src/sw", "src/admin"]
 }

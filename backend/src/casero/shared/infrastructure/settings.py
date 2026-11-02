@@ -1,6 +1,7 @@
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, cast
 
 from casero.shared.infrastructure.crypto import (
@@ -39,6 +40,7 @@ class AdminSettings:
     database_url: str
     field_cipher: FieldCipher
     port: int = DEFAULT_ADMIN_PORT
+    bundle_dir: Path | None = None
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str]) -> AdminSettings | None:
@@ -49,6 +51,7 @@ class AdminSettings:
             env["CASERO_ADMIN_DATABASE_URL"],
             field_cipher_from_environment(env),
             int(env.get("CASERO_ADMIN_PORT", DEFAULT_ADMIN_PORT)),
+            Path(env["CASERO_ADMIN_BUNDLE_DIR"]) if env.get("CASERO_ADMIN_BUNDLE_DIR") else None,
         )
 
 
