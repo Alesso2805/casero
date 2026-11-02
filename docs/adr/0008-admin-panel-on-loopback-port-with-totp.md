@@ -22,6 +22,7 @@ A separate admin service would mean another deployment to maintain, and a privat
 
 - The panel runs in the same Python process as the API. When `ADMIN_ENABLED=true`, the process starts a second Uvicorn server in the same event loop. It serves only `/api/admin/*` and the built `/admin` bundle.
 - The public app does not mount those routes at all.
+- The bundle has its own Vite entry (`web/admin.html`, `web/vite.admin.config.ts`), so nothing of the panel is in the public site's files. It is built into the backend image, at `CASERO_ADMIN_BUNDLE_DIR`, because Caddy is not in front of this port. Without that variable, the panel serves only its API.
 - `python -m casero.api` starts both servers. Neither installs Uvicorn's signal handling, which would stop only the last server to start and kill the process as soon as one finished. `casero.shared.infrastructure.listeners.serve` owns the signals, stops both together and waits for both. If one server stops, it stops the other, so Docker restarts the whole process.
 - The admin app uses its own SQLAlchemy pool as `casero_admin`:
   - without `BYPASSRLS`;

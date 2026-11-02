@@ -63,6 +63,7 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run build
+      - run: pnpm run build:admin
 
   api-contract:
     name: API contract
@@ -87,7 +88,7 @@ jobs:
         working-directory: backend
       - run: pnpm install --frozen-lockfile
         working-directory: web
-      - run: uv run python scripts/export_openapi.py ../web/src/api/openapi.json
+      - run: uv run python scripts/export_openapi.py ../web/src/api/openapi.json ../web/src/api/admin-openapi.json
         working-directory: backend
       - run: pnpm run generate:api
         working-directory: web

@@ -44,6 +44,16 @@ def test_the_panel_uses_the_published_port_unless_told_otherwise() -> None:
     assert moved.port == 9000
 
 
+def test_the_panel_finds_its_bundle_through_the_environment() -> None:
+    default = AdminSettings.from_environment(PANEL_ENV)
+    bundled = AdminSettings.from_environment({**PANEL_ENV, "CASERO_ADMIN_BUNDLE_DIR": "/app/panel"})
+
+    assert default is not None
+    assert bundled is not None
+    assert default.bundle_dir is None
+    assert bundled.bundle_dir == Path("/app/panel")
+
+
 def test_with_the_panel_off_only_the_public_server_starts() -> None:
     assert [listener.config.port for listener in listeners(offline_app(), {})] == [8000]
 

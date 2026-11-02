@@ -10,11 +10,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && tsc --noEmit -p src/sw && vite build",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p src/sw && tsc --noEmit -p e2e",
+    "build:admin": "tsc --noEmit -p src/admin && vite build --config vite.admin.config.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/sw && tsc --noEmit -p src/admin && tsc --noEmit -p e2e",
     "lint": "eslint .",
     "test": "vitest run",
     "e2e": "playwright test --config e2e/playwright.config.ts",
-    "generate:api": "openapi-typescript src/api/openapi.json -o src/api/schema.ts"
+    "generate:api": "openapi-typescript src/api/openapi.json -o src/api/schema.ts && openapi-typescript src/api/admin-openapi.json -o src/api/admin-schema.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.0",

@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from uuid import uuid7
 
 import pyotp
@@ -19,9 +20,12 @@ STAFF_PASSWORD = "una-clave-larga-de-personal"
 
 
 @contextmanager
-def admin_client(database: Database, clock: Clock | None = None) -> Iterator[TestClient]:
+def admin_client(
+    database: Database, clock: Clock | None = None, bundle_dir: Path | None = None
+) -> Iterator[TestClient]:
     url = database.dsn("casero_admin").replace("postgresql://", "postgresql+asyncpg://", 1)
-    app = create_admin_app(AdminSettings(url, TEST_FIELD_CIPHER), clock)
+    settings = AdminSettings(url, TEST_FIELD_CIPHER, bundle_dir=bundle_dir)
+    app = create_admin_app(settings, clock)
     with TestClient(app, base_url="https://localhost:8081") as client:
         yield client
 

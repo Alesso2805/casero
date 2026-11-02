@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-  { ignores: ["dist", "src/api/schema.ts", "eslint.config.js"] },
+  { ignores: ["dist", "dist-admin", "src/api/schema.ts", "src/api/admin-schema.ts", "eslint.config.js"] },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

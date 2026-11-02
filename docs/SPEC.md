@@ -516,7 +516,7 @@ casero/
 │   ├── src/account/           # registro, sesión y datos del arrendador
 │   ├── src/properties/        # inmuebles y unidades; cada módulo del arrendador en su carpeta
 │   ├── src/tenant/            # portal del inquilino (CS-18)
-│   ├── src/admin/             # panel interno (CS-24)
+│   ├── src/admin/             # panel interno (CS-24), con su propio bundle y su contrato OpenAPI
 │   ├── src/test/              # ayudas de Vitest
 │   ├── src/landing/           # landing y calculadora pública
 │   ├── src/api/               # tipos generados con openapi-typescript

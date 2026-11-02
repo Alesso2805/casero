@@ -82,6 +82,7 @@ from casero.admin.api import accounts as admin_accounts_api
 from casero.admin.api import complaints as complaints_api
 from casero.admin.api import oversight as oversight_api
 from casero.admin.api import staff_sessions as staff_sessions_api
+from casero.admin.api.bundle import mount_bundle
 from casero.admin.api.protection import AdminProtection
 from casero.admin.application.accounts import (
     AccountDirectory,
@@ -1289,6 +1290,9 @@ def create_admin_app(settings: AdminSettings, clock: Clock | None = None) -> Fas
         if not await database_answers(engine):
             raise HTTPException(status_code=503, detail="database_unavailable")
         return HealthResponse(status="ok")
+
+    if settings.bundle_dir is not None:
+        mount_bundle(app, settings.bundle_dir)
 
     return app
 
