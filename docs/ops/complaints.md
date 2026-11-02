@@ -12,6 +12,8 @@ docker compose --env-file .env --env-file image.env exec postgres psql -U casero
 
 ## 2. Ver los reclamos sin responder
 
+El panel interno (`docs/ops/server.md`, sección 6) muestra cada reclamo con su número, su plazo y si sigue abierto, primero los más próximos a vencer. No muestra los datos del consumidor: para leer la hoja completa se usa esta consulta.
+
 ```sql
 SELECT number, kind, created_at AT TIME ZONE 'America/Lima' AS presentado, due_at,
        response_channel
