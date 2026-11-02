@@ -55,6 +55,18 @@ services:
       postgres:
         condition: service_healthy
 
+  # Keeps the encryption keys out of migrate, which runs on every deploy and never needs them.
+  staff:
+    <<: *backend
+    profiles: [tools]
+    environment:
+      CASERO_MIGRATION_DATABASE_URL: postgresql+asyncpg://casero_owner:${CASERO_OWNER_PASSWORD:-casero_owner_dev}@postgres:5432/casero
+      CASERO_ENCRYPTION_KEYS: ${CASERO_ENCRYPTION_KEYS:-dev:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA}
+      CASERO_ENCRYPTION_ACTIVE_KEY: ${CASERO_ENCRYPTION_ACTIVE_KEY:-dev}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     <<: *backend
     command: ["uvicorn", "--factory", "casero.api:create_app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*", "--no-access-log"]

@@ -536,7 +536,7 @@ casero/
 │   ├── ops/                   # respaldos, claves, incidentes, carga anual del cronograma
 │   └── reviews/               # revisiones críticas cada 3 sprints, en PDF
 ├── docker-compose.yml
-├── Makefile                   # up, down, test, lint, migrate, load-tax-config, invite, grant-founder, complaint-respond, complaint-register, check-bucket-policy; luego create-staff
+├── Makefile                   # up, down, test, lint, migrate, load-tax-config, invite, grant-founder, complaint-respond, complaint-register, create-staff, check-bucket-policy
 ├── CLAUDE.md
 └── README.md
 ```

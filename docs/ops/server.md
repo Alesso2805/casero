@@ -153,6 +153,16 @@ El registro está cerrado por defecto (`REGISTRATION_MODE=closed`). Para la beta
 
 El lanzamiento (CS-27) cambia a `REGISTRATION_MODE=open`.
 
+## 6. Personal interno
+
+Una vez, antes de usar el panel, se crea la cuenta de personal con el correo propio:
+
+```sh
+docker compose --env-file .env --env-file image.env run --rm staff python -m casero.worker create-staff <correo>
+```
+
+Pide la contraseña dos veces y muestra una sola vez el enlace `otpauth://` para la app de autenticación y 10 códigos de recuperación. Ambos se guardan en Bitwarden. La creación queda en `staff_audit_log`. Este comando corre en su propio servicio `staff`, el único con `casero_owner` y las claves de cifrado a la vez, y no arranca con `up`.
+
 ## Registro
 
 | Fecha | Acción | Quién |

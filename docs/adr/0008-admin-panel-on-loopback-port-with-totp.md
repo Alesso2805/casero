@@ -53,6 +53,8 @@ A separate admin service would mean another deployment to maintain, and a privat
 
 `make invite`, `make grant-founder` and `make complaint-respond` run as `casero_admin`. `make create-staff` and `make load-tax-config` run as `casero_owner`.
 
+`make create-staff` needs the encryption keys for the TOTP secret, so it runs in a `staff` Compose service with the `tools` profile. `migrate` runs on every deploy and stays without those keys.
+
 ## Consequences
 
 - No extra service and no extra cost. The panel is unreachable from the internet.

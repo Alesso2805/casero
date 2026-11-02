@@ -62,10 +62,7 @@ class ApiSettings:
             registration_mode=registration_mode(os.environ.get("REGISTRATION_MODE", "closed")),
             smtp=smtp_from_environment(os.environ),
             public_url=os.environ["CASERO_PUBLIC_URL"],
-            field_cipher=FieldCipher(
-                parse_keys(os.environ["CASERO_ENCRYPTION_KEYS"]),
-                os.environ["CASERO_ENCRYPTION_ACTIVE_KEY"],
-            ),
+            field_cipher=field_cipher_from_environment(os.environ),
             document_hasher=DocumentHasher(b64decode(os.environ["CASERO_DOC_HMAC_KEY"])),
             tenant_link_keys=HmacKeyring(
                 parse_keys(os.environ["CASERO_TENANT_LINK_KEYS"]),
@@ -74,6 +71,12 @@ class ApiSettings:
             sentry_dsn=os.environ.get("SENTRY_DSN") or None,
             sentry_environment=os.environ.get("SENTRY_ENVIRONMENT", "production"),
         )
+
+
+def field_cipher_from_environment(env: Mapping[str, str]) -> FieldCipher:
+    return FieldCipher(
+        parse_keys(env["CASERO_ENCRYPTION_KEYS"]), env["CASERO_ENCRYPTION_ACTIVE_KEY"]
+    )
 
 
 def secret_key(env: Mapping[str, str], name: str) -> bytes:
