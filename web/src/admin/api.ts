@@ -5,6 +5,9 @@ import { csrfMiddleware } from "../api/csrf";
 
 export type Staff = components["schemas"]["StaffResponse"];
 export type Account = components["schemas"]["AccountResponse"];
+export type AccountDetail = components["schemas"]["AccountDetailResponse"];
+export type ScheduleEntry = components["schemas"]["ScheduleEntryResponse"];
+export type ComplaintDeadline = components["schemas"]["ComplaintDeadlineResponse"];
 
 export const adminApi = createClient<paths>({
   baseUrl: globalThis.location.origin,

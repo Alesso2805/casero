@@ -34,6 +34,12 @@ export function AdminShell() {
           <Link to="/" className={textLink}>
             {text.nav.accounts}
           </Link>
+          <Link to="/cronograma" className={textLink}>
+            {text.nav.schedule}
+          </Link>
+          <Link to="/reclamos" className={textLink}>
+            {text.nav.complaints}
+          </Link>
         </nav>
         <button
           type="button"

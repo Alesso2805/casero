@@ -203,10 +203,22 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
+      - name: Create a staff user for the panel
+        env:
+          CASERO_E2E_STAFF_PASSWORD: una-clave-solo-para-ci
+        run: |
+          uri=$(printf '%s\n%s\n' "$CASERO_E2E_STAFF_PASSWORD" "$CASERO_E2E_STAFF_PASSWORD" \
+            | docker compose --project-name casero-edge --file infra/deploy/docker-compose.yml \
+              run --rm -T staff python -m casero.worker create-staff personal@example.com 2>/dev/null \
+            | grep '^otpauth://')
+          echo "CASERO_E2E_TOTP_URI=$uri" >> "$GITHUB_ENV"
       - name: End to end through the production edge, with axe
         working-directory: web
         env:
           CASERO_E2E_URL: https://localhost
+          CASERO_E2E_ADMIN_URL: http://localhost:8081
+          CASERO_E2E_STAFF_EMAIL: personal@example.com
+          CASERO_E2E_STAFF_PASSWORD: una-clave-solo-para-ci
         run: |
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium
