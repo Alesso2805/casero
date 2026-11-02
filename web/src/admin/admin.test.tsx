@@ -181,3 +181,235 @@ describe("finding an account", () => {
     });
   });
 });
+
+describe("an account", () => {
+  const DETAIL = { ...ACCOUNT, payments: [] };
+  const PATH = `/api/admin/accounts/${ACCOUNT.id}`;
+  const PAYMENTS = `${PATH}/payments`;
+
+  async function pay(fill: { amount?: string; boleta?: string; months?: string }) {
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Monto en soles"), fill.amount ?? "19");
+    await user.type(screen.getByLabelText("Número de boleta"), fill.boleta ?? "EB01-1");
+    if (fill.months) {
+      await user.clear(screen.getByLabelText("Meses pagados"));
+      await user.type(screen.getByLabelText("Meses pagados"), fill.months);
+    }
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+  }
+
+  test("shows its subscription and the payments recorded", async () => {
+    mockApi({
+      "/api/admin/me": () => json(STAFF),
+      [PATH]: () =>
+        json({
+          ...DETAIL,
+          payments: [
+            {
+              id: "0193a9e0-0000-7000-8000-000000000002",
+              amount_cents: 19000,
+              paid_on: "2026-10-20",
+              method: "yape",
+              boleta_number: "EB01-9",
+              months: 12,
+            },
+          ],
+        }),
+    });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    expect(await screen.findByRole("heading", { name: ACCOUNT.email })).toBeDefined();
+    expect(screen.getByText("S/ 190.00 el 20/10/2026, 12 meses, boleta EB01-9")).toBeDefined();
+  });
+
+  test("sends the payment in cents with an id, and shows it afterwards", async () => {
+    let recorded = false;
+    const mock = mockApi({
+      "/api/admin/csrf": 204,
+      "/api/admin/me": () => json(STAFF),
+      [PAYMENTS]: () => {
+        recorded = true;
+        return new Response(null, { status: 204 });
+      },
+      [PATH]: () =>
+        json({
+          ...DETAIL,
+          ends_at: "2026-12-26",
+          payments: recorded
+            ? [
+                {
+                  id: "0193a9e0-0000-7000-8000-000000000002",
+                  amount_cents: 1950,
+                  paid_on: "2026-11-01",
+                  method: "yape",
+                  boleta_number: "EB01-1",
+                  months: 1,
+                },
+              ]
+            : [],
+        }),
+    });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    await pay({ amount: "19.50" });
+
+    expect(await screen.findByText("Pago registrado.")).toBeDefined();
+    expect(await screen.findByText(/S\/ 19\.50 el 01\/11\/2026, 1 mes, boleta EB01-1/)).toBeDefined();
+    const [request] = mock.requestsTo(PAYMENTS);
+    expect(await request?.clone().json()).toMatchObject({
+      amount_cents: 1950,
+      method: "yape",
+      boleta_number: "EB01-1",
+      months: 1,
+    });
+  });
+
+  test("a second payment gets its own id and a retry keeps the same one", async () => {
+    let answers = [500, 204, 204];
+    const mock = mockApi({
+      "/api/admin/csrf": 204,
+      "/api/admin/me": () => json(STAFF),
+      [PAYMENTS]: () => {
+        const [status = 204, ...rest] = answers;
+        answers = rest;
+        return new Response(null, { status });
+      },
+      [PATH]: () => json(DETAIL),
+    });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+    const user = userEvent.setup();
+
+    await pay({});
+    await screen.findByText("No se pudo cargar. Si tu sesión terminó, vuelve a ingresar.");
+    await user.click(screen.getByRole("button", { name: "Registrar pago" }));
+    await screen.findByText("Pago registrado.");
+    await pay({ boleta: "EB01-2" });
+    await waitFor(() => {
+      expect(mock.requestsTo(PAYMENTS)).toHaveLength(3);
+    });
+
+    const ids = await Promise.all(
+      mock.requestsTo(PAYMENTS).map(async (request) => {
+        const body = (await request.clone().json()) as { id: string };
+        return body.id;
+      }),
+    );
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[2]).not.toBe(ids[0]);
+  });
+
+  test.each([
+    [{ amount: "0" }, "Escribe un monto válido, como 19 o 19.50."],
+    [{ months: "25" }, "Escribe un número de meses entre 1 y 24."],
+  ])("refuses impossible values before sending", async (fill, message) => {
+    const mock = mockApi({ "/api/admin/me": () => json(STAFF), [PATH]: () => json(DETAIL) });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    await pay(fill);
+
+    expect(await screen.findByText(message)).toBeDefined();
+    expect(mock.requestsTo(PAYMENTS)).toEqual([]);
+  });
+
+  test.each([
+    [422, "future_date", "La fecha del pago no puede ser futura."],
+    [409, "account_closing", "Esta cuenta pidió su eliminación, así que ya no recibe pagos."],
+    [409, "Conflict", "Este pago ya se registró con otros datos. Recarga la página y revísalo."],
+  ])("explains a refusal from the server", async (status, detail, message) => {
+    mockApi({
+      "/api/admin/csrf": 204,
+      "/api/admin/me": () => json(STAFF),
+      [PAYMENTS]: () => json({ detail }, status),
+      [PATH]: () => json(DETAIL),
+    });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    await pay({});
+
+    expect(await screen.findByText(message)).toBeDefined();
+  });
+
+  test("an account being deleted has no payment form", async () => {
+    mockApi({
+      "/api/admin/me": () => json(STAFF),
+      [PATH]: () => json({ ...DETAIL, deletion_requested_at: "2026-11-01T15:00:00Z" }),
+    });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    expect(
+      await screen.findByText("Esta cuenta pidió su eliminación, así que ya no recibe pagos."),
+    ).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Registrar pago" })).toBeNull();
+  });
+
+  test("says when the account does not exist", async () => {
+    mockApi({ "/api/admin/me": () => json(STAFF), [PATH]: 404 });
+    await renderAdmin(`/admin/cuentas/${ACCOUNT.id}`);
+
+    expect(await screen.findByText("No existe esta cuenta.")).toBeDefined();
+  });
+});
+
+describe("the SUNAT schedule", () => {
+  test("shows a month by group of RUC, with its source", async () => {
+    mockApi({
+      "/api/admin/me": () => json(STAFF),
+      "/api/admin/sunat-schedule": () =>
+        json([
+          { period: "2026-10", ruc_group: "0", due_on: "2026-11-17", source_url: "https://x.test/a" },
+          { period: "2026-10", ruc_group: "bc", due_on: "2026-11-24", source_url: "https://x.test/a" },
+        ]),
+    });
+    await renderAdmin("/admin/cronograma");
+
+    const month = await screen.findByRole("row", { name: /octubre de 2026/ });
+    expect(month.textContent).toContain("17/11/2026");
+    expect(month.textContent).toContain("24/11/2026");
+    expect(screen.getByRole("link", { name: "Ver la fuente en SUNAT" })).toHaveProperty(
+      "href",
+      "https://x.test/a",
+    );
+  });
+
+  test("warns when no schedule is loaded", async () => {
+    mockApi({ "/api/admin/me": () => json(STAFF), "/api/admin/sunat-schedule": () => json([]) });
+    await renderAdmin("/admin/cronograma");
+
+    expect(await screen.findByText("No hay ningún cronograma cargado.")).toBeDefined();
+  });
+});
+
+describe("the complaints", () => {
+  const COMPLAINT = {
+    number: "000000001-2026",
+    kind: "claim",
+    filed_at: "2026-11-01T15:00:00Z",
+    due_on: "2026-11-24",
+    responded_at: null,
+    response_channel: "email",
+  };
+
+  test.each([
+    ["open", "Abierto"],
+    ["overdue", "Vencido"],
+    ["answered", "Respondido"],
+  ])("shows the deadline and whether it is %s", async (state, label) => {
+    mockApi({
+      "/api/admin/me": () => json(STAFF),
+      "/api/admin/complaints": () => json([{ ...COMPLAINT, state }]),
+    });
+    await renderAdmin("/admin/reclamos");
+
+    expect(await screen.findByText(label)).toBeDefined();
+    expect(screen.getByText("000000001-2026 · Reclamo")).toBeDefined();
+    expect(screen.getByText("Vence el 24/11/2026")).toBeDefined();
+    expect(screen.getByText("Se responde por correo")).toBeDefined();
+  });
+
+  test("says so when there are none", async () => {
+    mockApi({ "/api/admin/me": () => json(STAFF), "/api/admin/complaints": () => json([]) });
+    await renderAdmin("/admin/reclamos");
+
+    expect(await screen.findByText("No hay reclamos.")).toBeDefined();
+  });
+});

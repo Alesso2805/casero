@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { primaryButton, TextField } from "../account/fields";
+import { primaryButton, TextField, textLink } from "../account/fields";
 import { formatDay } from "../landing/dates";
 import { type Account, adminApi } from "./api";
 import { adminCopy as text } from "./copy";
@@ -24,7 +25,13 @@ async function searchAccounts(email: string): Promise<Account[]> {
 function AccountRow({ account }: { account: Account }) {
   return (
     <li className="flex flex-col gap-1 rounded-lg border border-stone-300 p-4">
-      <span className="font-semibold">{account.email}</span>
+      <Link
+        to="/cuentas/$accountId"
+        params={{ accountId: account.id }}
+        className={`${textLink} break-all`}
+      >
+        {account.email}
+      </Link>
       <span>{account.display_name}</span>
       <span>
         {text.status[account.status as keyof typeof text.status]}
