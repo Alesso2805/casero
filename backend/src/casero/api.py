@@ -80,6 +80,7 @@ from casero.accounts.infrastructure.registration import (
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
 from casero.admin.api import accounts as admin_accounts_api
 from casero.admin.api import complaints as complaints_api
+from casero.admin.api import oversight as oversight_api
 from casero.admin.api import staff_sessions as staff_sessions_api
 from casero.admin.api.protection import AdminProtection
 from casero.admin.application.accounts import (
@@ -95,6 +96,11 @@ from casero.admin.application.complaints import (
     ComplaintRepository,
     FileComplaint,
 )
+from casero.admin.application.oversight import (
+    OversightRecords,
+    ViewComplaintDeadlines,
+    ViewSchedule,
+)
 from casero.admin.application.staff import RecoveryCodes, SecondFactor
 from casero.admin.application.staff_sessions import (
     AuthenticateStaff,
@@ -106,6 +112,7 @@ from casero.admin.application.staff_sessions import (
 from casero.admin.infrastructure.accounts import SqlAccountDirectory, SqlSubscriptionLedger
 from casero.admin.infrastructure.complaint_commands import SqlStaffActions
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
+from casero.admin.infrastructure.oversight import SqlOversightRecords
 from casero.admin.infrastructure.staff import (
     HashedRecoveryCodes,
     PyotpSecondFactor,
@@ -1260,6 +1267,20 @@ def create_admin_app(settings: AdminSettings, clock: Clock | None = None) -> Fas
         admin_accounts_api.create_router(
             current_staff, provide_search_accounts, provide_view_account, provide_record_payment
         )
+    )
+
+    async def provide_view_schedule(connection: Transaction) -> ViewSchedule:
+        records: OversightRecords = SqlOversightRecords(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return ViewSchedule(records, actions, app_clock)
+
+    async def provide_view_complaints(connection: Transaction) -> ViewComplaintDeadlines:
+        records: OversightRecords = SqlOversightRecords(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return ViewComplaintDeadlines(records, actions, app_clock)
+
+    app.include_router(
+        oversight_api.create_router(current_staff, provide_view_schedule, provide_view_complaints)
     )
 
     @app.get("/api/admin/health", responses={503: {"description": "`database_unavailable`"}})
