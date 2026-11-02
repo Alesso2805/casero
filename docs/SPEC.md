@@ -423,8 +423,9 @@ CS-01 y CS-02 empezaron antes de lo previsto, el 25 de octubre de 2026. Las fech
 | Sprint 8 | 5 (CS-21) | 5; de CS-21 queda que un contador valide los casos de prueba (puerta del fin del Sprint 10) | 29 oct 2026 (el plan lo cerraba el 28 mar) | 6.8 puntos por sprint |
 | Sprint 9 | 7 (CS-16, CS-34) | 7 | 29 oct 2026 (el plan lo cerraba el 11 abr) | 6.8 puntos por sprint |
 | Sprint 10 | 5 (CS-25) | 5; de CS-25 queda que el abogado revise los textos legales y que el borrado real de objetos de S3 llegue con CS-19 | 1 nov 2026 (el plan lo cerraba el 25 abr) | 6.6 puntos por sprint |
+| Sprint 11 | 6 (CS-23, CS-24) | 6; de CS-23 y CS-24 queda fijar `CASERO_BUSINESS_YAPE` y `ADMIN_ENABLED=true` cuando exista el servidor | 1 nov 2026 (el plan lo cerraba el 9 may) | 6.6 puntos por sprint |
 
-Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del plan y las puertas no cambian: la de fin del Sprint 1 (20 dic) decide si se comprime el plan con esta velocidad. El Sprint 4 cerró con CS-09, el Sprint 5 con CS-11 y CS-26, el Sprint 6 con CS-12 y CS-13, el Sprint 7 con CS-31 y CS-18, el Sprint 8 con CS-21, el Sprint 9 con CS-16 y CS-34 y el Sprint 10 con CS-25.
+Los sprints 1 a 3 se cerraron por contenido, antes de sus fechas. Las fechas del plan y las puertas no cambian: la de fin del Sprint 1 (20 dic) decide si se comprime el plan con esta velocidad. El Sprint 4 cerró con CS-09, el Sprint 5 con CS-11 y CS-26, el Sprint 6 con CS-12 y CS-13, el Sprint 7 con CS-31 y CS-18, el Sprint 8 con CS-21, el Sprint 9 con CS-16 y CS-34, el Sprint 10 con CS-25 y el Sprint 11 con CS-23 y CS-24.
 
 **Puertas de decisión**
 
