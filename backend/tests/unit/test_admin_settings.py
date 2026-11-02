@@ -9,6 +9,12 @@ from routes import offline_admin_app, offline_app
 
 REPOSITORY = Path(__file__).resolve().parents[3]
 URL = "postgresql+asyncpg://casero_admin@localhost/casero"
+PANEL_ENV = {
+    "ADMIN_ENABLED": "true",
+    "CASERO_ADMIN_DATABASE_URL": URL,
+    "CASERO_ENCRYPTION_KEYS": "k1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "CASERO_ENCRYPTION_ACTIVE_KEY": "k1",
+}
 
 
 @pytest.mark.parametrize("env", [{}, {"ADMIN_ENABLED": "false"}, {"ADMIN_ENABLED": "TRUE"}])
@@ -21,13 +27,21 @@ def test_the_panel_needs_its_own_database_role_when_on() -> None:
         AdminSettings.from_environment({"ADMIN_ENABLED": "true"})
 
 
-def test_the_panel_uses_the_published_port_unless_told_otherwise() -> None:
+def test_the_panel_needs_the_keys_to_open_the_totp_secrets() -> None:
     env = {"ADMIN_ENABLED": "true", "CASERO_ADMIN_DATABASE_URL": URL}
 
-    assert AdminSettings.from_environment(env) == AdminSettings(URL, DEFAULT_ADMIN_PORT)
-    assert AdminSettings.from_environment({**env, "CASERO_ADMIN_PORT": "9000"}) == AdminSettings(
-        URL, 9000
-    )
+    with pytest.raises(KeyError, match="CASERO_ENCRYPTION_KEYS"):
+        AdminSettings.from_environment(env)
+
+
+def test_the_panel_uses_the_published_port_unless_told_otherwise() -> None:
+    default = AdminSettings.from_environment(PANEL_ENV)
+    moved = AdminSettings.from_environment({**PANEL_ENV, "CASERO_ADMIN_PORT": "9000"})
+
+    assert default is not None
+    assert moved is not None
+    assert (default.database_url, default.port) == (URL, DEFAULT_ADMIN_PORT)
+    assert moved.port == 9000
 
 
 def test_with_the_panel_off_only_the_public_server_starts() -> None:
@@ -35,9 +49,7 @@ def test_with_the_panel_off_only_the_public_server_starts() -> None:
 
 
 def test_with_the_panel_on_both_servers_start() -> None:
-    env = {"ADMIN_ENABLED": "true", "CASERO_ADMIN_DATABASE_URL": URL}
-
-    assert [listener.config.port for listener in listeners(offline_app(), env)] == [
+    assert [listener.config.port for listener in listeners(offline_app(), PANEL_ENV)] == [
         8000,
         DEFAULT_ADMIN_PORT,
     ]

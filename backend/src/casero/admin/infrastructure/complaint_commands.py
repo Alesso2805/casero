@@ -14,7 +14,7 @@ RECORD_RESPONSE = text(
 )
 RECORD_ACTION = text(
     "INSERT INTO staff_audit_log (id, staff_user_id, actor, action, entity, entity_id, at)"
-    " VALUES (:id, NULL, 'cli', :action, :entity, :entity_id, :at)"
+    " VALUES (:id, :staff_user_id, :actor, :action, :entity, :entity_id, :at)"
 )
 
 
@@ -37,11 +37,20 @@ class SqlStaffActions:
     def __init__(self, connection: AsyncConnection) -> None:
         self._connection = connection
 
-    async def record(self, action: str, entity: str, entity_id: UUID, at: datetime) -> None:
+    async def record(
+        self,
+        action: str,
+        entity: str,
+        entity_id: UUID,
+        at: datetime,
+        staff_id: UUID | None = None,
+    ) -> None:
         await self._connection.execute(
             RECORD_ACTION,
             {
                 "id": new_id(),
+                "staff_user_id": staff_id,
+                "actor": "cli" if staff_id is None else "panel",
                 "action": action,
                 "entity": entity,
                 "entity_id": entity_id,

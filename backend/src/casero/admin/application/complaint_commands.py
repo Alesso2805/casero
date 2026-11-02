@@ -29,7 +29,16 @@ class ResponseMailer(Protocol):
 
 
 class StaffActions(Protocol):
-    async def record(self, action: str, entity: str, entity_id: UUID, at: datetime) -> None: ...
+    async def record(
+        self,
+        action: str,
+        entity: str,
+        entity_id: UUID,
+        at: datetime,
+        staff_id: UUID | None = None,
+    ) -> None:
+        """Without `staff_id`, the action came from a command rather than from the panel."""
+        ...
 
 
 @dataclass(frozen=True)
