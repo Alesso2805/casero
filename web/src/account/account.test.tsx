@@ -418,7 +418,7 @@ describe("account home", () => {
     await renderPage("/app");
 
     expect(await screen.findByRole("heading", { name: "Tu cuenta está bloqueada" })).toBeDefined();
-    expect(screen.queryByRole("link", { name: "Mis contratos" })).toBeNull();
+    expect(screen.queryByRole("navigation", { name: "Principal" })).toBeNull();
     expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeDefined();
     expect(screen.getByRole("button", { name: "Eliminar mi cuenta" })).toBeDefined();
     expect(screen.getByRole("link", { name: "Descargar mis datos" })).toHaveProperty(
@@ -465,7 +465,7 @@ describe("account home", () => {
       "/api/app/sessions": 204,
       ...EMPTY_HOME,
     });
-    await renderPage("/app");
+    await renderPage("/app/mas");
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Cerrar sesión en todos mis dispositivos" }),

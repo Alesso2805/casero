@@ -415,7 +415,7 @@ function PaymentRow({ payment, leaseId }: { payment: PaymentLine; leaseId: strin
 }
 
 export function LeasePage() {
-  const { leaseId } = useParams({ from: "/app/contratos/$leaseId" });
+  const { leaseId } = useParams({ from: "/app-shell/app/contratos/$leaseId" });
   const statement = useQuery({
     queryKey: ["statement", leaseId],
     queryFn: () => fetchStatement(leaseId),
