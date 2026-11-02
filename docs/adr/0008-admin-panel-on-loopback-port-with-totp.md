@@ -22,6 +22,7 @@ A separate admin service would mean another deployment to maintain, and a privat
 
 - The panel runs in the same Python process as the API. When `ADMIN_ENABLED=true`, the process starts a second Uvicorn server in the same event loop. It serves only `/api/admin/*` and the built `/admin` bundle.
 - The public app does not mount those routes at all.
+- `python -m casero.api` starts both servers. Neither installs Uvicorn's signal handling, which would stop only the last server to start and kill the process as soon as one finished. `casero.shared.infrastructure.listeners.serve` owns the signals, stops both together and waits for both. If one server stops, it stops the other, so Docker restarts the whole process.
 - The admin app uses its own SQLAlchemy pool as `casero_admin`:
   - without `BYPASSRLS`;
   - with policies only on `accounts`, `subscriptions` and `subscription_payments`;
@@ -65,7 +66,7 @@ A separate admin service would mean another deployment to maintain, and a privat
 
 ## Enforcement
 
-- A test that the public app does not mount `/api/admin/*`.
+- A test that the public app does not mount `/api/admin/*`, and that the panel mounts nothing else (AR-22).
 - A test that the admin server is not started when `ADMIN_ENABLED` is false.
 - A test that the admin listener is reachable only on `127.0.0.1`: the Compose file publishes the port only there, and a request to the server's public address on that port fails.
 - A test that Caddy answers 404 for `/admin` and `/api/admin/*` on the public site.

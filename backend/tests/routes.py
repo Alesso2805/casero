@@ -5,10 +5,10 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 from starlette.routing import BaseRoute
 
-from casero.api import create_app
+from casero.api import create_admin_app, create_app
 from casero.shared.infrastructure.crypto import DocumentHasher, FieldCipher, HmacKeyring
 from casero.shared.infrastructure.mail import SmtpSettings
-from casero.shared.infrastructure.settings import ApiSettings
+from casero.shared.infrastructure.settings import AdminSettings, ApiSettings
 
 SETTINGS = ApiSettings(
     database_url="postgresql+asyncpg://unused@localhost/unused",
@@ -31,6 +31,10 @@ HTTP_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTI
 def offline_app() -> FastAPI:
     """The real app, built without a database or mail server to inspect its routes."""
     return create_app(SETTINGS)
+
+
+def offline_admin_app() -> FastAPI:
+    return create_admin_app(AdminSettings("postgresql+asyncpg://unused@localhost/unused"))
 
 
 def api_routes(routes: Iterable[BaseRoute]) -> Iterator[APIRoute]:

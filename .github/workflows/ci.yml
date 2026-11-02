@@ -162,6 +162,7 @@ jobs:
       CASERO_COMPLAINTS_INBOX: reclamos@example.com
       CASERO_PRIVACY_INBOX: privacidad@example.com
       REGISTRATION_MODE: open
+      ADMIN_ENABLED: "true"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the production images
@@ -189,6 +190,7 @@ jobs:
         working-directory: backend
         env:
           CASERO_EDGE_URL: https://localhost
+          CASERO_ADMIN_URL: http://127.0.0.1:8081
         run: |
           uv sync --locked
           uv run pytest tests/deployment

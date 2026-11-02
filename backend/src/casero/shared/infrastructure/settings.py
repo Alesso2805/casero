@@ -16,6 +16,7 @@ SMTP_SECURITY_MODES = ("none", "starttls", "tls")
 RegistrationMode = Literal["closed", "invite", "open"]
 REGISTRATION_MODES = ("closed", "invite", "open")
 MIN_SECRET_KEY_BYTES = 32
+DEFAULT_ADMIN_PORT = 8081
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,22 @@ class BusinessSettings:
             name=env["CASERO_BUSINESS_NAME"],
             ruc=env["CASERO_BUSINESS_RUC"],
             address=env["CASERO_BUSINESS_ADDRESS"],
+        )
+
+
+@dataclass(frozen=True)
+class AdminSettings:
+    database_url: str
+    port: int = DEFAULT_ADMIN_PORT
+
+    @classmethod
+    def from_environment(cls, env: Mapping[str, str]) -> AdminSettings | None:
+        """None means the panel's listener and its pool never exist (ADR-0008)."""
+        if env.get("ADMIN_ENABLED") != "true":
+            return None
+        return cls(
+            env["CASERO_ADMIN_DATABASE_URL"],
+            int(env.get("CASERO_ADMIN_PORT", DEFAULT_ADMIN_PORT)),
         )
 
 
