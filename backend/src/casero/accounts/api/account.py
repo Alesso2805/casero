@@ -14,7 +14,12 @@ from casero.accounts.application.profile import (
     ProfileView,
     UpdateProfile,
 )
-from casero.accounts.domain.entitlements import FEATURES, Feature, SubscriptionStatus
+from casero.accounts.domain.entitlements import (
+    FEATURES,
+    Feature,
+    SubscriptionStatus,
+    last_grace_day,
+)
 from casero.accounts.domain.profile import RucGroup, TaxpayerKind
 from casero.shared.infrastructure.csrf import require_csrf
 
@@ -33,6 +38,7 @@ class AccountResponse(BaseModel):
     status: SubscriptionStatus
     trial_ends_at: date | None
     ends_at: date | None
+    grace_until: date | None = Field(description="The last day of grace, while it lasts")
     max_active_leases: int
     features: dict[Feature, bool]
 
@@ -96,6 +102,7 @@ def create_router(
             status=entitlements.status,
             trial_ends_at=subscription.trial_ends_at if subscription else None,
             ends_at=subscription.ends_at if subscription else None,
+            grace_until=last_grace_day(subscription, entitlements.status),
             max_active_leases=entitlements.plan.max_active_leases,
             features={feature: entitlements.allows(feature) for feature in FEATURES},
         )

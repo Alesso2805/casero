@@ -10,7 +10,7 @@ from casero.accounts.application.context import AccountContext
 from casero.leases.application.renters import DocType
 from casero.shared.kernel.periods import PERIOD_PATTERN, Period
 from casero.tax.application.declarations import ChangeKind, DueStatus, GetDeclarations
-from casero.tax.application.upcoming import GetUpcomingDue
+from casero.tax.application.upcoming import GetPendingDues, GetUpcomingDue
 
 
 class DeclaredPaymentResponse(BaseModel):
@@ -73,6 +73,12 @@ class MonthDeclarationsResponse(BaseModel):
     )
 
 
+class PendingDueResponse(BaseModel):
+    period: str
+    due_on: date
+    pending_cents: int
+
+
 class UpcomingDueResponse(BaseModel):
     period: str
     due_on: date
@@ -85,8 +91,28 @@ def create_router(
     current_account: Callable[..., Awaitable[AccountContext]],
     provide_declarations: Callable[..., Awaitable[GetDeclarations]],
     provide_upcoming: Callable[..., Awaitable[GetUpcomingDue]],
+    provide_pending_dues: Callable[..., Awaitable[GetPendingDues]],
 ) -> APIRouter:
     router = APIRouter()
+
+    @router.get(
+        "/api/app/tax/pending-dues",
+        responses={
+            401: {"description": "No valid session"},
+            403: {"description": "No account, unverified email, or a legal step pending"},
+        },
+    )
+    async def pending_dues(
+        _: Annotated[AccountContext, Depends(current_account)],
+        get: Annotated[GetPendingDues, Depends(provide_pending_dues)],
+    ) -> list[PendingDueResponse]:
+        """What is still owed to SUNAT for the months not yet due."""
+        return [
+            PendingDueResponse(
+                period=str(due.period), due_on=due.due_on, pending_cents=due.pending_cents
+            )
+            for due in await get()
+        ]
 
     @router.get(
         "/api/app/tax/upcoming",

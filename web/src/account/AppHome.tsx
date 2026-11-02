@@ -7,6 +7,7 @@ import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { DueNotice } from "../tax/DueNotice";
 import { accountCopy as text } from "./copy";
 import { fetchLegalStatus, isBlocked, LegalGate } from "./LegalGate";
+import { TrialNotice } from "./TrialNotice";
 import { primaryButton, secondaryButton, textLink } from "./fields";
 
 type Me = components["schemas"]["MeResponse"];
@@ -113,6 +114,7 @@ export function AppHome() {
       {isBlocked(legal.data) && <LegalGate status={legal.data} />}
       {!legal.isPending && !isBlocked(legal.data) && (
         <>
+          <TrialNotice />
           <DueNotice />
           <CollectionsPanel />
           <Link to="/app/inmuebles" className={textLink}>
@@ -126,6 +128,9 @@ export function AppHome() {
           </Link>
           <Link to="/app/mensajes" className={textLink}>
             {text.home.templates}
+          </Link>
+          <Link to="/app/plan" className={textLink}>
+            {text.home.plan}
           </Link>
           <Link to="/app/mis-datos" className={textLink}>
             {text.home.profile}

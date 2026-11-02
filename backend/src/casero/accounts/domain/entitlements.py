@@ -68,6 +68,12 @@ def is_paid_month(subscription: Subscription | None, period: Period) -> bool:
     return paid_from <= period.first_day() < subscription.ends_at
 
 
+def last_grace_day(subscription: Subscription | None, status: SubscriptionStatus) -> date | None:
+    if status != "grace" or subscription is None or subscription.ends_at is None:
+        return None
+    return subscription.ends_at + GRACE_PERIOD - timedelta(days=1)
+
+
 def is_trial_lapsing(subscription: Subscription, today: date) -> bool:
     """The trial ended with nothing paid, and its days of grace are still running."""
     ended_on = subscription.trial_ends_at

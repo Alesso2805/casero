@@ -605,6 +605,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/app/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Plans
+         * @description The plans with their prices, from the cheapest.
+         */
+        get: operations["plans_api_app_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/app/properties": {
         parameters: {
             query?: never;
@@ -829,6 +849,26 @@ export interface paths {
          * @description Void a SUNAT payment with a reason; voiding it again returns it unchanged.
          */
         post: operations["void_tax_payment_api_app_tax_payments__payment_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/app/tax/pending-dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pending Dues
+         * @description What is still owed to SUNAT for the months not yet due.
+         */
+        get: operations["pending_dues_api_app_tax_pending_dues_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1234,6 +1274,11 @@ export interface components {
             features: {
                 [key: string]: boolean;
             };
+            /**
+             * Grace Until
+             * @description The last day of grace, while it lasts
+             */
+            grace_until: string | null;
             /** Max Active Leases */
             max_active_leases: number;
             /** Plan Code */
@@ -1956,6 +2001,31 @@ export interface components {
             received_on: string;
             /** Voided */
             voided: boolean;
+        };
+        /** PendingDueResponse */
+        PendingDueResponse: {
+            /**
+             * Due On
+             * Format: date
+             */
+            due_on: string;
+            /** Pending Cents */
+            pending_cents: number;
+            /** Period */
+            period: string;
+        };
+        /** PlanResponse */
+        PlanResponse: {
+            /** Code */
+            code: string;
+            /** Max Active Leases */
+            max_active_leases: number;
+            /** Name */
+            name: string;
+            /** Price Month Cents */
+            price_month_cents: number;
+            /** Price Year Cents */
+            price_year_cents: number;
         };
         /** PriorDebtRequest */
         PriorDebtRequest: {
@@ -4197,6 +4267,40 @@ export interface operations {
             };
         };
     };
+    plans_api_app_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or a legal step pending */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_properties_api_app_properties_get: {
         parameters: {
             query?: never;
@@ -4811,6 +4915,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    pending_dues_api_app_tax_pending_dues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingDueResponse"][];
+                };
+            };
+            /** @description No valid session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No account, unverified email, or a legal step pending */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

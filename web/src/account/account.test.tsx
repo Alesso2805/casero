@@ -2,7 +2,7 @@ import { cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { json, mockApi, testBusiness } from "../test/api";
+import { json, mockApi, testAccount, testBusiness } from "../test/api";
 import { renderPage } from "../test/render";
 
 const ME = {
@@ -149,6 +149,116 @@ describe("login", () => {
     await userEvent.click(screen.getByRole("button", { name: "Mostrar" }));
 
     expect(password.type).toBe("text");
+  });
+});
+
+describe("my plan", () => {
+  const PLANS = [
+    {
+      code: "free",
+      name: "Gratis",
+      price_month_cents: 0,
+      price_year_cents: 0,
+      max_active_leases: 1,
+    },
+    {
+      code: "casero",
+      name: "Casero",
+      price_month_cents: 1900,
+      price_year_cents: 19000,
+      max_active_leases: 10,
+    },
+  ];
+
+  test("shows the plan, its prices from the server and how to pay by Yape", async () => {
+    mockApi({ "/api/app/account": () => json(testAccount), "/api/app/plans": () => json(PLANS) });
+    await renderPage("/app/plan");
+
+    expect(
+      await screen.findByText("Estás en la prueba gratis de Casero hasta el 26/11/2026."),
+    ).toBeDefined();
+    expect(await screen.findByText("S/ 19.00 al mes o S/ 190.00 al año")).toBeDefined();
+    expect(screen.getByText("Hasta 1 contrato activo")).toBeDefined();
+    expect(
+      await screen.findByText(
+        `Yapea el monto del plan al ${testBusiness.yape}, a nombre de ${testBusiness.name}.`,
+      ),
+    ).toBeDefined();
+  });
+
+  test.each([
+    [{ status: "active", ends_at: "2027-01-31" }, "Tienes el plan Casero hasta el 31/01/2027."],
+    [{ status: "active", ends_at: null }, "Tienes el plan Casero."],
+    [
+      { status: "grace", grace_until: "2026-12-02" },
+      "Tu plan venció, pero puedes seguir usando todo hasta el 02/12/2026.",
+    ],
+    [{ status: "free" }, "Estás en el plan Gratis."],
+  ])("says where the account stands", async (account, message) => {
+    mockApi({
+      "/api/app/account": () => json({ ...testAccount, ...account }),
+      "/api/app/plans": () => json(PLANS),
+    });
+    await renderPage("/app/plan");
+
+    expect(await screen.findByText(message)).toBeDefined();
+  });
+
+  test("leaves out how to pay when no Yape number is configured", async () => {
+    mockApi({
+      "/api/public/business": () => json({ ...testBusiness, yape: "" }),
+      "/api/app/plans": () => json(PLANS),
+    });
+    const { settled } = await renderPage("/app/plan");
+
+    expect(await screen.findByRole("heading", { name: "Los planes" })).toBeDefined();
+    await settled();
+    expect(screen.queryByRole("heading", { name: "Cómo pagar" })).toBeNull();
+  });
+
+  test("sends a visitor without a session to log in", async () => {
+    mockApi({ "/api/app/account": 401, "/api/app/plans": 401 });
+    await renderPage("/app/plan");
+
+    expect(await screen.findByRole("heading", { name: "Ingresa a Casero" })).toBeDefined();
+  });
+
+  test("on the home page, tells that the trial ended and what's owed to SUNAT", async () => {
+    mockApi({
+      "/api/app/me": () => json({ ...ME, email_verified: true, verify_by: null }),
+      ...EMPTY_HOME,
+      "/api/app/account": () =>
+        json({ ...testAccount, status: "grace", grace_until: "2026-12-02" }),
+      "/api/app/tax/pending-dues": () =>
+        json([{ period: "2026-10", due_on: "2026-11-19", pending_cents: 4000 }]),
+    });
+    await renderPage("/app");
+
+    expect(await screen.findByText(/Tu prueba gratis terminó/)).toBeDefined();
+    expect(await screen.findByText("octubre de 2026: S/ 40.00, vencen el 19/11/2026")).toBeDefined();
+    expect(screen.getByRole("link", { name: "Ver mi plan" })).toHaveProperty(
+      "pathname",
+      "/app/plan",
+    );
+  });
+
+  test("says nothing about the trial to a paying account in grace", async () => {
+    mockApi({
+      "/api/app/me": () => json({ ...ME, email_verified: true, verify_by: null }),
+      ...EMPTY_HOME,
+      "/api/app/account": () =>
+        json({
+          ...testAccount,
+          status: "grace",
+          ends_at: "2027-01-31",
+          grace_until: "2027-02-06",
+        }),
+    });
+    const { settled } = await renderPage("/app");
+
+    expect(await screen.findByRole("link", { name: "Mi plan" })).toBeDefined();
+    await settled();
+    expect(screen.queryByText(/Tu prueba gratis terminó/)).toBeNull();
   });
 });
 

@@ -11,6 +11,7 @@ from casero.accounts.api import account as account_api
 from casero.accounts.api import data_export as data_export_api
 from casero.accounts.api import deletion as deletion_api
 from casero.accounts.api import legal as legal_api
+from casero.accounts.api import plans as plans_api
 from casero.accounts.api import registration as registration_api
 from casero.accounts.api import waitlist as waitlist_api
 from casero.accounts.application.account import AccountNames, GetAccountSummary
@@ -38,6 +39,7 @@ from casero.accounts.application.legal import (
     LegalRecords,
     WithdrawConsent,
 )
+from casero.accounts.application.plans import PlanOffers
 from casero.accounts.application.profile import (
     GetProfile,
     Profiles,
@@ -242,7 +244,7 @@ from casero.tax.application.declarations import GetDeclarations
 from casero.tax.application.exports import ExportDeclarations, ExportPayments
 from casero.tax.application.payments import RecordTaxPayment, VoidTaxPayment
 from casero.tax.application.sunat_payments import TaxPaymentStore
-from casero.tax.application.upcoming import GetUpcomingDue
+from casero.tax.application.upcoming import GetPendingDues, GetUpcomingDue
 from casero.tax.infrastructure.data_export import SqlTaxData
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
@@ -687,6 +689,12 @@ def create_app(
         audit: AuditLog = SqlAuditLog(connection)
         return UpdateProfile(profiles, holdings, email_choices(connection), audit, app_clock)
 
+    async def provide_plan_offers(connection: Transaction) -> PlanOffers:
+        offers: PlanOffers = SqlPlans(connection)
+        return offers
+
+    app.include_router(plans_api.create_router(current_account, provide_plan_offers))
+
     app.include_router(
         account_api.create_router(
             current_account,
@@ -1074,8 +1082,18 @@ def create_app(
         rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
         return GetUpcomingDue(declarations, profiles, rule_book, app_clock)
 
+    async def provide_pending_dues(
+        connection: Transaction,
+        declarations: Annotated[GetDeclarations, Depends(provide_declaration_totals)],
+    ) -> GetPendingDues:
+        profiles: Profiles = SqlProfiles(connection)
+        rule_book: TaxRuleBook = SqlTaxRuleBook(connection)
+        return GetPendingDues(declarations, profiles, rule_book, app_clock)
+
     app.include_router(
-        declarations_api.create_router(current_account, provide_declarations, provide_upcoming)
+        declarations_api.create_router(
+            current_account, provide_declarations, provide_upcoming, provide_pending_dues
+        )
     )
 
     async def provide_export_payments(

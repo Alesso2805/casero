@@ -55,6 +55,7 @@ async def test_each_landlord_sees_only_their_own_account(
         "status": "trial",
         "trial_ends_at": "2026-11-25",
         "ends_at": "2026-11-25",
+        "grace_until": None,
         "max_active_leases": 10,
         "features": {
             "whatsapp_links": True,

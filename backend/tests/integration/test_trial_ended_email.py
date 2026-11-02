@@ -20,6 +20,7 @@ from casero.reminders.infrastructure.tax_reminders import SqlAccountOwner
 from casero.reminders.infrastructure.trial_end import SqlTrialEmailLog
 from casero.shared.infrastructure.database import create_engine, set_account_context
 from casero.tax.application.declarations import GetDeclarations
+from casero.tax.application.upcoming import GetPendingDues
 from casero.tax.infrastructure.payments import SqlTaxPayments
 from casero.tax.infrastructure.rule_book import SqlTaxRuleBook
 from database import Database
@@ -101,8 +102,7 @@ def send_trial_ended(
     return SendTrialEnded(
         entitlements,
         SqlProfiles(connection),
-        rule_book,
-        declarations,
+        GetPendingDues(declarations, SqlProfiles(connection), rule_book, clock),
         SqlAccountOwner(connection),
         SuppressionLookup(engine, TEST_EMAIL_HASH_KEY),
         SqlTrialEmailLog(engine),

@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import TextClause, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from casero.accounts.application.plans import PlanOffer
 from casero.accounts.domain.entitlements import FEATURES, Plan, Subscription
 from casero.accounts.domain.profile import Profile
 from casero.shared.infrastructure.database import set_account_context
@@ -13,6 +14,10 @@ CURRENT_SUBSCRIPTION = text(
     " WHERE ended_at IS NULL ORDER BY starts_at DESC LIMIT 1"
 )
 PLAN = text("SELECT code, max_active_leases, features FROM plans WHERE code = :code")
+OFFERS = text(
+    "SELECT code, name, price_month_cents, price_year_cents, max_active_leases FROM plans"
+    " ORDER BY price_month_cents, code"
+)
 DISPLAY_NAME = text("SELECT display_name FROM accounts")
 PROFILE = text("SELECT display_name, taxpayer_kind, ruc, ruc_group, daily_digest FROM accounts")
 LOCKED_PROFILE = text(
@@ -65,6 +70,19 @@ class SqlPlans:
         row = (await self._connection.execute(PLAN, {"code": code})).one()
         features = frozenset(feature for feature in FEATURES if row.features.get(feature))
         return Plan(row.code, row.max_active_leases, features)
+
+    async def offers(self) -> list[PlanOffer]:
+        rows = await self._connection.execute(OFFERS)
+        return [
+            PlanOffer(
+                row.code,
+                row.name,
+                row.price_month_cents,
+                row.price_year_cents,
+                row.max_active_leases,
+            )
+            for row in rows
+        ]
 
 
 class SqlAccounts:

@@ -21,6 +21,42 @@ class UpcomingDue:
 
 
 @dataclass(frozen=True)
+class PendingDue:
+    period: Period
+    due_on: date
+    pending_cents: int
+
+
+@dataclass(frozen=True)
+class GetPendingDues:
+    """What's still to pay to SUNAT of the months not yet due; nothing without the tax module."""
+
+    declarations: GetDeclarations
+    profiles: Profiles
+    rule_book: TaxRuleBook
+    clock: Clock
+
+    async def __call__(self) -> list[PendingDue]:
+        group = (await self.profiles.current()).ruc_group
+        if group is None:
+            return []
+        today = self.clock.today_lima()
+        last_month = Period.of(today).previous()
+        pending = []
+        for period in (last_month.previous(), last_month):
+            due_on = await self.rule_book.due_date(period, group)
+            if due_on is None or due_on < today:
+                continue
+            month = await self.declarations(period)
+            if isinstance(month, str):
+                continue
+            owed = sum(card.pending_cents for card in month.cards)
+            if owed:
+                pending.append(PendingDue(period, due_on, owed))
+        return pending
+
+
+@dataclass(frozen=True)
 class GetUpcomingDue:
     """The fixed notice in the app during the last days before a 1683 falls due (SPEC)."""
 
