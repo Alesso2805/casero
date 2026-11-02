@@ -44,6 +44,8 @@ A separate admin service would mean another deployment to maintain, and a privat
 - Recovery codes are stored hashed and each one is removed from the array when used.
 - The session cookie is `__Host-casero_staff` with `SameSite=Strict`. Browsers treat `http://localhost` as a secure context, so the `Secure` cookie works through the tunnel in Chromium and Firefox. The cookie is bound to `localhost`, a different host from the public app.
 - Sessions live in `staff_sessions` and expire after 8 hours or after 30 minutes idle. CSRF works as in ADR-0004.
+- A new login closes any earlier session of that staff user. One person runs the panel, so a second live session is more likely a mistake than a need.
+- Staff login has no attempt limit: `casero_admin` has no access to `rate_limit_buckets`, and reaching the port already requires SSH. A failed attempt against a real staff user leaves a row in `staff_audit_log`. There is also no record of the last code used, so a code can be replayed within its 90-second window by someone who already has the password and SSH access.
 
 ### Audit
 

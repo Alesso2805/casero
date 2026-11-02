@@ -79,13 +79,30 @@ from casero.accounts.infrastructure.registration import (
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
 from casero.admin.api import complaints as complaints_api
+from casero.admin.api import staff_sessions as staff_sessions_api
 from casero.admin.api.protection import AdminProtection
+from casero.admin.application.complaint_commands import StaffActions
 from casero.admin.application.complaints import (
     ComplaintRateLimiter,
     ComplaintRepository,
     FileComplaint,
 )
+from casero.admin.application.staff import RecoveryCodes, SecondFactor
+from casero.admin.application.staff_sessions import (
+    AuthenticateStaff,
+    LogStaffIn,
+    LogStaffOut,
+    StaffLogins,
+    StaffSessions,
+)
+from casero.admin.infrastructure.complaint_commands import SqlStaffActions
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
+from casero.admin.infrastructure.staff import (
+    HashedRecoveryCodes,
+    PyotpSecondFactor,
+    SqlStaffLogins,
+    SqlStaffSessions,
+)
 from casero.identity.api import account_emails as account_emails_api
 from casero.identity.api import email_events as email_events_api
 from casero.identity.api import sessions as sessions_api
@@ -1164,8 +1181,9 @@ def create_app(
     return app
 
 
-def create_admin_app(settings: AdminSettings) -> FastAPI:
+def create_admin_app(settings: AdminSettings, clock: Clock | None = None) -> FastAPI:
     """The panel: its own pool as casero_admin, and no route of the public app (AR-22)."""
+    app_clock: Clock = clock or SystemClock()
     engine = create_engine(settings.database_url)
 
     @asynccontextmanager
@@ -1185,6 +1203,33 @@ def create_admin_app(settings: AdminSettings) -> FastAPI:
     app.add_middleware(ErrorShield)
     app.add_middleware(NoStore)
     app.add_middleware(AdminProtection)
+
+    hasher: PasswordHasher = Argon2PasswordHasher()
+    tokens: SessionTokens = SecretSessionTokens()
+    second_factor: SecondFactor = PyotpSecondFactor()
+    recovery_codes: RecoveryCodes = HashedRecoveryCodes()
+
+    async def provide_log_in(connection: Transaction) -> LogStaffIn:
+        logins: StaffLogins = SqlStaffLogins(connection, settings.field_cipher)
+        sessions: StaffSessions = SqlStaffSessions(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return LogStaffIn(
+            logins, sessions, hasher, second_factor, recovery_codes, tokens, actions, app_clock
+        )
+
+    async def provide_authenticate(connection: Transaction) -> AuthenticateStaff:
+        sessions: StaffSessions = SqlStaffSessions(connection)
+        return AuthenticateStaff(sessions, tokens, app_clock)
+
+    async def provide_log_out(connection: Transaction) -> LogStaffOut:
+        sessions: StaffSessions = SqlStaffSessions(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return LogStaffOut(sessions, actions, app_clock)
+
+    current_staff = staff_sessions_api.staff_dependency(provide_authenticate)
+    app.include_router(
+        staff_sessions_api.create_router(provide_log_in, provide_log_out, current_staff)
+    )
 
     @app.get("/api/admin/health", responses={503: {"description": "`database_unavailable`"}})
     async def health() -> HealthResponse:

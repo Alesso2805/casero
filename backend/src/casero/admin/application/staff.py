@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, Protocol
 
 from casero.admin.application.complaint_commands import StaffActions
@@ -19,6 +20,8 @@ class SecondFactor(Protocol):
     def new_secret(self) -> str: ...
 
     def enrollment_uri(self, secret: str, email: str) -> str: ...
+
+    def verify(self, secret: str, code: str, at: datetime) -> bool: ...
 
 
 class RecoveryCodes(Protocol):

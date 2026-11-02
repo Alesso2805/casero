@@ -1,4 +1,5 @@
 import re
+from datetime import UTC, datetime, timedelta
 
 import pyotp
 
@@ -37,3 +38,14 @@ def test_an_authenticator_app_can_read_the_enrollment_link() -> None:
     assert isinstance(totp, pyotp.TOTP)
     assert totp.secret == secret
     assert (totp.interval, totp.digits) == (30, 6)
+
+
+def test_a_code_is_checked_against_the_given_moment_and_not_the_machines_clock() -> None:
+    second_factor = PyotpSecondFactor()
+    secret = second_factor.new_secret()
+    moment = datetime(2026, 11, 1, 15, 0, tzinfo=UTC)
+    code = pyotp.TOTP(secret).at(moment)
+
+    assert second_factor.verify(secret, code, moment)
+    assert second_factor.verify(secret, code, moment + timedelta(seconds=30))
+    assert not second_factor.verify(secret, code, moment + timedelta(hours=1))

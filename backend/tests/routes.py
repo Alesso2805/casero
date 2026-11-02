@@ -34,7 +34,9 @@ def offline_app() -> FastAPI:
 
 
 def offline_admin_app() -> FastAPI:
-    return create_admin_app(AdminSettings("postgresql+asyncpg://unused@localhost/unused"))
+    return create_admin_app(
+        AdminSettings("postgresql+asyncpg://unused@localhost/unused", SETTINGS.field_cipher)
+    )
 
 
 def api_routes(routes: Iterable[BaseRoute]) -> Iterator[APIRoute]:

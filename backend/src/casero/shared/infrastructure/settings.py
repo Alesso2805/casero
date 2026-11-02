@@ -37,6 +37,7 @@ class BusinessSettings:
 @dataclass(frozen=True)
 class AdminSettings:
     database_url: str
+    field_cipher: FieldCipher
     port: int = DEFAULT_ADMIN_PORT
 
     @classmethod
@@ -46,6 +47,7 @@ class AdminSettings:
             return None
         return cls(
             env["CASERO_ADMIN_DATABASE_URL"],
+            field_cipher_from_environment(env),
             int(env.get("CASERO_ADMIN_PORT", DEFAULT_ADMIN_PORT)),
         )
 
