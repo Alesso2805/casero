@@ -3,21 +3,24 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid7
 
 import asyncpg
-import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
-from admin_client import admin_client
-from api_client import TEST_FIELD_CIPHER, FixedClock
-from casero.admin.application.staff import StaffEnrollment
-from casero.shared.infrastructure.csrf import CSRF_COOKIE, CSRF_HEADER
-from casero.worker import create_staff
+from admin_client import (
+    STAFF_PASSWORD,
+    a_staff_user,
+    admin_client,
+    code_at,
+    csrf_headers,
+    log_in,
+)
+from api_client import FixedClock
+from casero.shared.infrastructure.csrf import CSRF_HEADER
 from database import Database
 
 pytestmark = pytest.mark.anyio
 
 NOW = datetime(2026, 11, 1, 15, 0, tzinfo=UTC)
-PASSWORD = "una-clave-larga-de-personal"
 STAFF_COOKIE = "__Host-casero_staff"
 
 
@@ -28,34 +31,6 @@ async def owner(database: Database) -> AsyncIterator[asyncpg.Connection]:
         yield connection
     finally:
         await connection.close()
-
-
-async def a_staff_user(database: Database, clock: FixedClock) -> tuple[str, StaffEnrollment]:
-    email = f"{uuid7()}@example.com"
-    url = database.dsn("casero_owner").replace("postgresql://", "postgresql+asyncpg://", 1)
-    enrollment = await create_staff(url, TEST_FIELD_CIPHER, clock, email, PASSWORD)
-    assert isinstance(enrollment, StaffEnrollment)
-    return email, enrollment
-
-
-def csrf_headers(client: TestClient) -> dict[str, str]:
-    client.get("/api/admin/csrf")
-    return {CSRF_HEADER: client.cookies[CSRF_COOKIE]}
-
-
-def code_at(enrollment: StaffEnrollment, moment: datetime) -> str:
-    totp = pyotp.parse_uri(enrollment.totp_uri)
-    assert isinstance(totp, pyotp.TOTP)
-    return totp.at(moment)
-
-
-def log_in(client: TestClient, email: str, code: str, password: str = PASSWORD) -> int:
-    answer = client.post(
-        "/api/admin/session",
-        json={"email": email, "password": password, "code": code},
-        headers=csrf_headers(client),
-    )
-    return answer.status_code
 
 
 def wear_token(client: TestClient, token: str) -> None:
@@ -113,7 +88,7 @@ async def test_the_session_cookie_is_host_only_strict_and_out_of_reach_of_script
     with admin_client(database, clock) as client:
         answer = client.post(
             "/api/admin/session",
-            json={"email": email, "password": PASSWORD, "code": code_at(enrollment, NOW)},
+            json={"email": email, "password": STAFF_PASSWORD, "code": code_at(enrollment, NOW)},
             headers=csrf_headers(client),
         )
 
@@ -297,7 +272,7 @@ async def test_disabling_a_staff_user_ends_their_session_and_their_login(
 async def test_logging_in_and_out_need_the_csrf_token(database: Database) -> None:
     clock = FixedClock(NOW)
     email, enrollment = await a_staff_user(database, clock)
-    body = {"email": email, "password": PASSWORD, "code": code_at(enrollment, NOW)}
+    body = {"email": email, "password": STAFF_PASSWORD, "code": code_at(enrollment, NOW)}
 
     with admin_client(database, clock) as client:
         login = client.post("/api/admin/session", json=body)

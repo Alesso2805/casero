@@ -296,6 +296,7 @@ El saldo de un contrato es siempre Σ cargos válidos (los ajustes llevan signo)
 | Al superar el límite | No se pueden crear contratos nuevos. El límite se verifica bloqueando la fila de la cuenta para evitar altas simultáneas |
 | Al bajar de plan | El arrendador elige qué contratos conservan WhatsApp y portal hasta el límite (por defecto, los más antiguos). Los demás siguen generando cargos y aceptando pagos, pero sin esas funciones hasta que se termine otro contrato o se vuelva a pagar. El worker ajusta `tools_enabled` cada día según el plan, sin deshacer la elección del arrendador mientras siga por encima del límite |
 | Meses pagados | Los meses de la prueba gratis no cuentan como pagados; al terminar la prueba se envía un único correo y un aviso en la app con los vencimientos de SUNAT pendientes. Las declaraciones de meses de cobro dentro de un período pagado conservan su tarjeta y sus recordatorios aunque la suscripción venza después; un mes está dentro si su primer día cae en la parte pagada de la suscripción, entre el fin de la prueba y `ends_at` |
+| Registrar un pago | Se registra desde el panel interno con su número de boleta y extiende `ends_at` por los meses pagados: desde el `ends_at` anterior, o desde la fecha del pago si ese día la gracia ya había terminado. Cuenta la fecha del pago, no la de registrarlo, porque la activación es a mano. Un mes sin el mismo día termina en su último día |
 | Datos | Nunca se borran por bajar de plan; la exportación legal siempre está disponible |
 
 ## Esquema de base de datos

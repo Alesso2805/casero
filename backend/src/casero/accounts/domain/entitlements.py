@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
-from casero.shared.kernel.periods import Period
+from casero.shared.kernel.periods import Period, add_months
 
 Feature = Literal[
     "whatsapp_links",
@@ -95,6 +95,16 @@ def subscription_status(subscription: Subscription | None, today: date) -> Subsc
     if today < subscription.ends_at + GRACE_PERIOD:
         return "grace"
     return "free"
+
+
+def extended_until(subscription: Subscription, months: int, paid_on: date) -> date:
+    """A payment continues from `ends_at`, unless the grace had already run out on the day it was
+    paid: then it starts that day. `paid_on` decides it, so activating by hand late costs nothing.
+    """
+    ends_at = subscription.ends_at
+    if ends_at is None or subscription_status(subscription, paid_on) == "free":
+        return add_months(paid_on, months)
+    return add_months(ends_at, months)
 
 
 def effective_plan_code(subscription: Subscription | None, status: SubscriptionStatus) -> str:
