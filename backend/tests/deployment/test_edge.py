@@ -1,10 +1,12 @@
 import os
 import re
+import socket
 
 import httpx2
 import pytest
 
 EDGE_URL = os.environ.get("CASERO_EDGE_URL", "")
+ADMIN_URL = os.environ.get("CASERO_ADMIN_URL", "")
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
     "font-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; "
@@ -139,3 +141,20 @@ def test_www_redirects_to_the_main_domain() -> None:
 
     assert response.status_code == 301
     assert response.headers["location"] == f"https://{host}/privacidad"
+
+
+def outbound_address() -> str:
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        probe.connect(("10.255.255.255", 1))
+        address: str = probe.getsockname()[0]
+    return address
+
+
+@pytest.mark.skipif(not ADMIN_URL, reason="needs CASERO_ADMIN_URL of a running panel")
+def test_the_panel_answers_on_loopback_and_on_no_other_address() -> None:
+    assert httpx2.get(f"{ADMIN_URL}/api/admin/health").status_code == 200
+
+    address = outbound_address()
+    assert not address.startswith("127.")
+    with pytest.raises((httpx2.ConnectError, httpx2.ConnectTimeout)):
+        httpx2.get(f"http://{address}:8081/api/admin/health", timeout=3)

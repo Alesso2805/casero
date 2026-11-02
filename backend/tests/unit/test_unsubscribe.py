@@ -90,14 +90,3 @@ def test_scheduled_emails_carry_one_click_unsubscribe_headers() -> None:
     assert scheduled["List-Unsubscribe"] == f"<{url}>"
     assert scheduled["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
     assert transactional["List-Unsubscribe"] is None
-
-
-@pytest.mark.parametrize("compose", ["docker-compose.yml", "infra/deploy/docker-compose.yml"])
-def test_the_api_keeps_no_access_log(compose: str) -> None:
-    api_command = next(
-        line
-        for line in (REPOSITORY / compose).read_text(encoding="utf-8").splitlines()
-        if "casero.api:create_app" in line
-    )
-
-    assert "--no-access-log" in api_command

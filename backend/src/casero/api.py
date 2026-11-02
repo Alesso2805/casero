@@ -1,8 +1,11 @@
-from collections.abc import AsyncIterator
+import asyncio
+import os
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 
 import httpx2
+import uvicorn
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -76,6 +79,7 @@ from casero.accounts.infrastructure.registration import (
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
 from casero.admin.api import complaints as complaints_api
+from casero.admin.api.protection import AdminProtection
 from casero.admin.application.complaints import (
     ComplaintRateLimiter,
     ComplaintRepository,
@@ -225,10 +229,11 @@ from casero.shared.infrastructure.audit import SqlAuditLog
 from casero.shared.infrastructure.caching import NoStore
 from casero.shared.infrastructure.database import Transaction, create_engine, database_answers
 from casero.shared.infrastructure.error_tracking import init_error_tracking
+from casero.shared.infrastructure.listeners import Listener, serve
 from casero.shared.infrastructure.logs import ErrorShield, configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import PostgresRateLimiter
-from casero.shared.infrastructure.settings import ApiSettings
+from casero.shared.infrastructure.settings import AdminSettings, ApiSettings
 from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import Clock, SystemClock
 from casero.tax.api import calculator as calculator_api
@@ -283,6 +288,9 @@ LOGIN_ATTEMPTS_PER_IP_PER_HOUR = 30
 REGISTRATIONS_PER_IP_PER_HOUR = 10
 PASSWORD_RESETS_PER_IP_PER_HOUR = 10
 SNS_HTTP_TIMEOUT_SECONDS = 10
+PUBLIC_PORT = 8000
+# Inside the container: Compose publishes the panel's port only on the host's 127.0.0.1 (AR-22).
+ALL_INTERFACES = "0.0.0.0"  # noqa: S104
 
 
 class HealthResponse(BaseModel):
@@ -1154,3 +1162,76 @@ def create_app(
         return HealthResponse(status="ok")
 
     return app
+
+
+def create_admin_app(settings: AdminSettings) -> FastAPI:
+    """The panel: its own pool as casero_admin, and no route of the public app (AR-22)."""
+    engine = create_engine(settings.database_url)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        yield
+        await engine.dispose()
+
+    app = FastAPI(
+        title="Casero Admin API",
+        version="0.1.0",
+        openapi_url=None,
+        docs_url=None,
+        redoc_url=None,
+        lifespan=lifespan,
+    )
+    app.state.engine = engine
+    app.add_middleware(ErrorShield)
+    app.add_middleware(NoStore)
+    app.add_middleware(AdminProtection)
+
+    @app.get("/api/admin/health", responses={503: {"description": "`database_unavailable`"}})
+    async def health() -> HealthResponse:
+        """Report that the panel's listener is up and its role reaches the database."""
+        if not await database_answers(engine):
+            raise HTTPException(status_code=503, detail="database_unavailable")
+        return HealthResponse(status="ok")
+
+    return app
+
+
+def public_listener(app: FastAPI) -> Listener:
+    return Listener(
+        uvicorn.Config(
+            app,
+            host=ALL_INTERFACES,
+            port=PUBLIC_PORT,
+            proxy_headers=True,
+            forwarded_allow_ips="*",
+            access_log=False,
+        )
+    )
+
+
+def admin_listener(app: FastAPI, port: int) -> Listener:
+    return Listener(
+        uvicorn.Config(
+            app,
+            host=ALL_INTERFACES,
+            port=port,
+            proxy_headers=False,
+            access_log=False,
+            server_header=False,
+        )
+    )
+
+
+def listeners(public: FastAPI, env: Mapping[str, str]) -> list[Listener]:
+    admin = AdminSettings.from_environment(env)
+    if admin is None:
+        return [public_listener(public)]
+    return [public_listener(public), admin_listener(create_admin_app(admin), admin.port)]
+
+
+def main() -> None:
+    asyncio.run(serve(listeners(create_app(), os.environ)))
+
+
+if __name__ == "__main__":
+    main()

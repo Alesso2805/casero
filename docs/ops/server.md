@@ -163,6 +163,20 @@ docker compose --env-file .env --env-file image.env run --rm staff python -m cas
 
 Pide la contraseña dos veces y muestra una sola vez el enlace `otpauth://` para la app de autenticación y 10 códigos de recuperación. Ambos se guardan en Bitwarden. La creación queda en `staff_audit_log`. Este comando corre en su propio servicio `staff`, el único con `casero_owner` y las claves de cifrado a la vez, y no arranca con `up`.
 
+El panel está apagado por defecto. Para encenderlo, se agrega `ADMIN_ENABLED=true` a `/opt/casero/.env` y se vuelve a levantar:
+
+```sh
+docker compose --env-file .env --env-file image.env up --detach
+```
+
+Escucha solo en `127.0.0.1:8081` del servidor, así que se entra por un túnel SSH desde la computadora propia:
+
+```sh
+ssh -L 8081:127.0.0.1:8081 <servidor>
+```
+
+Y se abre `http://localhost:8081/admin` en Chrome, Edge o Firefox: Safari no acepta la cookie de sesión sobre `http://localhost`.
+
 ## Registro
 
 | Fecha | Acción | Quién |
