@@ -1,4 +1,4 @@
-.PHONY: up down test lint migrate load-tax-config invite grant-founder complaint-respond complaint-register check-bucket-policy
+.PHONY: up down test lint migrate load-tax-config invite grant-founder complaint-respond complaint-register create-staff check-bucket-policy
 
 up:
 	docker compose up --detach --build
@@ -31,6 +31,9 @@ complaint-respond:
 
 complaint-register:
 	docker compose run --rm -T migrate python -m casero.worker complaint-register $(FILED_AT) < $(FILE)
+
+create-staff:
+	docker compose run --rm staff python -m casero.worker create-staff $(EMAIL)
 
 check-bucket-policy:
 	cd backend && uv run python scripts/check_bucket_policy.py

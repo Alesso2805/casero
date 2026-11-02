@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import getpass
 import os
 import signal
 import sys
@@ -35,6 +36,13 @@ from casero.admin.application.complaint_emails import (
 )
 from casero.admin.application.complaints import ComplaintRepository
 from casero.admin.application.retention import ForgetExpiredData, RetentionStore
+from casero.admin.application.staff import (
+    CreateStaff,
+    CreateStaffOutcome,
+    RecoveryCodes,
+    SecondFactor,
+    StaffDirectory,
+)
 from casero.admin.domain.complaint_emails import BusinessIdentity, consumer_copy
 from casero.admin.infrastructure.alerts import SqlAlertLog, SqlOpsReadings
 from casero.admin.infrastructure.complaint_commands import (
@@ -44,10 +52,18 @@ from casero.admin.infrastructure.complaint_commands import (
 from casero.admin.infrastructure.complaint_outbox import SqlComplaintOutbox
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.admin.infrastructure.retention import SqlRetention
+from casero.admin.infrastructure.staff import (
+    HashedRecoveryCodes,
+    PyotpSecondFactor,
+    SqlStaffDirectory,
+)
+from casero.identity.application.sessions import PasswordHasher
+from casero.identity.application.users import MIN_PASSWORD_LENGTH
 from casero.identity.infrastructure.email_suppressions import (
     SqlSuppressionStore,
     SuppressionLookup,
 )
+from casero.identity.infrastructure.passwords import Argon2PasswordHasher
 from casero.identity.infrastructure.unsubscribe import HmacUnsubscribeTokens, UnsubscribeLinkMaker
 from casero.leases.application.closing import CloseExpiredLeases, LeaseClosings
 from casero.leases.application.leases import LeaseStore
@@ -80,13 +96,18 @@ from casero.reminders.infrastructure.reminders import SqlReminderLog
 from casero.reminders.infrastructure.tax_reminders import SqlAccountOwner
 from casero.reminders.infrastructure.trial_end import SqlTrialEmailLog
 from casero.shared.infrastructure.audit import SqlAuditLog
+from casero.shared.infrastructure.crypto import FieldCipher
 from casero.shared.infrastructure.database import create_engine
 from casero.shared.infrastructure.error_tracking import init_error_tracking
 from casero.shared.infrastructure.jobs import AccountWork, DailyAccountJob
 from casero.shared.infrastructure.logs import configure_logging
 from casero.shared.infrastructure.mail import SmtpMailer
 from casero.shared.infrastructure.rate_limits import purge_expired_buckets
-from casero.shared.infrastructure.settings import WorkerSettings, smtp_from_environment
+from casero.shared.infrastructure.settings import (
+    WorkerSettings,
+    field_cipher_from_environment,
+    smtp_from_environment,
+)
 from casero.shared.kernel.audit import AuditLog
 from casero.shared.kernel.clock import LIMA, Clock, SystemClock
 from casero.tax.application.calculator import TaxRuleBook
@@ -373,6 +394,57 @@ async def register_complaint(
         await engine.dispose()
 
 
+async def create_staff(
+    database_url: str, cipher: FieldCipher, clock: Clock, email: str, password: str
+) -> CreateStaffOutcome:
+    """As casero_owner and never over HTTP (ADR-0008): the panel's role can't write staff_users."""
+    engine = create_engine(database_url)
+    try:
+        async with engine.begin() as connection:
+            directory: StaffDirectory = SqlStaffDirectory(connection, cipher)
+            passwords: PasswordHasher = Argon2PasswordHasher()
+            second_factor: SecondFactor = PyotpSecondFactor()
+            recovery_codes: RecoveryCodes = HashedRecoveryCodes()
+            actions: StaffActions = SqlStaffActions(connection)
+            create = CreateStaff(
+                directory, passwords, second_factor, recovery_codes, actions, clock
+            )
+            return await create(email, password)
+    finally:
+        await engine.dispose()
+
+
+def staff_command(arguments: list[str]) -> int:
+    """`create-staff EMAIL`. The password is typed, so it stays out of the shell history."""
+    if len(arguments) != 2 or "@" not in arguments[1]:
+        print("Uso: make create-staff EMAIL=correo@ejemplo.com", file=sys.stderr)
+        return 2
+    password = getpass.getpass("Contraseña: ")
+    if password != getpass.getpass("Repite la contraseña: "):
+        print("Las contraseñas no coinciden.", file=sys.stderr)
+        return 1
+    outcome = asyncio.run(
+        create_staff(
+            os.environ["CASERO_MIGRATION_DATABASE_URL"],
+            field_cipher_from_environment(os.environ),
+            SystemClock(),
+            arguments[1].strip(),
+            password,
+        )
+    )
+    if outcome == "email_taken":
+        print("Ese correo ya tiene una cuenta de personal.", file=sys.stderr)
+        return 1
+    if outcome == "weak_password":
+        print(f"Usa al menos {MIN_PASSWORD_LENGTH} caracteres.", file=sys.stderr)
+        return 1
+    print("Listo. Agrega este enlace a tu app de autenticación:")
+    print(outcome.totp_uri)
+    print("Guarda estos códigos en Bitwarden. Cada uno sirve una vez y no se vuelven a mostrar:")
+    print("\n".join(outcome.recovery_codes))
+    return 0
+
+
 def lima_moment(text: str) -> datetime:
     moment = datetime.fromisoformat(text)
     return moment if moment.tzinfo else moment.replace(tzinfo=LIMA)
@@ -487,6 +559,8 @@ def main() -> None:
         sys.exit(asyncio.run(print_complaint_copy(sys.argv[2])))
     if sys.argv[1:2] in (["complaint-respond"], ["complaint-register"]):
         sys.exit(complaint_command(sys.argv[1:]))
+    if sys.argv[1:2] == ["create-staff"]:
+        sys.exit(staff_command(sys.argv[1:]))
     asyncio.run(run())
 
 
