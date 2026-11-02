@@ -383,7 +383,7 @@ PostgreSQL 17 con cuatro grupos de tablas: identidad y personal interno, configu
 
 ## Plan de sprints y lanzamiento
 
-Tres semanas de validación sin código y quince sprints de dos semanas planificados a 7 puntos (carga entre 5 y 8): beta privada con los fundadores el 26 de abril de 2027 y lanzamiento público el 21 de junio de 2027, antes del pico de mudanzas de julio y agosto. Casero se construye a tiempo parcial, así que se planifica con una velocidad conservadora y se ajusta con la velocidad medida. Los sprints de fin de año y de Semana Santa llevan menos carga.
+Tres semanas de validación sin código y quince sprints de dos semanas planificados a 7 puntos (carga entre 5 y 8), más el rediseño visual (CS-35), que entra en el adelanto del plan sin mover fechas: beta privada con los fundadores el 26 de abril de 2027 y lanzamiento público el 21 de junio de 2027, antes del pico de mudanzas de julio y agosto. Casero se construye a tiempo parcial, así que se planifica con una velocidad conservadora y se ajusta con la velocidad medida. Los sprints de fin de año y de Semana Santa llevan menos carga.
 
 | Fase | Fechas | Objetivo | Historias, en orden | Pts |
 | --- | --- | --- | --- | --- |
@@ -401,6 +401,7 @@ Tres semanas de validación sin código y quince sprints de dos semanas planific
 | Sprint 10 | 12 abr – 25 abr | Cumplimiento legal: listo para datos reales | CS-25 | 5 |
 | Beta privada | desde 26 abr | Fundadores con sus alquileres reales (registro por invitación, `make grant-founder`); el año de fundador cuenta desde aquí; 15 minutos a la semana con cada uno | — | — |
 | Sprint 11 | 26 abr – 9 may | Planes y panel interno | CS-23, 24 | 6 |
+| Sprint 11B | Sin fecha propia: entra en el adelanto del plan | Rediseño visual antes de construir las pantallas que faltan | CS-35 | 5 |
 | Sprint 12 | 10 may – 23 may | Bienvenida, constancias y garantías | CS-10, 14, 15 | 6 |
 | Sprint 13 | 24 may – 6 jun | Vouchers, resumen diario y notificaciones push | CS-19, 17, 33 | 7 |
 | Sprint 14 | 7 jun – 20 jun | Pruebas de punta a punta y `REGISTRATION_MODE=open` | CS-27 | 2 |
