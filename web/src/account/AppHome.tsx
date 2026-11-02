@@ -1,14 +1,15 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Navigate } from "@tanstack/react-router";
 
 import { api } from "../api/client";
 import type { components } from "../api/schema";
 import { CollectionsPanel } from "../collections/CollectionsPanel";
 import { DueNotice } from "../tax/DueNotice";
 import { accountCopy as text } from "./copy";
+import { secondaryButton } from "./fields";
 import { fetchLegalStatus, isBlocked, LegalGate } from "./LegalGate";
+import { LogOutButtons } from "./session";
 import { TrialNotice } from "./TrialNotice";
-import { primaryButton, secondaryButton, textLink } from "./fields";
 
 type Me = components["schemas"]["MeResponse"];
 
@@ -70,24 +71,11 @@ function VerificationNotice({ me }: { me: Me }) {
 }
 
 export function AppHome() {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ["me"], queryFn: fetchMe });
   const legal = useQuery({
     queryKey: ["legal"],
     queryFn: fetchLegalStatus,
     enabled: Boolean(me.data),
-  });
-  const logOut = useMutation({
-    mutationFn: async (everywhere: boolean) => {
-      await (everywhere
-        ? api.DELETE("/api/app/sessions")
-        : api.DELETE("/api/app/session"));
-    },
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: ["me"] });
-      void navigate({ to: "/ingresar" });
-    },
   });
 
   if (me.data === null) {
@@ -111,54 +99,19 @@ export function AppHome() {
       <h1 className="text-3xl font-bold">{text.home.greeting}</h1>
       <VerificationNotice me={me.data} />
       {legal.isPending && <p role="status">{text.home.loading}</p>}
-      {isBlocked(legal.data) && <LegalGate status={legal.data} />}
+      {isBlocked(legal.data) && (
+        <>
+          <LegalGate status={legal.data} />
+          <LogOutButtons />
+        </>
+      )}
       {!legal.isPending && !isBlocked(legal.data) && (
         <>
           <TrialNotice />
           <DueNotice />
           <CollectionsPanel />
-          <Link to="/app/inmuebles" className={textLink}>
-            {text.home.properties}
-          </Link>
-          <Link to="/app/contratos" className={textLink}>
-            {text.home.leases}
-          </Link>
-          <Link to="/app/impuestos" className={textLink}>
-            {text.home.declarations}
-          </Link>
-          <Link to="/app/mensajes" className={textLink}>
-            {text.home.templates}
-          </Link>
-          <Link to="/app/plan" className={textLink}>
-            {text.home.plan}
-          </Link>
-          <Link to="/app/mis-datos" className={textLink}>
-            {text.home.profile}
-          </Link>
         </>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          className={primaryButton}
-          disabled={logOut.isPending}
-          onClick={() => {
-            logOut.mutate(false);
-          }}
-        >
-          {text.home.logOut}
-        </button>
-        <button
-          type="button"
-          className={secondaryButton}
-          disabled={logOut.isPending}
-          onClick={() => {
-            logOut.mutate(true);
-          }}
-        >
-          {text.home.logOutEverywhere}
-        </button>
-      </div>
     </div>
   );
 }

@@ -416,7 +416,7 @@ function PropertyEditor({ property, estateAccount }: { property: Property; estat
 }
 
 export function EditPropertyPage() {
-  const { propertyId } = useParams({ from: "/app/inmuebles/$propertyId" });
+  const { propertyId } = useParams({ from: "/app-shell/app/inmuebles/$propertyId" });
   const properties = useQuery({ queryKey: ["properties"], queryFn: fetchProperties });
   const profile = useQuery({ queryKey: ["profile"], queryFn: fetchProfile });
 

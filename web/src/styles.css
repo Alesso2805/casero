@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #0f5c4d;
-  --color-brand-dark: #0a4339;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --color-brand: #1b2f7a;
+  --color-brand-dark: #142460;
+  --color-ink: #16204a;
+  --color-muted: #46527a;
+  --color-rule: #c9d8ee;
+  --color-tint: #eaf0fb;
+  --color-late: #a82a19;
+  --color-margin: #e0654f;
+  --color-ok: #1f6b4f;
+}
+
+@utility grid-paper {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(#e3ebf7 1px, transparent 1px), linear-gradient(90deg, #e3ebf7 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 html {
@@ -10,5 +26,5 @@ html {
 }
 
 body {
-  @apply bg-white text-stone-900 antialiased;
+  @apply bg-white text-ink antialiased;
 }

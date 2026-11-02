@@ -3,14 +3,14 @@ import type { FieldError, UseFormRegisterReturn } from "react-hook-form";
 
 import { accountCopy as text } from "./copy";
 
-const inputClass = "min-h-11 w-full rounded-lg border border-stone-400 px-3 text-base";
+const inputClass = "min-h-12 w-full border-2 border-brand bg-white px-3 text-base text-ink";
 
 export const primaryButton =
-  "min-h-11 rounded-lg bg-brand px-5 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
+  "min-h-12 bg-brand px-5 text-base font-semibold text-white hover:bg-brand-dark disabled:opacity-60";
 // Standalone links get a 44 px target; links inside a sentence keep the text's height.
 export const textLink = "inline-flex min-h-11 items-center text-brand underline";
 export const secondaryButton =
-  "min-h-11 rounded-lg border border-brand px-5 text-base font-semibold text-brand disabled:opacity-60";
+  "min-h-12 border-2 border-brand bg-white px-5 text-base font-semibold text-brand disabled:opacity-60";
 
 function describedBy(id: string, hint: boolean, error: boolean): string | undefined {
   const ids = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean);
@@ -48,11 +48,11 @@ export function TextField({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium">
+      <label htmlFor={id} className="text-base font-semibold">
         {label}
       </label>
       {hint && (
-        <p id={`${id}-hint`} className="text-base text-stone-600">
+        <p id={`${id}-hint`} className="text-base text-muted">
           {hint}
         </p>
       )}
@@ -87,11 +87,11 @@ export function PasswordField({
   const [visible, setVisible] = useState(false);
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium">
+      <label htmlFor={id} className="text-base font-semibold">
         {text.fields.password}
       </label>
       {hint && (
-        <p id={`${id}-hint`} className="text-base text-stone-600">
+        <p id={`${id}-hint`} className="text-base text-muted">
           {hint}
         </p>
       )}
@@ -107,7 +107,7 @@ export function PasswordField({
         />
         <button
           type="button"
-          className="min-h-11 shrink-0 rounded-lg border border-stone-400 px-3"
+          className="min-h-12 shrink-0 border-2 border-brand bg-white px-3 font-semibold text-brand"
           aria-controls={id}
           onClick={() => {
             setVisible(!visible);
@@ -138,17 +138,17 @@ export function SelectField({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-base font-medium">
+      <label htmlFor={id} className="text-base font-semibold">
         {label}
       </label>
       {hint && (
-        <p id={`${id}-hint`} className="text-base text-stone-600">
+        <p id={`${id}-hint`} className="text-base text-muted">
           {hint}
         </p>
       )}
       <select
         id={id}
-        className="min-h-11 w-full rounded-lg border border-stone-400 bg-white px-3 text-base"
+        className="min-h-12 w-full border-2 border-brand bg-white px-3 text-base text-ink"
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy(id, Boolean(hint), Boolean(error))}
         {...registration}

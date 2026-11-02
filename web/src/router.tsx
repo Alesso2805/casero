@@ -75,81 +75,94 @@ const loginRoute = createRoute({
   component: lazyRouteComponent(() => import("./account/LoginPage"), "LoginPage"),
 });
 
-const appRoute = createRoute({
+const appShellRoute = createRoute({
   getParentRoute: () => rootRoute,
+  id: "app-shell",
+  component: lazyRouteComponent(() => import("./account/AppShell"), "AppShell"),
+});
+
+const appRoute = createRoute({
+  getParentRoute: () => appShellRoute,
   path: "/app",
   staticData: { title: "Inicio" },
   component: lazyRouteComponent(() => import("./account/AppHome"), "AppHome"),
 });
 
 const profileRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/mis-datos",
   staticData: { title: "Mis datos" },
   component: lazyRouteComponent(() => import("./account/ProfilePage"), "ProfilePage"),
 });
 
 const planRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/plan",
   staticData: { title: "Mi plan" },
   component: lazyRouteComponent(() => import("./account/PlanPage"), "PlanPage"),
 });
 
 const propertiesRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/inmuebles",
   staticData: { title: "Mis inmuebles" },
   component: lazyRouteComponent(() => import("./properties/PropertiesPage"), "PropertiesPage"),
 });
 
 const newPropertyRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/inmuebles/nuevo",
   staticData: { title: "Nuevo inmueble" },
   component: lazyRouteComponent(() => import("./properties/NewPropertyPage"), "NewPropertyPage"),
 });
 
 const propertyRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/inmuebles/$propertyId",
   staticData: { title: "Editar inmueble" },
   component: lazyRouteComponent(() => import("./properties/EditPropertyPage"), "EditPropertyPage"),
 });
 
 const leasesRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/contratos",
   staticData: { title: "Mis contratos" },
   component: lazyRouteComponent(() => import("./leases/LeasesPage"), "LeasesPage"),
 });
 
 const newLeaseRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/contratos/nuevo",
   staticData: { title: "Nuevo contrato" },
   component: lazyRouteComponent(() => import("./leases/NewLeasePage"), "NewLeasePage"),
 });
 
 const leaseRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/contratos/$leaseId",
   staticData: { title: "Cobros del contrato" },
   component: lazyRouteComponent(() => import("./leases/LeasePage"), "LeasePage"),
 });
 
 const declarationsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/impuestos",
   staticData: { title: "Formularios de SUNAT" },
   component: lazyRouteComponent(() => import("./tax/DeclarationsPage"), "DeclarationsPage"),
 });
 
 const templatesRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => appShellRoute,
   path: "/app/mensajes",
   staticData: { title: "Mensajes de cobro" },
   component: lazyRouteComponent(() => import("./reminders/TemplatesPage"), "TemplatesPage"),
+});
+
+const moreRoute = createRoute({
+  getParentRoute: () => appShellRoute,
+  path: "/app/mas",
+  staticData: { title: "Más" },
+  component: lazyRouteComponent(() => import("./account/MorePage"), "MorePage"),
 });
 
 const tenantRoute = createRoute({
@@ -216,17 +229,20 @@ export const routeTree = rootRoute.addChildren([
   calculatorRoute,
   registerRoute,
   loginRoute,
-  appRoute,
-  profileRoute,
-  planRoute,
-  propertiesRoute,
-  newPropertyRoute,
-  propertyRoute,
-  leasesRoute,
-  newLeaseRoute,
-  leaseRoute,
-  declarationsRoute,
-  templatesRoute,
+  appShellRoute.addChildren([
+    appRoute,
+    profileRoute,
+    planRoute,
+    propertiesRoute,
+    newPropertyRoute,
+    propertyRoute,
+    leasesRoute,
+    newLeaseRoute,
+    leaseRoute,
+    declarationsRoute,
+    templatesRoute,
+    moreRoute,
+  ]),
   tenantRoute,
   verifyRoute,
   forgotRoute,

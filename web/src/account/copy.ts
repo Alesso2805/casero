@@ -54,6 +54,13 @@ export const accountCopy = {
     declarations: "Formularios de SUNAT",
     templates: "Mensajes de cobro",
   },
+  nav: {
+    label: "Principal",
+    home: "Inicio",
+    leases: "Contratos",
+    declarations: "SUNAT",
+    more: "Más",
+  },
   plan: {
     title: "Mi plan",
     trial: (date: string) => `Estás en la prueba gratis de Casero hasta el ${date}.`,
