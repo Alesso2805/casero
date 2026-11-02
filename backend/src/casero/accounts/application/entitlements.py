@@ -10,6 +10,7 @@ from casero.accounts.domain.entitlements import (
     Subscription,
     SubscriptionStatus,
     effective_plan_code,
+    extended_until,
     is_trial_lapsing,
     subscription_status,
 )
@@ -22,9 +23,12 @@ __all__ = [
     "Feature",
     "GetEntitlements",
     "PlanCatalog",
+    "Subscription",
     "SubscriptionReader",
     "SubscriptionStatus",
+    "extended_until",
     "is_trial_lapsing",
+    "subscription_status",
 ]
 
 

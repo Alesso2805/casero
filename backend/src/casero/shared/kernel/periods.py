@@ -45,6 +45,12 @@ class Period:
         return Period(self.year, self.month - 1)
 
 
+def add_months(day: date, months: int) -> date:
+    """The same day `months` later, or that month's last day if it has no such day."""
+    year, month_index = divmod(day.year * MONTHS_PER_YEAR + day.month - 1 + months, MONTHS_PER_YEAR)
+    return date(year, month_index + 1, min(day.day, Period(year, month_index + 1).last_day().day))
+
+
 # Rent became taxable when collected from 2026 on; debt from before is only an opening balance
 # (SPEC, "Deudas de 2025 o antes"), so no lease is controlled and no receipt is dated earlier.
 FIRST_CONTROL_PERIOD = Period(2026, 1)

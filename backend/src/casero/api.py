@@ -78,9 +78,17 @@ from casero.accounts.infrastructure.registration import (
     SqlLegalVersions,
 )
 from casero.accounts.infrastructure.waitlist import SqlWaitlistRepository
+from casero.admin.api import accounts as admin_accounts_api
 from casero.admin.api import complaints as complaints_api
 from casero.admin.api import staff_sessions as staff_sessions_api
 from casero.admin.api.protection import AdminProtection
+from casero.admin.application.accounts import (
+    AccountDirectory,
+    RecordSubscriptionPayment,
+    SearchAccounts,
+    SubscriptionLedger,
+    ViewAccount,
+)
 from casero.admin.application.complaint_commands import StaffActions
 from casero.admin.application.complaints import (
     ComplaintRateLimiter,
@@ -95,6 +103,7 @@ from casero.admin.application.staff_sessions import (
     StaffLogins,
     StaffSessions,
 )
+from casero.admin.infrastructure.accounts import SqlAccountDirectory, SqlSubscriptionLedger
 from casero.admin.infrastructure.complaint_commands import SqlStaffActions
 from casero.admin.infrastructure.complaints import SqlComplaintRepository
 from casero.admin.infrastructure.staff import (
@@ -1229,6 +1238,28 @@ def create_admin_app(settings: AdminSettings, clock: Clock | None = None) -> Fas
     current_staff = staff_sessions_api.staff_dependency(provide_authenticate)
     app.include_router(
         staff_sessions_api.create_router(provide_log_in, provide_log_out, current_staff)
+    )
+
+    async def provide_search_accounts(connection: Transaction) -> SearchAccounts:
+        directory: AccountDirectory = SqlAccountDirectory(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return SearchAccounts(directory, actions, app_clock)
+
+    async def provide_view_account(connection: Transaction) -> ViewAccount:
+        directory: AccountDirectory = SqlAccountDirectory(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return ViewAccount(directory, actions, app_clock)
+
+    async def provide_record_payment(connection: Transaction) -> RecordSubscriptionPayment:
+        directory: AccountDirectory = SqlAccountDirectory(connection)
+        ledger: SubscriptionLedger = SqlSubscriptionLedger(connection)
+        actions: StaffActions = SqlStaffActions(connection)
+        return RecordSubscriptionPayment(directory, ledger, actions, app_clock)
+
+    app.include_router(
+        admin_accounts_api.create_router(
+            current_staff, provide_search_accounts, provide_view_account, provide_record_payment
+        )
     )
 
     @app.get("/api/admin/health", responses={503: {"description": "`database_unavailable`"}})

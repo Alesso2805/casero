@@ -33,7 +33,7 @@ class StaffActions(Protocol):
         self,
         action: str,
         entity: str,
-        entity_id: UUID,
+        entity_id: UUID | None,
         at: datetime,
         staff_id: UUID | None = None,
     ) -> None:
